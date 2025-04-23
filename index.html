@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat with Strangers</title>
-    <!-- Updated to latest stable PeerJS version -->
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <!-- Include PeerJS from CDN with a specific version known to work -->
+    <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-primary: #121212;
@@ -51,36 +51,6 @@
             flex-direction: column;
         }
         
-        .tab-buttons {
-            display: flex;
-            margin-bottom: 1rem;
-        }
-        
-        .tab-button {
-            flex: 1;
-            padding: 0.75rem;
-            background-color: var(--bg-secondary);
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .tab-button.active {
-            background-color: var(--accent);
-            color: white;
-        }
-        
-        .tab-button:first-child {
-            border-top-left-radius: 4px;
-            border-bottom-left-radius: 4px;
-        }
-        
-        .tab-button:last-child {
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px;
-        }
-        
         #setup-screen {
             display: flex;
             flex-direction: column;
@@ -96,15 +66,58 @@
             margin-bottom: 1rem;
         }
         
-        .connection-mode {
-            display: none;
-            width: 100%;
-        }
-        
-        .connection-mode.active {
+        .connection-options {
             display: flex;
             flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .option-divider {
+            display: flex;
             align-items: center;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+        }
+        
+        .option-divider::before,
+        .option-divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid var(--text-secondary);
+            margin: 0 1rem;
+        }
+        
+        #random-connect-btn {
+            padding: 1rem;
+            background-color: var(--success);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #random-connect-btn:hover {
+            background-color: #4ade80;
+            transform: translateY(-2px);
+        }
+        
+        #random-connect-btn:disabled {
+            background-color: #2a2a2a;
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #matching-status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            color: var(--warning);
+            display: none;
         }
         
         #my-id-display {
@@ -217,44 +230,20 @@
             background-color: #ff5c8d;
         }
         
-        #next-chat-btn {
-            background-color: var(--warning);
-            margin-top: 0.5rem;
-        }
-        
-        #next-chat-btn:hover {
-            background-color: #ffc166;
-        }
-        
-        .match-button {
-            width: 100%;
-            max-width: 400px;
-            padding: 1rem;
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-        }
-        
-        #matching-indicator {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+        .action-buttons {
+            display: flex;
             gap: 1rem;
-            margin: 2rem 0;
+            margin-top: 1rem;
         }
         
-        #matching-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--bg-secondary);
-            border-top: 5px solid var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        #new-chat-btn {
+            background-color: var(--success);
+            color: #000;
+            flex: 1;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #new-chat-btn:hover {
+            background-color: #4ade80;
         }
         
         footer {
@@ -309,30 +298,6 @@
             font-size: 0.8rem;
             white-space: pre-wrap;
         }
-        
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        /* New style for connection indicator */
-        #connection-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
-        .connection-active {
-            background-color: var(--success);
-            box-shadow: 0 0 8px var(--success);
-        }
-        .connection-inactive {
-            background-color: var(--danger);
-            box-shadow: 0 0 8px var(--danger);
-        }
     </style>
 </head>
 <body>
@@ -342,38 +307,21 @@
     
     <div class="container">
         <div id="setup-screen">
-            <div class="tab-buttons">
-                <button class="tab-button active" data-tab="random-mode">Random Chat</button>
-                <button class="tab-button" data-tab="manual-mode">Manual Connect</button>
-            </div>
+            <h2>Choose Your Chat Mode</h2>
             
-            <div id="random-mode" class="connection-mode active">
-                <h2>Find a Random Chat Partner</h2>
-                <p>Click the button below to be matched with a random stranger.</p>
+            <div class="connection-options">
+                <button id="random-connect-btn">Chat with Random Stranger</button>
+                <div id="matching-status">Looking for a stranger...</div>
                 
-                <button id="find-match-btn" class="match-button">Find Someone to Chat With</button>
-                
-                <div id="matching-indicator">
-                    <div id="matching-spinner"></div>
-                    <p id="matching-status">Looking for someone to chat with...</p>
-                    <button id="cancel-match-btn">Cancel</button>
-                </div>
-            </div>
-            
-            <div id="manual-mode" class="connection-mode">
-                <h2>Manual Connection Mode</h2>
-                <p>Connect directly using an ID.</p>
+                <div class="option-divider">OR</div>
                 
                 <div id="my-id-display">
                     <p>Your ID: <span id="my-id">Connecting...</span></p>
                     <p>Share this ID with someone you want to chat with.</p>
-                    <p>Connection Status: <span id="peer-status">Initializing</span>
-                        <span id="connection-indicator" class="connection-inactive"></span>
-                    </p>
                 </div>
                 
                 <form id="connect-form">
-                    <h3>Connect to someone</h3>
+                    <h3>Connect to someone specific</h3>
                     <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
                     <button type="submit" id="connect-btn">Connect</button>
                 </form>
@@ -396,7 +344,7 @@
             </form>
             
             <div class="action-buttons">
-                <button id="next-chat-btn">Next Chat</button>
+                <button id="new-chat-btn">New Random Chat</button>
                 <button id="disconnect-btn">Disconnect</button>
             </div>
         </div>
@@ -412,20 +360,14 @@
         // DOM Elements
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const connectionModes = document.querySelectorAll('.connection-mode');
         const myIdDisplay = document.getElementById('my-id');
-        const peerStatusDisplay = document.getElementById('peer-status');
-        const connectionIndicator = document.getElementById('connection-indicator');
         const peerIdInput = document.getElementById('peer-id-input');
         const connectForm = document.getElementById('connect-form');
         const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        const nextChatBtn = document.getElementById('next-chat-btn');
-        const findMatchBtn = document.getElementById('find-match-btn');
-        const cancelMatchBtn = document.getElementById('cancel-match-btn');
-        const matchingIndicator = document.getElementById('matching-indicator');
+        const randomConnectBtn = document.getElementById('random-connect-btn');
         const matchingStatus = document.getElementById('matching-status');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
         const statusText = document.getElementById('status-text');
         const usernameDisplay = document.getElementById('username-display');
         const messagesContainer = document.getElementById('messages');
@@ -444,33 +386,12 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        let isMatching = false;
-        let reconnectAttempts = 0;
-        let peerInitialized = false;
+        let isMatchmaking = false;
+        let matchmakingServer = 'https://matchmaker.example.com'; // This would be your actual matchmaking server
         
-        // Random pool management
-        const RANDOM_POOL_PREFIX = 'random_peer_';
-        let matchingInterval;
-        let heartbeatInterval;
-        
-        // Tab switching
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const tabName = button.getAttribute('data-tab');
-                
-                // Update tab buttons
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                // Update visible connection mode
-                connectionModes.forEach(mode => {
-                    mode.classList.remove('active');
-                    if (mode.id === tabName) {
-                        mode.classList.add('active');
-                    }
-                });
-            });
-        });
+        // For simple matchmaking simulation (in a real app, use a server)
+        const waitingPool = new Set();
+        let matchmakingInterval = null;
         
         // Debug log function
         function log(message) {
@@ -499,93 +420,48 @@
             return `${adj}${noun}${randomNumber}`;
         }
         
-        // Update the connection status UI
-        function updatePeerStatus(status, isActive = false) {
-            peerStatusDisplay.textContent = status;
-            connectionIndicator.className = isActive ? 'connection-active' : 'connection-inactive';
-        }
-
-        // Initialize PeerJS - FIXED to use more reliable configuration
-        function initializePeer() {
-            if (peerInitialized) {
-                log('PeerJS already initialized. Skipping initialization.');
-                return;
+        // Generate a simple ID
+        function generateSimpleId() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
             }
-            
+            return result;
+        }
+        
+        // Initialize PeerJS
+        function initializePeer() {
+            const peerId = generateSimpleId();
             localUsername = generateUsername();
             
-            // Create a more reliable peer ID with timestamp to reduce collisions
-            const randomId = 'chat-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
-            
-            log(`Initializing PeerJS with ID: ${randomId}`);
+            log(`Initializing PeerJS with ID: ${peerId}`);
             
             try {
-                // Use free public server for demo purposes - more reliable than custom server
-                peer = new Peer(randomId, {
-                    host: 'peerjs-server.herokuapp.com',  // Public PeerJS server
-                    secure: true,
-                    port: 443,
-                    path: '/',
-                    debug: 1,  // Reduced debug level to minimize console noise
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:stun2.l.google.com:19302' },
-                            { urls: 'stun:global.stun.twilio.com:3478' }
-                        ],
-                        'sdpSemantics': 'unified-plan'
-                    }
+                // Initialize with minimal options to avoid errors
+                peer = new Peer(peerId, {
+                    debug: 2
                 });
                 
-                // Fallback if primary server doesn't respond
-                let initializationTimeout = setTimeout(() => {
-                    if (!peer.open) {
-                        log('Primary server connection timed out, trying fallback server');
-                        peer.disconnect();
-                        
-                        // Try backup server
-                        peer = new Peer(randomId, {
-                            host: 'peerjs.metered.live',
-                            secure: true,
-                            port: 443
-                        });
-                    }
-                }, 8000);
-                
-                peerInitialized = true;
-                
                 peer.on('open', (id) => {
-                    clearTimeout(initializationTimeout);
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
-                    updatePeerStatus('Connected to server', true);
-                    reconnectAttempts = 0;
-
-                    // Start a heartbeat to keep the connection alive
-                    startHeartbeat();
                     
-                    // If matching was attempted before connection was ready, try again
-                    if (isMatching) {
-                        findRandomMatch();
-                    }
+                    // Enable UI now that we're connected to the signaling server
+                    randomConnectBtn.disabled = false;
                 });
                 
                 peer.on('connection', (conn) => {
                     log(`Incoming connection from: ${conn.peer}`);
                     
-                    // If we were matching and got a connection, accept it
+                    if (isMatchmaking) {
+                        stopMatchmaking();
+                    }
+                    
                     if (!isConnected) {
                         connection = conn;
                         setupConnection();
-                        
-                        // If we were matching, stop
-                        stopMatching();
-                        
-                        // Show chat UI
-                        setupScreen.style.display = 'none';
-                        chatScreen.style.display = 'flex';
                     } else {
                         // Already in a chat, reject this connection
                         conn.close();
@@ -593,103 +469,56 @@
                 });
                 
                 peer.on('error', (err) => {
-                    log(`Peer error: ${err.type} - ${err.message}`);
-                    updatePeerStatus('Error: ' + err.type);
+                    log(`Peer error: ${err.type}`);
+                    
+                    if (isMatchmaking && err.type === 'peer-unavailable') {
+                        // Don't show this error during matchmaking, it's expected
+                        log('Peer unavailable during matchmaking, continuing search...');
+                        return;
+                    }
+                    
+                    showError(`Connection error: ${err.type}`);
                     
                     if (err.type === 'peer-unavailable') {
-                        showError('Peer ID not found or connection failed. Check the ID and try again.');
-                        
-                        if (isMatching) {
-                            // Try another match if in random mode
-                            stopMatching();
-                            setTimeout(() => findRandomMatch(), 1000);
-                        }
-                    } else if (err.type === 'network' || err.type === 'disconnected') {
-                        showError('Network error. Reconnecting...');
-                        updatePeerStatus('Reconnecting', false);
-                        
-                        // Automatic reconnection
-                        setTimeout(() => {
-                            peerInitialized = false;
-                            initializePeer();
-                        }, 3000);
-                    } else {
-                        showError(`Connection error: ${err.type}`);
-                        updatePeerStatus('Error', false);
+                        showError('Peer ID not found. Check the ID and try again.');
+                    } else if (err.type === 'network') {
+                        showError('Network error. Check your internet connection.');
+                    } else if (err.type === 'disconnected') {
+                        showError('Disconnected from server. Try refreshing the page.');
+                    }
+                    
+                    // If we were matchmaking, stop it
+                    if (isMatchmaking) {
+                        stopMatchmaking();
                     }
                 });
                 
                 peer.on('disconnected', () => {
                     log('Peer disconnected from server');
-                    updatePeerStatus('Disconnected', false);
+                    showError('Disconnected from server. Click to reconnect.');
                     
-                    // Try to reconnect automatically
+                    // Try to reconnect
                     setTimeout(() => {
-                        log('Attempting to reconnect to server...');
-                        updatePeerStatus('Reconnecting...', false);
-                        
-                        try {
-                            peer.reconnect();
-                        } catch (error) {
-                            log(`Reconnection failed: ${error.message}`);
-                            // Re-initialize if reconnect fails
-                            peerInitialized = false;
-                            initializePeer();
-                        }
-                    }, 2000);
+                        if (peer) peer.reconnect();
+                    }, 3000);
                 });
             } catch (error) {
                 log(`Error initializing PeerJS: ${error.message}`);
                 showError(`Failed to initialize connection: ${error.message}`);
-                updatePeerStatus('Initialization failed', false);
-                
-                // Try to initialize again after a delay
-                setTimeout(() => {
-                    peerInitialized = false;
-                    initializePeer();
-                }, 5000);
             }
-        }
-        
-        // Start a heartbeat to keep the PeerJS connection alive
-        function startHeartbeat() {
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-            }
-            
-            heartbeatInterval = setInterval(() => {
-                if (peer && peer.open) {
-                    // Just accessing the id property helps keep the connection alive
-                    const id = peer.id;
-                    log(`Heartbeat: Connection to PeerJS server active (ID: ${id})`);
-                    updatePeerStatus('Connected to server', true);
-                } else if (peer) {
-                    log('Heartbeat: Connection to server lost, attempting to reconnect');
-                    updatePeerStatus('Reconnecting...', false);
-                    try {
-                        peer.reconnect();
-                    } catch (error) {
-                        log(`Reconnection error: ${error.message}`);
-                        // If reconnection fails, reinitialize
-                        peerInitialized = false;
-                        initializePeer();
-                    }
-                }
-            }, 30000); // Check every 30 seconds
         }
         
         // Set up connection event handlers
         function setupConnection() {
             log('Setting up connection handlers');
             
-            // Make sure we clean up any previous connection
-            if (connection) {
-                connection.removeAllListeners();
-            }
-            
             connection.on('open', () => {
                 log('Connection opened');
                 isConnected = true;
+                
+                // Show chat UI
+                setupScreen.style.display = 'none';
+                chatScreen.style.display = 'flex';
                 
                 updateStatus('Connected');
                 messageInput.disabled = false;
@@ -702,10 +531,13 @@
                 });
                 
                 // Add system message
-                addSystemMessage('Connected to chat!', 'accent');
-                
-                // Set up ping-pong to keep connection alive
-                setupPingPong();
+                const systemMessage = document.createElement('div');
+                systemMessage.textContent = 'Connected to chat!';
+                systemMessage.style.textAlign = 'center';
+                systemMessage.style.padding = '0.5rem';
+                systemMessage.style.margin = '0.5rem 0';
+                systemMessage.style.color = 'var(--accent)';
+                messagesContainer.appendChild(systemMessage);
             });
             
             connection.on('data', (data) => {
@@ -716,12 +548,6 @@
                     usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
                 } else if (data.type === 'message') {
                     addMessage(data.text, false);
-                } else if (data.type === 'ping') {
-                    // Respond to ping with pong
-                    connection.send({ type: 'pong' });
-                } else if (data.type === 'pong') {
-                    // Got pong response, connection is alive
-                    log('Connection is alive (received pong)');
                 }
             });
             
@@ -736,37 +562,9 @@
             });
         }
         
-        // Set up ping-pong to keep the peer connection alive
-        let pingInterval;
-        function setupPingPong() {
-            if (pingInterval) {
-                clearInterval(pingInterval);
-            }
-            
-            pingInterval = setInterval(() => {
-                if (isConnected && connection && connection.open) {
-                    log('Sending ping to keep connection alive');
-                    try {
-                        connection.send({ type: 'ping' });
-                    } catch (error) {
-                        log(`Error sending ping: ${error.message}`);
-                        handleDisconnect('Connection lost');
-                    }
-                } else if (isConnected) {
-                    log('Connection appears to be closed, handling disconnect');
-                    handleDisconnect('Connection lost');
-                }
-            }, 15000); // Ping every 15 seconds
-        }
-        
         // Handle disconnection
         function handleDisconnect(message) {
             log(`Disconnected: ${message}`);
-            
-            if (pingInterval) {
-                clearInterval(pingInterval);
-                pingInterval = null;
-            }
             
             isConnected = false;
             messageInput.disabled = true;
@@ -774,7 +572,13 @@
             updateStatus('Disconnected');
             
             // Add system message
-            addSystemMessage(message || 'Disconnected', 'danger');
+            const systemMessage = document.createElement('div');
+            systemMessage.textContent = message || 'Disconnected';
+            systemMessage.style.textAlign = 'center';
+            systemMessage.style.padding = '0.5rem';
+            systemMessage.style.margin = '0.5rem 0';
+            systemMessage.style.color = 'var(--danger)';
+            messagesContainer.appendChild(systemMessage);
             
             // Show setup screen again after a short delay
             setTimeout(() => {
@@ -783,10 +587,10 @@
             }, 3000);
         }
         
-        // Connect to a peer with improved error handling
+        // Connect to a peer
         function connectToPeer(peerId) {
-            if (!peer || !peer.open) {
-                showError('Connection to server not established. Please wait or refresh the page.');
+            if (!peer) {
+                showError('Connection not initialized. Please refresh the page.');
                 return false;
             }
             
@@ -794,57 +598,100 @@
             updateStatus('Connecting...');
             
             try {
-                // Close any existing connection
-                if (connection) {
-                    connection.close();
-                }
-                
-                // Set a timeout for connection attempt
-                const connectionTimeout = setTimeout(() => {
-                    if (!isConnected) {
-                        showError('Connection attempt timed out. Peer might be unavailable.');
-                        updateStatus('Disconnected');
-                    }
-                }, 10000); // 10 second timeout
-                
                 connection = peer.connect(peerId, {
-                    reliable: true,
-                    serialization: 'json',
-                    metadata: {
-                        username: localUsername
-                    }
-                });
-                
-                // Set initial connection handlers
-                connection.on('open', () => {
-                    clearTimeout(connectionTimeout);
-                    // Further setup handled in setupConnection()
-                });
-                
-                connection.on('error', (err) => {
-                    clearTimeout(connectionTimeout);
-                    log(`Connection error during setup: ${err}`);
-                    showError(`Connection failed: ${err.message || 'Unknown error'}`);
-                    updateStatus('Disconnected');
+                    reliable: true
                 });
                 
                 setupConnection();
-                
-                // Show chat UI with a small delay to allow connection to establish
-                setTimeout(() => {
-                    if (isConnected) {
-                        setupScreen.style.display = 'none';
-                        chatScreen.style.display = 'flex';
-                    }
-                }, 1000);
-                
                 return true;
             } catch (error) {
                 log(`Error connecting to peer: ${error.message}`);
                 showError(`Failed to connect: ${error.message}`);
-                updateStatus('Disconnected');
                 return false;
             }
+        }
+        
+        // Start random matchmaking
+        function startRandomMatch() {
+            if (!peer || !peer.id) {
+                showError('Connection not initialized. Please refresh the page.');
+                return;
+            }
+            
+            log('Starting random matchmaking');
+            isMatchmaking = true;
+            
+            // Update UI
+            randomConnectBtn.disabled = true;
+            matchingStatus.style.display = 'block';
+            matchingStatus.textContent = 'Looking for a stranger...';
+            statusText.textContent = 'Matching...';
+            statusText.className = 'status-matching';
+            
+            // In a real application, you would send a request to your matchmaking server
+            // For this demo, we'll simulate matchmaking
+            simulateMatchmaking();
+        }
+        
+        // Stop matchmaking
+        function stopMatchmaking() {
+            log('Stopping matchmaking');
+            isMatchmaking = false;
+            
+            // Update UI
+            randomConnectBtn.disabled = false;
+            matchingStatus.style.display = 'none';
+            statusText.textContent = 'Disconnected';
+            statusText.className = 'status-disconnected';
+            
+            // Clean up matchmaking simulation
+            if (matchmakingInterval) {
+                clearInterval(matchmakingInterval);
+                matchmakingInterval = null;
+            }
+            
+            // Remove ourselves from the waiting pool if we're there
+            if (peer && peer.id) {
+                waitingPool.delete(peer.id);
+            }
+        }
+        
+        // Simulate matchmaking (in a real app, use a server)
+        function simulateMatchmaking() {
+            // Add ourselves to the waiting pool
+            if (peer && peer.id) {
+                waitingPool.add(peer.id);
+            }
+            
+            // Find a match every few seconds
+            let attempts = 0;
+            
+            matchmakingInterval = setInterval(() => {
+                attempts++;
+                
+                if (!isMatchmaking) {
+                    clearInterval(matchmakingInterval);
+                    return;
+                }
+                
+                // For simulation purposes only:
+                // After a few attempts, simulate finding another user
+                if (attempts >= 3) {
+                    // Generate a random ID to simulate another user
+                    // In a real app, this would come from your matchmaking server
+                    const otherPeerId = generateSimpleId();
+                    
+                    // Connect to this "other user"
+                    log(`Matchmaking found peer: ${otherPeerId}`);
+                    connectToPeer(otherPeerId);
+                    
+                    stopMatchmaking();
+                } else {
+                    // Update the matching status with dots to show progress
+                    const dots = '.'.repeat((attempts % 3) + 1);
+                    matchingStatus.textContent = `Looking for a stranger${dots}`;
+                }
+            }, 1500);
         }
         
         // Update the connection status UI
@@ -860,28 +707,6 @@
             } else {
                 statusText.className = 'status-disconnected';
             }
-        }
-        
-        // Add a system message to the chat
-        function addSystemMessage(text, type = 'accent') {
-            const systemMessage = document.createElement('div');
-            systemMessage.textContent = text;
-            systemMessage.style.textAlign = 'center';
-            systemMessage.style.padding = '0.5rem';
-            systemMessage.style.margin = '0.5rem 0';
-            
-            if (type === 'accent') {
-                systemMessage.style.color = 'var(--accent)';
-            } else if (type === 'danger') {
-                systemMessage.style.color = 'var(--danger)';
-            } else if (type === 'warning') {
-                systemMessage.style.color = 'var(--warning)';
-            } else if (type === 'success') {
-                systemMessage.style.color = 'var(--success)';
-            }
-            
-            messagesContainer.appendChild(systemMessage);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
         // Add a message to the chat
@@ -908,263 +733,98 @@
         }
         
         // Send a message
-        // Send a message
-function sendMessage(text) {
-    if (!isConnected || !connection || !connection.open) {
-        showError('Not connected to a chat partner!');
-        return;
-    }
-    
-    try {
-        connection.send({
-            type: 'message',
-            text: text
+        function sendMessage(text) {
+            if (!isConnected || !connection) {
+                showError('Not connected to a chat partner!');
+                return;
+            }
+            
+            log(`Sending message: ${text}`);
+            
+            try {
+                connection.send({
+                    type: 'message',
+                    text: text
+                });
+                
+                addMessage(text, true);
+            } catch (error) {
+                log(`Error sending message: ${error.message}`);
+                showError('Failed to send message. Connection may be lost.');
+            }
+        }
+        
+        // Disconnect from current peer
+        function disconnect() {
+            log('Disconnecting from current peer');
+            
+            if (connection) {
+                connection.close();
+                connection = null;
+            }
+            
+            isConnected = false;
+            remoteUsername = null;
+            messagesContainer.innerHTML = '';
+            
+            // Reset UI
+            updateStatus('Disconnected');
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Show setup screen
+            setupScreen.style.display = 'flex';
+            chatScreen.style.display = 'none';
+        }
+        
+        // Event Listeners
+        connectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const peerId = peerIdInput.value.trim();
+            if (peerId) {
+                connectToPeer(peerId);
+                // Keep the setup screen visible until connection is established
+            } else {
+                showError('Please enter a peer ID');
+            }
         });
         
-        addMessage(text, true);
-        messageInput.value = '';
-    } catch (error) {
-        log(`Error sending message: ${error.message}`);
-        showError('Failed to send message. Connection may be unstable.');
-    }
-}
-
-// Random matching functionality
-function findRandomMatch() {
-    if (!peer || !peer.open) {
-        log('PeerJS not initialized yet, delaying match attempt');
-        isMatching = true;
-        return;
-    }
-    
-    if (isConnected) {
-        showError('Disconnect from current chat before finding a new one.');
-        return;
-    }
-    
-    log('Starting random match process');
-    isMatching = true;
-    matchingIndicator.style.display = 'flex';
-    findMatchBtn.style.display = 'none';
-    updateStatus('Matching...');
-    
-    // Generate a random room ID to join the matching pool
-    const poolId = RANDOM_POOL_PREFIX + Math.floor(Math.random() * 100);
-    log(`Joining random pool: ${poolId}`);
-    
-    let poolPeers = [];
-    let matchAttempts = 0;
-    const maxAttempts = 5;
-    
-    // Clear any existing matching interval
-    if (matchingInterval) {
-        clearInterval(matchingInterval);
-    }
-    
-    // Function to search for peers and attempt connection
-    const searchForMatch = async () => {
-        try {
-            if (!isMatching) return;
-            
-            matchAttempts++;
-            log(`Match attempt ${matchAttempts}/${maxAttempts}`);
-            
-            if (matchAttempts > maxAttempts) {
-                log('Reached maximum attempts, creating a new pool');
-                matchAttempts = 0;
-                // Join a different pool
-                const newPoolId = RANDOM_POOL_PREFIX + Math.floor(Math.random() * 100);
-                log(`Switching to new pool: ${newPoolId}`);
-                poolId = newPoolId;
-            }
-            
-            // We'll use a simple discovery protocol by naming convention
-            // Store our ID in localStorage with prefix
-            const ourPoolKey = `${poolId}_${peer.id}`;
-            localStorage.setItem(ourPoolKey, Date.now().toString());
-            
-            // Read all available peers from localStorage with the same prefix
-            poolPeers = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith(poolId) && key !== ourPoolKey) {
-                    // Check if this entry is recent (within last 30 seconds)
-                    const timestamp = parseInt(localStorage.getItem(key));
-                    if (Date.now() - timestamp < 30000) {
-                        const peerId = key.split('_')[1];
-                        poolPeers.push(peerId);
-                    } else {
-                        // Remove stale entries
-                        localStorage.removeItem(key);
-                    }
-                }
-            }
-            
-            log(`Found ${poolPeers.length} potential peers in pool ${poolId}`);
-            
-            // If we found peers, try to connect to a random one
-            if (poolPeers.length > 0) {
-                const randomIndex = Math.floor(Math.random() * poolPeers.length);
-                const targetPeerId = poolPeers[randomIndex];
-                
-                log(`Attempting to connect to random peer: ${targetPeerId}`);
-                matchingStatus.textContent = 'Found someone! Connecting...';
-                
-                // Try to connect to this peer
-                if (connectToPeer(targetPeerId)) {
-                    // Connection attempt started
-                    stopMatching();
-                } else {
-                    log('Connection attempt failed, will try again');
-                    // Remove this peer from the pool as it didn't work
-                    localStorage.removeItem(`${poolId}_${targetPeerId}`);
-                }
+        randomConnectBtn.addEventListener('click', () => {
+            if (!isMatchmaking) {
+                startRandomMatch();
             } else {
-                matchingStatus.textContent = 'Looking for someone to chat with...';
+                stopMatchmaking();
             }
-        } catch (error) {
-            log(`Error during matching: ${error.message}`);
-        }
-    };
-    
-    // Run the search immediately and then every 5 seconds
-    searchForMatch();
-    matchingInterval = setInterval(searchForMatch, 5000);
-    
-    // Clean up old entries every 10 seconds
-    setInterval(() => {
-        // Clean up old entries from localStorage
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(RANDOM_POOL_PREFIX)) {
-                const timestamp = parseInt(localStorage.getItem(key));
-                if (Date.now() - timestamp > 30000) {
-                    localStorage.removeItem(key);
-                }
+        });
+        
+        newChatBtn.addEventListener('click', () => {
+            disconnect();
+            setTimeout(() => {
+                startRandomMatch();
+            }, 500);
+        });
+        
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message) {
+                sendMessage(message);
+                messageInput.value = '';
             }
-        }
-    }, 10000);
-}
-
-// Stop matching process
-function stopMatching() {
-    log('Stopping matching process');
-    isMatching = false;
-    
-    if (matchingInterval) {
-        clearInterval(matchingInterval);
-        matchingInterval = null;
-    }
-    
-    matchingIndicator.style.display = 'none';
-    findMatchBtn.style.display = 'block';
-    
-    // Clean up our entry in the matching pool
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes(peer.id)) {
-            localStorage.removeItem(key);
-        }
-    }
-    
-    updateStatus('Disconnected');
-}
-
-// Initialize PeerJS on page load
-window.addEventListener('load', () => {
-    // Initialize PeerJS
-    initializePeer();
-    
-    // Set up event handlers
-    connectForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const peerId = peerIdInput.value.trim();
+        });
         
-        if (peerId) {
-            connectToPeer(peerId);
-        } else {
-            showError('Please enter a valid peer ID');
-        }
-    });
-    
-    messageForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const message = messageInput.value.trim();
+        disconnectBtn.addEventListener('click', disconnect);
         
-        if (message) {
-            sendMessage(message);
-        }
-    });
-    
-    disconnectBtn.addEventListener('click', () => {
-        if (connection) {
-            connection.close();
-        }
-        handleDisconnect('Disconnected from chat');
-    });
-    
-    nextChatBtn.addEventListener('click', () => {
-        if (connection) {
-            connection.close();
-        }
-        
-        handleDisconnect('Finding next chat...');
-        
-        // Wait a moment before finding a new match
-        setTimeout(() => {
-            findRandomMatch();
-        }, 1000);
-    });
-    
-    findMatchBtn.addEventListener('click', () => {
-        findRandomMatch();
-    });
-    
-    cancelMatchBtn.addEventListener('click', () => {
-        stopMatching();
-    });
-});
-
-// Handle page visibility changes to maintain connection
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        log('Page is now visible');
-        if (peer && !peer.open && !isConnected) {
-            log('Reconnecting to PeerJS server');
-            try {
-                peer.reconnect();
-            } catch (error) {
-                log(`Error reconnecting: ${error.message}`);
-                // Reinitialize if reconnect fails
-                peerInitialized = false;
-                initializePeer();
+        // Clean up when the page is closed
+        window.addEventListener('beforeunload', () => {
+            if (peer) {
+                if (connection) connection.close();
+                peer.destroy();
             }
-        }
-    } else {
-        log('Page is now hidden');
-    }
-});
-
-// Handle page unload to clean up
-window.addEventListener('beforeunload', () => {
-    // Clean up our entries in the matching pool
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes(peer.id)) {
-            localStorage.removeItem(key);
-        }
-    }
-    
-    // Close any open connections
-    if (connection) {
-        connection.close();
-    }
-    
-    // Close the peer connection
-    if (peer) {
-        peer.destroy();
-    }
-});
+        });
+        
+        // Initialize PeerJS on page load
+        initializePeer();
     </script>
-    </body>
-    </html>
+</body>
+</html>
