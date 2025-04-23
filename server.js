@@ -1,301 +1,419 @@
-const express = require('express');
-const http = require('http');
-const path = require('path');
-const { Server } = require('socket.io');
-const cors = require('cors');
+// DOM Elements
+const homeContainer = document.querySelector('.home-container');
+const chatInterface = document.getElementById('chat-interface');
+const messageArea = document.getElementById('message-area');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const leaveChat = document.getElementById('leave-chat');
+const chatTitle = document.getElementById('chat-title');
+const usernameInput = document.getElementById('username');
+const onlineCount = document.getElementById('online-count');
+const typingIndicator = document.getElementById('typing-indicator');
 
-const app = express();
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+// Buttons
+const randomChatBtn = document.getElementById('random-chat-btn');
+const friendChatBtn = document.getElementById('friend-chat-btn');
+const joinChatBtn = document.getElementById('join-chat-btn');
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*", // In production, restrict this to your domain
-    methods: ["GET", "POST"]
-  }
-});
+// Modals
+const randomChatModal = document.getElementById('random-chat-modal');
+const friendChatModal = document.getElementById('friend-chat-modal');
+const joinChatModal = document.getElementById('join-chat-modal');
 
-// Store active users and rooms
-const activeUsers = new Map(); // socket.id -> username
-const userSockets = new Map(); // username -> socket.id
-const rooms = new Map(); // roomId -> {users: [{username, socketId}], type: 'random'|'friend'|'join'}
-const randomQueue = []; // Users waiting for random chat
+// Modal buttons
+const cancelRandomChat = document.getElementById('cancel-random-chat');
+const cancelFriendChat = document.getElementById('cancel-friend-chat');
+const cancelJoin = document.getElementById('cancel-join');
+const proceedJoin = document.getElementById('proceed-join');
 
-// Generate a random room ID
-function generateRoomId(prefix = 'FRD') {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const numbers = '23456789';
-  let code = `${prefix}-`;
-  
-  // Add 3 random numbers
-  for (let i = 0; i < 3; i++) {
-    code += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  }
-  
-  code += '-';
-  
-  // Add 3 random numbers
-  for (let i = 0; i < 3; i++) {
-    code += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  }
-  
-  return code;
-}
+// Status messages
+const randomStatus = document.getElementById('random-status');
+const friendStatus = document.getElementById('friend-status');
+const joinStatus = document.getElementById('join-status');
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-  
-  // Update online count for all users
-  const updateOnlineCount = () => {
-    io.emit('online_count', activeUsers.size);
-  };
-  
-  updateOnlineCount();
-  
-  // Handle user disconnect
-  socket.on('disconnect', () => {
-    const username = activeUsers.get(socket.id);
-    if (username) {
-      // Remove from random queue if present
-      const queueIdx = randomQueue.findIndex(user => user.socketId === socket.id);
-      if (queueIdx !== -1) {
-        randomQueue.splice(queueIdx, 1);
-      }
-      
-      // Handle leaving rooms
-      rooms.forEach((roomData, roomId) => {
-        const userIdx = roomData.users.findIndex(u => u.socketId === socket.id);
-        if (userIdx !== -1) {
-          // Remove user from room
-          roomData.users.splice(userIdx, 1);
-          
-          // Notify remaining users
-          socket.to(roomId).emit('user_left', username);
-          
-          // Delete room if empty
-          if (roomData.users.length === 0) {
-            rooms.delete(roomId);
-          }
-        }
-      });
-      
-      // Remove user from maps
-      activeUsers.delete(socket.id);
-      userSockets.delete(username);
-      updateOnlineCount();
-      console.log(`User disconnected: ${username}`);
-    }
-  });
-  
-  // Create a new room
-  socket.on('create_room', (data) => {
-    const { username } = data;
-    if (!username) return;
+// Friend code display and join code input
+const friendCode = document.getElementById('friend-code');
+const joinCode = document.getElementById('join-code');
+
+// Chat state
+let currentRoomId = '';
+let currentUsername = '';
+let socket = null;
+let typing = false;
+let typingTimeout = null;
+let currentPartnerName = '';
+let verifiedUsers = new Set();
+let pendingVerification = new Set();
+
+// Set random username as placeholder
+usernameInput.placeholder = "User_" + Math.floor(Math.random() * 10000);
+
+// Connect to Socket.io server
+function connectToServer() {
+    // Connect to your deployed server URL - using relative path for development
+    socket = io();
     
-    // Register user if not already registered
-    activeUsers.set(socket.id, username);
-    userSockets.set(username, socket.id);
-    
-    // Create a new room
-    const roomId = generateRoomId();
-    rooms.set(roomId, {
-      users: [{ username, socketId: socket.id }],
-      type: 'friend'
+    // Socket event listeners
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        socket.emit('update_online_count');
     });
     
-    // Join the socket.io room
-    socket.join(roomId);
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+    });
     
-    // Send room created confirmation
-    socket.emit('room_created', roomId);
-    updateOnlineCount();
-  });
-  
-  // Join an existing room
-  socket.on('join_room', (data) => {
-    const { roomId, username, type } = data;
-    if (!roomId || !username) return;
+    socket.on('online_count', (count) => {
+        onlineCount.innerHTML = `<i class="fas fa-circle"></i> ${count} online`;
+    });
     
-    // Register user if not already registered
-    activeUsers.set(socket.id, username);
-    userSockets.set(username, socket.id);
+    socket.on('chat_message', (data) => {
+        addMessage(data.message, data.username === currentUsername);
+    });
     
-    // Try to join the room
-    const room = rooms.get(roomId);
-    const responseData = {
-      roomId,
-      type,
-      success: false
-    };
+    socket.on('user_joined', (username) => {
+        currentPartnerName = username;
+        addSystemMessage(`${username} has joined the chat`);
+    });
     
-    if (room && room.users.length < 2) { // Limit to 2 users per room
-      // Add user to room
-      room.users.push({ username, socketId: socket.id });
-      
-      // Join the socket.io room
-      socket.join(roomId);
-      
-      // Send success response
-      responseData.success = true;
-      socket.emit('room_joined', responseData);
-      
-      // Notify other users in the room
-      socket.to(roomId).emit('user_joined', username);
-    } else {
-      // Room doesn't exist or is full
-      socket.emit('room_joined', responseData);
-    }
+    socket.on('user_left', (username) => {
+        addSystemMessage(`${username} has left the chat`);
+    });
     
-    updateOnlineCount();
-  });
-  
-  // Find a random chat partner
-  socket.on('find_random_chat', (data) => {
-    const { username } = data;
-    if (!username) return;
+    socket.on('room_created', (roomId) => {
+        currentRoomId = roomId;
+        friendCode.textContent = roomId;
+    });
     
-    // Register user if not already registered
-    activeUsers.set(socket.id, username);
-    userSockets.set(username, socket.id);
-    
-    // Check if there's someone waiting in the queue
-    if (randomQueue.length > 0) {
-      // Get the first user in queue
-      const partner = randomQueue.shift();
-      
-      // Create a new room for these two users
-      const roomId = generateRoomId('RND');
-      rooms.set(roomId, {
-        users: [
-          { username: partner.username, socketId: partner.socketId },
-          { username, socketId: socket.id }
-        ],
-        type: 'random'
-      });
-      
-      // Join the socket.io room
-      socket.join(roomId);
-      io.sockets.sockets.get(partner.socketId)?.join(roomId);
-      
-      // Notify both users
-      io.to(roomId).emit('room_joined', {
-        roomId,
-        type: 'random',
-        success: true
-      });
-      
-      // Let users know about each other
-      socket.to(roomId).emit('user_joined', username);
-      socket.emit('user_joined', partner.username);
-    } else {
-      // Add to waiting queue
-      randomQueue.push({ username, socketId: socket.id });
-    }
-    
-    updateOnlineCount();
-  });
-  
-  // Cancel random chat search
-  socket.on('cancel_random_search', () => {
-    const queueIdx = randomQueue.findIndex(user => user.socketId === socket.id);
-    if (queueIdx !== -1) {
-      randomQueue.splice(queueIdx, 1);
-    }
-  });
-  
-  // Leave a room
-  socket.on('leave_room', (data) => {
-    const { roomId, username } = data;
-    if (!roomId) return;
-    
-    const room = rooms.get(roomId);
-    if (room) {
-      // Remove user from room
-      const userIdx = room.users.findIndex(u => u.socketId === socket.id);
-      if (userIdx !== -1) {
-        room.users.splice(userIdx, 1);
+    socket.on('room_joined', (roomData) => {
+        currentRoomId = roomData.roomId;
         
-        // Leave the socket.io room
-        socket.leave(roomId);
-        
-        // Notify other users
-        socket.to(roomId).emit('user_left', username);
-        
-        // Delete room if empty
-        if (room.users.length === 0) {
-          rooms.delete(roomId);
+        if (roomData.success) {
+            if (roomData.type === 'friend') {
+                friendStatus.textContent = 'Successfully joined room!';
+                setTimeout(() => {
+                    friendChatModal.style.display = 'none';
+                    showChatInterface(`Chat Room: ${currentRoomId}`);
+                }, 1000);
+            } else if (roomData.type === 'join') {
+                joinStatus.textContent = 'Successfully joined room!';
+                setTimeout(() => {
+                    joinChatModal.style.display = 'none';
+                    showChatInterface(`Chat Room: ${currentRoomId}`);
+                }, 1000);
+            } else if (roomData.type === 'random') {
+                randomStatus.textContent = 'Found a chat partner!';
+                setTimeout(() => {
+                    randomChatModal.style.display = 'none';
+                    showChatInterface('Random Chat');
+                }, 1000);
+            }
+        } else {
+            if (roomData.type === 'join') {
+                joinStatus.textContent = 'Room not found or full';
+            }
         }
-      }
-    }
-  });
-  
-  // Close a room
-  socket.on('close_room', (data) => {
-    const { roomId } = data;
-    if (!roomId) return;
+    });
     
-    const room = rooms.get(roomId);
-    if (room) {
-      // Notify all users in the room
-      io.to(roomId).emit('room_closed');
-      
-      // Make all sockets leave the room
-      room.users.forEach(user => {
-        const userSocket = io.sockets.sockets.get(user.socketId);
-        if (userSocket) {
-          userSocket.leave(roomId);
+    socket.on('room_closed', () => {
+        addSystemMessage('The chat room has been closed');
+        setTimeout(() => {
+            returnToHome();
+        }, 3000);
+    });
+    
+    socket.on('typing', (username) => {
+        if (username !== currentUsername) {
+            typingIndicator.textContent = `${username} is typing...`;
         }
-      });
-      
-      // Delete the room
-      rooms.delete(roomId);
+    });
+    
+    socket.on('stop_typing', () => {
+        typingIndicator.textContent = '';
+    });
+    
+    // User verification related events
+    socket.on('user_verification_request', (data) => {
+        pendingVerification.add(data.userId);
+        addSystemMessage(`Verifying ${data.username} is a real person...`);
+        
+        // Simple CAPTCHA like verification
+        setTimeout(() => {
+            socket.emit('verify_user_response', {
+                userId: data.userId,
+                roomId: currentRoomId,
+                verified: true
+            });
+        }, 2000);
+    });
+    
+    socket.on('user_verified', (data) => {
+        verifiedUsers.add(data.userId);
+        currentPartnerName = data.username;
+        addSystemMessage(`${data.username} has been verified as a real user!`);
+    });
+    
+    socket.on('bot_detected', (data) => {
+        addSystemMessage(`Warning: ${data.username} appears to be automated and has been flagged.`);
+    });
+    
+    socket.on('duplicate_ip_warning', () => {
+        addSystemMessage("Warning: Multiple connections detected from your IP address. This may restrict your ability to join new chats.");
+    });
+    
+    socket.on('connection_quality', (data) => {
+        if (data.quality === 'poor') {
+            addSystemMessage("Warning: Poor connection quality detected. Messages may be delayed.");
+        }
+    });
+}
+
+// Show the chat interface
+function showChatInterface(title) {
+    homeContainer.style.display = 'none';
+    chatInterface.style.display = 'flex';
+    chatTitle.textContent = title;
+    messageArea.innerHTML = ''; // Clear previous messages
+    
+    // Add welcome system message
+    addSystemMessage('Welcome to the chat! Remember to be respectful.');
+}
+
+function returnToHome() {
+    if (currentRoomId && socket) {
+        socket.emit('leave_room', {
+            roomId: currentRoomId,
+            username: currentUsername
+        });
     }
-  });
-  
-  // Send a message
-  socket.on('send_message', (data) => {
-    const { roomId, message } = data;
-    if (!roomId || !message) return;
+    currentRoomId = '';
+    homeContainer.style.display = 'block';
+    chatInterface.style.display = 'none';
+}
+
+// Add message to the chat
+function addMessage(message, isOutgoing = false) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.classList.add(isOutgoing ? 'outgoing' : 'incoming');
+    messageElement.textContent = message;
     
-    const username = activeUsers.get(socket.id);
-    if (!username) return;
+    const messageMetaElement = document.createElement('div');
+    messageMetaElement.classList.add('message-meta');
     
-    const room = rooms.get(roomId);
-    if (room) {
-      // Broadcast message to all users in the room
-      io.to(roomId).emit('chat_message', {
-        username,
-        message,
-        timestamp: new Date()
-      });
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    messageMetaElement.textContent = isOutgoing ? `You • ${timestamp}` : `${currentPartnerName || 'User'} • ${timestamp}`;
+    
+    messageElement.appendChild(messageMetaElement);
+    messageArea.appendChild(messageElement);
+    messageArea.scrollTop = messageArea.scrollHeight;
+}
+
+// Add system message
+function addSystemMessage(message) {
+    const systemElement = document.createElement('div');
+    systemElement.classList.add('system-message');
+    systemElement.textContent = message;
+    messageArea.appendChild(systemElement);
+    messageArea.scrollTop = messageArea.scrollHeight;
+}
+
+// Validate username
+function validateUsername() {
+    const username = usernameInput.value.trim() || usernameInput.placeholder;
+    if (username.length < 3) {
+        alert('Username must be at least 3 characters long');
+        return false;
     }
-  });
-  
-  // Typing indicators
-  socket.on('typing', (data) => {
-    const { roomId } = data;
-    if (!roomId) return;
-    
-    const username = activeUsers.get(socket.id);
-    if (username) {
-      socket.to(roomId).emit('typing', username);
+    currentUsername = username;
+    return true;
+}
+
+// Handle sending messages
+function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message && currentRoomId) {
+        socket.emit('send_message', {
+            roomId: currentRoomId,
+            message: message,
+            username: currentUsername
+        });
+        messageInput.value = '';
     }
-  });
-  
-  socket.on('stop_typing', (data) => {
-    const { roomId } = data;
-    if (!roomId) return;
+}
+
+// Handle typing indicator
+function handleTyping() {
+    if (!typing) {
+        typing = true;
+        socket.emit('typing', {
+            roomId: currentRoomId,
+            username: currentUsername
+        });
+    }
     
-    socket.to(roomId).emit('stop_typing');
-  });
-  
-  // Request online count
-  socket.on('update_online_count', updateOnlineCount);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        typing = false;
+        socket.emit('stop_typing', {
+            roomId: currentRoomId
+        });
+    }, 1000);
+}
+
+// Initialize Socket.io connection on page load
+document.addEventListener('DOMContentLoaded', connectToServer);
+
+// Event listeners
+randomChatBtn.addEventListener('click', () => {
+    if (!validateUsername()) return;
+    
+    randomChatModal.style.display = 'flex';
+    // Fix: There's a mismatch - the server expects find_random_chat but your UI calls join_random
+    socket.emit('find_random_chat', {
+        username: currentUsername
+    });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+friendChatBtn.addEventListener('click', () => {
+    if (!validateUsername()) return;
+    
+    friendChatModal.style.display = 'flex';
+    socket.emit('create_room', {
+        username: currentUsername,
+        type: 'friend'
+    });
 });
+
+joinChatBtn.addEventListener('click', () => {
+    if (!validateUsername()) return;
+    
+    joinChatModal.style.display = 'flex';
+});
+
+proceedJoin.addEventListener('click', () => {
+    const code = joinCode.value.trim();
+    if (!code) {
+        joinStatus.textContent = 'Please enter a valid code';
+        return;
+    }
+    
+    socket.emit('join_room', {
+        roomId: code,
+        username: currentUsername,
+        type: 'join'
+    });
+});
+
+cancelRandomChat.addEventListener('click', () => {
+    // Fix: Server expects cancel_random_search not cancel_random
+    socket.emit('cancel_random_search', {
+        username: currentUsername
+    });
+    randomChatModal.style.display = 'none';
+});
+
+cancelFriendChat.addEventListener('click', () => {
+    // Fix: Server doesn't have cancel_friend event, use close_room instead
+    socket.emit('close_room', {
+        roomId: currentRoomId
+    });
+    friendChatModal.style.display = 'none';
+});
+
+cancelJoin.addEventListener('click', () => {
+    joinChatModal.style.display = 'none';
+});
+
+leaveChat.addEventListener('click', () => {
+    returnToHome();
+});
+
+sendButton.addEventListener('click', sendMessage);
+
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+    handleTyping();
+});
+
+messageInput.addEventListener('input', handleTyping);
+
+// Activity tracking
+let activityTimeout;
+let recentActivity = false;
+
+function resetActivityTimer() {
+    clearTimeout(activityTimeout);
+    activityTimeout = setTimeout(() => {
+        // Prompt user to verify they're still active
+        addSystemMessage("Are you still there? Please send a message to continue.");
+        
+        socket.emit('activity_check', {
+            roomId: currentRoomId,
+            username: currentUsername
+        });
+        
+        // Give user 30 seconds to respond before disconnecting
+        setTimeout(() => {
+            if (!recentActivity) {
+                returnToHome();
+                addSystemMessage("You've been disconnected due to inactivity.");
+            }
+        }, 30000);
+    }, 300000); // 5 minutes of inactivity
+}
+
+document.addEventListener('mousemove', () => {
+    recentActivity = true;
+    resetActivityTimer();
+});
+
+document.addEventListener('keypress', () => {
+    recentActivity = true;
+    resetActivityTimer();
+});
+
+// Function to authenticate connected users
+function authenticateUser(userId) {
+    if (verifiedUsers.has(userId)) {
+        return true;
+    }
+    
+    socket.emit('request_verification', {
+        userId: userId,
+        roomId: currentRoomId
+    });
+    
+    return false;
+}
+
+// Rate limiting for messages
+let messageCount = 0;
+let lastMessageTime = Date.now();
+
+function checkMessageRateLimit() {
+    const currentTime = Date.now();
+    const timeElapsed = currentTime - lastMessageTime;
+    
+    if (timeElapsed < 500) { // Less than 0.5 second between messages
+        messageCount++;
+        
+        if (messageCount > 5) { // More than 5 rapid messages
+            addSystemMessage("Warning: You're sending messages too quickly. Please slow down.");
+            return false;
+        }
+    } else {
+        // Reset counter if enough time has passed
+        if (timeElapsed > 5000) { // 5 seconds
+            messageCount = 0;
+        }
+    }
+    
+    lastMessageTime = currentTime;
+    return true;
+}
+
+// Start the activity timer when the page loads
+resetActivityTimer();
