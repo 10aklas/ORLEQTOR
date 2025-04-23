@@ -448,8 +448,8 @@
         let reconnectAttempts = 0;
         let peerInitialized = false;
         
-        // Real matching system using Firebase or sessionStorage (more reliable than localStorage)
-        const RANDOM_POOL_PREFIX = 'available_';
+        // Random pool management
+        const RANDOM_POOL_PREFIX = 'random_peer_';
         let matchingInterval;
         let heartbeatInterval;
         
@@ -505,7 +505,7 @@
             connectionIndicator.className = isActive ? 'connection-active' : 'connection-inactive';
         }
 
-        // Initialize PeerJS with improved configuration
+        // Initialize PeerJS - FIXED to use more reliable configuration
         function initializePeer() {
             if (peerInitialized) {
                 log('PeerJS already initialized. Skipping initialization.');
@@ -514,38 +514,49 @@
             
             localUsername = generateUsername();
             
-            // Create a random peer ID with a prefix for easier identification
-            const randomId = 'chat-' + Math.random().toString(36).substr(2, 9);
+            // Create a more reliable peer ID with timestamp to reduce collisions
+            const randomId = 'chat-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
             
             log(`Initializing PeerJS with ID: ${randomId}`);
             
             try {
-                // Initialize with more robust configuration including ICE servers
+                // Use free public server for demo purposes - more reliable than custom server
                 peer = new Peer(randomId, {
-                    // Use PeerJS cloud server instead of Heroku (more reliable)
-                    host: 'peer.metered.live',  // Alternative reliable PeerJS server
-                    port: 443,
+                    host: 'peerjs-server.herokuapp.com',  // Public PeerJS server
                     secure: true,
+                    port: 443,
                     path: '/',
-                    debug: 2,
+                    debug: 1,  // Reduced debug level to minimize console noise
                     config: {
                         'iceServers': [
                             { urls: 'stun:stun.l.google.com:19302' },
                             { urls: 'stun:stun1.l.google.com:19302' },
                             { urls: 'stun:stun2.l.google.com:19302' },
-                            { urls: 'stun:stun3.l.google.com:19302' },
-                            { urls: 'stun:stun4.l.google.com:19302' },
-                            // Add more STUN servers here
-                            // Free TURN servers could be added here if available
+                            { urls: 'stun:global.stun.twilio.com:3478' }
                         ],
-                        'sdpSemantics': 'unified-plan',
-                        'iceCandidatePoolSize': 10
+                        'sdpSemantics': 'unified-plan'
                     }
                 });
+                
+                // Fallback if primary server doesn't respond
+                let initializationTimeout = setTimeout(() => {
+                    if (!peer.open) {
+                        log('Primary server connection timed out, trying fallback server');
+                        peer.disconnect();
+                        
+                        // Try backup server
+                        peer = new Peer(randomId, {
+                            host: 'peerjs.metered.live',
+                            secure: true,
+                            port: 443
+                        });
+                    }
+                }, 8000);
                 
                 peerInitialized = true;
                 
                 peer.on('open', (id) => {
+                    clearTimeout(initializationTimeout);
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
@@ -554,11 +565,17 @@
 
                     // Start a heartbeat to keep the connection alive
                     startHeartbeat();
+                    
+                    // If matching was attempted before connection was ready, try again
+                    if (isMatching) {
+                        findRandomMatch();
+                    }
                 });
                 
                 peer.on('connection', (conn) => {
                     log(`Incoming connection from: ${conn.peer}`);
                     
+                    // If we were matching and got a connection, accept it
                     if (!isConnected) {
                         connection = conn;
                         setupConnection();
@@ -570,7 +587,7 @@
                         setupScreen.style.display = 'none';
                         chatScreen.style.display = 'flex';
                     } else {
-                        // We're already in a chat, reject this connection
+                        // Already in a chat, reject this connection
                         conn.close();
                     }
                 });
@@ -587,25 +604,15 @@
                             stopMatching();
                             setTimeout(() => findRandomMatch(), 1000);
                         }
-                    } else if (err.type === 'network') {
-                        showError('Network error. Check your internet connection.');
-                        updatePeerStatus('Network error', false);
-                    } else if (err.type === 'disconnected') {
-                        showError('Disconnected from server. Try refreshing the page.');
-                        updatePeerStatus('Disconnected', false);
+                    } else if (err.type === 'network' || err.type === 'disconnected') {
+                        showError('Network error. Reconnecting...');
+                        updatePeerStatus('Reconnecting', false);
                         
-                        // Try to reconnect
-                        if (reconnectAttempts < 3) {
-                            reconnectAttempts++;
-                            setTimeout(() => {
-                                log(`Attempting to reconnect (${reconnectAttempts}/3)...`);
-                                updatePeerStatus('Reconnecting...', false);
-                                peer.reconnect();
-                            }, 2000);
-                        }
-                    } else if (err.type === 'server-error') {
-                        showError('Server error. Please try again later.');
-                        updatePeerStatus('Server error', false);
+                        // Automatic reconnection
+                        setTimeout(() => {
+                            peerInitialized = false;
+                            initializePeer();
+                        }, 3000);
                     } else {
                         showError(`Connection error: ${err.type}`);
                         updatePeerStatus('Error', false);
@@ -616,17 +623,20 @@
                     log('Peer disconnected from server');
                     updatePeerStatus('Disconnected', false);
                     
-                    // Try to reconnect
-                    if (reconnectAttempts < 3) {
-                        reconnectAttempts++;
-                        setTimeout(() => {
-                            log(`Attempting to reconnect (${reconnectAttempts}/3)...`);
-                            updatePeerStatus('Reconnecting...', false);
+                    // Try to reconnect automatically
+                    setTimeout(() => {
+                        log('Attempting to reconnect to server...');
+                        updatePeerStatus('Reconnecting...', false);
+                        
+                        try {
                             peer.reconnect();
-                        }, 2000);
-                    } else {
-                        showError('Connection to server lost. Please refresh the page.');
-                    }
+                        } catch (error) {
+                            log(`Reconnection failed: ${error.message}`);
+                            // Re-initialize if reconnect fails
+                            peerInitialized = false;
+                            initializePeer();
+                        }
+                    }, 2000);
                 });
             } catch (error) {
                 log(`Error initializing PeerJS: ${error.message}`);
@@ -649,14 +659,21 @@
             
             heartbeatInterval = setInterval(() => {
                 if (peer && peer.open) {
-                    // Just accessing the id property will keep the connection alive
+                    // Just accessing the id property helps keep the connection alive
                     const id = peer.id;
-                    log(`Heartbeat: Connection to PeerJS server still active (ID: ${id})`);
+                    log(`Heartbeat: Connection to PeerJS server active (ID: ${id})`);
                     updatePeerStatus('Connected to server', true);
                 } else if (peer) {
-                    log('Heartbeat: Connection to PeerJS server lost, attempting to reconnect');
+                    log('Heartbeat: Connection to server lost, attempting to reconnect');
                     updatePeerStatus('Reconnecting...', false);
-                    peer.reconnect();
+                    try {
+                        peer.reconnect();
+                    } catch (error) {
+                        log(`Reconnection error: ${error.message}`);
+                        // If reconnection fails, reinitialize
+                        peerInitialized = false;
+                        initializePeer();
+                    }
                 }
             }, 30000); // Check every 30 seconds
         }
@@ -891,332 +908,263 @@
         }
         
         // Send a message
-        function sendMessage(text) {
-            if (!isConnected || !connection || !connection.open) {
-                showError('Not connected to a chat partner!');
-                return;
-            }
-            
-            log(`Sending message: ${text}`);
-            
-            try {
-                connection.send({
-                    type: 'message',
-                    text: text
-                });
-                
-                addMessage(text, true);
-            } catch (error) {
-                log(`Error sending message: ${error.message}`);
-                showError('Failed to send message. Connection may be lost.');
-                
-                // Try to detect if connection is actually broken
-                setTimeout(() => {
+        // Send a message
+function sendMessage(text) {
+    if (!isConnected || !connection || !connection.open) {
+        showError('Not connected to a chat partner!');
+        return;
+    }
+    
+    try {
+        connection.send({
+            type: 'message',
+            text: text
+        });
+        
+        addMessage(text, true);
+        messageInput.value = '';
+    } catch (error) {
+        log(`Error sending message: ${error.message}`);
+        showError('Failed to send message. Connection may be unstable.');
+    }
+}
 
-                    if (connection && !connection.open) {
-                        handleDisconnect('Connection lost while sending message');
-                    }
-                }, 1000);
-            }
-        }
-        
-        // Disconnect from current peer
-        function disconnect() {
-            log('Disconnecting from current peer');
-            
-            if (connection) {
-                connection.close();
-                connection = null;
-            }
-            
-            if (pingInterval) {
-                clearInterval(pingInterval);
-                pingInterval = null;
-            }
-            
-            isConnected = false;
-            remoteUsername = null;
-            messagesContainer.innerHTML = '';
-            
-            // Reset UI
-            updateStatus('Disconnected');
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            
-            // Show setup screen
-            setupScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-            stopMatching();
-        }
-        
-        // The global list to keep track of available peers for matching
-        let availablePeers = [];
-        
-        // Use sessionStorage instead of localStorage for peer discovery
-        // This is still local to the browser but better isolated between tabs
-        function getStorageMethod() {
-            // Prefer sessionStorage but fall back to localStorage if needed
-            try {
-                return window.sessionStorage || window.localStorage;
-            } catch (e) {
-                return window.localStorage;
-            }
-        }
-        
-        // Find a random match using a real peer discovery system
-        function findRandomMatch() {
-            if (isMatching) return;
-            
-            log('Looking for a random match');
-            isMatching = true;
-            updateStatus('Matching...');
-            
-            // Show matching indicator
-            matchingIndicator.style.display = 'flex';
-            findMatchBtn.disabled = true;
-            
-            // First, get a list of all available peers with our prefix
-            fetchAvailablePeers();
-        }
-        
-        // Improved method to fetch available peers
-        function fetchAvailablePeers() {
-            if (!peer || !peer.open) {
-                log('Cannot search for peers: not connected to server');
-                matchingStatus.textContent = "Waiting for connection to server...";
-                
-                // Try again in 3 seconds
-                matchingInterval = setTimeout(fetchAvailablePeers, 3000);
-                return;
-            }
-            
-            // Get storage method
-            const storage = getStorageMethod();
-            
-            // Add our ID to storage to announce we're available
-            const timestamp = Date.now();
-            const peerData = JSON.stringify({
-                id: peer.id,
-                time: timestamp,
-                username: localUsername
-            });
-            
-            try {
-                storage.setItem(RANDOM_POOL_PREFIX + peer.id, peerData);
-                
-                // Clean up old entries first (older than 30 seconds)
-                for (let i = 0; i < storage.length; i++) {
-                    const key = storage.key(i);
-                    if (key && key.startsWith(RANDOM_POOL_PREFIX)) {
-                        try {
-                            const data = JSON.parse(storage.getItem(key));
-                            if (Date.now() - data.time > 30000) {
-                                storage.removeItem(key);
-                                i--; // Adjust index since we removed an item
-                            }
-                        } catch (e) {
-                            // Invalid data, remove it
-                            storage.removeItem(key);
-                            i--; // Adjust index
-                        }
-                    }
-                }
-                
-                // Read all available peers from storage
-                availablePeers = [];
-                for (let i = 0; i < storage.length; i++) {
-                    const key = storage.key(i);
-                    if (key && key.startsWith(RANDOM_POOL_PREFIX)) {
-                        try {
-                            const data = JSON.parse(storage.getItem(key));
-                            // Only consider peers that were active in the last 30 seconds
-                            if (Date.now() - data.time < 30000 && data.id !== peer.id) {
-                                availablePeers.push(data.id);
-                            }
-                        } catch (e) {
-                            // Skip invalid entries
-                            continue;
-                        }
-                    }
-                }
-                
-                log(`Found ${availablePeers.length} potential peers: ${availablePeers.join(', ')}`);
-                
-                if (availablePeers.length === 0) {
-                    // No peers available, keep waiting
-                    matchingStatus.textContent = "Waiting for other users to join...";
-                    
-                    // Try again in 2 seconds
-                    matchingInterval = setTimeout(fetchAvailablePeers, 2000);
-                    return;
-                }
-                
-                // Try to connect to a random peer
-                tryRandomPeer();
-            } catch (e) {
-                log(`Error accessing storage: ${e.message}`);
-                // Try fallback method
-                trySignalingServerFallback();
-            }
-        }
-        
-        // Fallback method if local storage doesn't work (e.g., in private browsing)
-        function trySignalingServerFallback() {
-            log('Using direct PeerJS connections instead of storage');
-            matchingStatus.textContent = "Looking for other users...";
-            
-            // In a real app, you would connect to a signaling server
-            // For this demo version, we'll simulate it with a timeout
-            setTimeout(() => {
-                if (isMatching) {
-                    matchingStatus.textContent = "No users found. Please try again or use manual connection.";
-                    setTimeout(() => {
-                        stopMatching();
-                    }, 3000);
-                }
-            }, 5000);
-        }
-        
-        function tryRandomPeer() {
-            if (!isMatching) {
-                return; // Stopped matching
-            }
-            
-            if (availablePeers.length === 0) {
-                // No more peers to try, fetch a new list
-                matchingStatus.textContent = "No available users found. Searching again...";
-                setTimeout(fetchAvailablePeers, 2000);
-                return;
-            }
-            
-            // Pick a random peer from the list
-            const randomIndex = Math.floor(Math.random() * availablePeers.length);
-            const targetPeer = availablePeers[randomIndex];
-            
-            // Remove this peer from our list so we don't try it again
-            availablePeers.splice(randomIndex, 1);
-            
-            matchingStatus.textContent = "Connecting to a chat partner...";
-            log(`Trying to connect to peer: ${targetPeer}`);
-            
-            // Attempt connection
-            try {
-                const success = connectToPeer(targetPeer);
-                
-                if (!success) {
-                    // Try next peer immediately
-                    tryRandomPeer();
-                    return;
-                }
-                
-                // Set timeout for this connection attempt
-                setTimeout(() => {
-                    if (isMatching && !isConnected) {
-                        log("Connection attempt timed out, trying another peer");
-                        tryRandomPeer();
-                    }
-                }, 8000); // Longer timeout for connection attempt
-            } catch (error) {
-                log(`Error connecting to peer ${targetPeer}: ${error}`);
-                // Try the next peer
-                setTimeout(() => tryRandomPeer(), 500);
-            }
-        }
-        
-        // Stop matching process
-        function stopMatching() {
+// Random matching functionality
+function findRandomMatch() {
+    if (!peer || !peer.open) {
+        log('PeerJS not initialized yet, delaying match attempt');
+        isMatching = true;
+        return;
+    }
+    
+    if (isConnected) {
+        showError('Disconnect from current chat before finding a new one.');
+        return;
+    }
+    
+    log('Starting random match process');
+    isMatching = true;
+    matchingIndicator.style.display = 'flex';
+    findMatchBtn.style.display = 'none';
+    updateStatus('Matching...');
+    
+    // Generate a random room ID to join the matching pool
+    const poolId = RANDOM_POOL_PREFIX + Math.floor(Math.random() * 100);
+    log(`Joining random pool: ${poolId}`);
+    
+    let poolPeers = [];
+    let matchAttempts = 0;
+    const maxAttempts = 5;
+    
+    // Clear any existing matching interval
+    if (matchingInterval) {
+        clearInterval(matchingInterval);
+    }
+    
+    // Function to search for peers and attempt connection
+    const searchForMatch = async () => {
+        try {
             if (!isMatching) return;
             
-            log('Stopping match finding');
-            isMatching = false;
+            matchAttempts++;
+            log(`Match attempt ${matchAttempts}/${maxAttempts}`);
             
-            // Remove our availability announcement
-            try {
-                const storage = getStorageMethod();
-                storage.removeItem(RANDOM_POOL_PREFIX + peer.id);
-            } catch (e) {
-                // Ignore errors
+            if (matchAttempts > maxAttempts) {
+                log('Reached maximum attempts, creating a new pool');
+                matchAttempts = 0;
+                // Join a different pool
+                const newPoolId = RANDOM_POOL_PREFIX + Math.floor(Math.random() * 100);
+                log(`Switching to new pool: ${newPoolId}`);
+                poolId = newPoolId;
             }
             
-            clearTimeout(matchingInterval);
-            matchingIndicator.style.display = 'none';
-            findMatchBtn.disabled = false;
-        }
-        
-        // Keep our "available" status fresh
-        function updateAvailability() {
-            if (!peer || !peer.open) return;
+            // We'll use a simple discovery protocol by naming convention
+            // Store our ID in localStorage with prefix
+            const ourPoolKey = `${poolId}_${peer.id}`;
+            localStorage.setItem(ourPoolKey, Date.now().toString());
             
-            if (isMatching && !isConnected) {
-                try {
-                    const storage = getStorageMethod();
-                    const peerData = JSON.stringify({
-                        id: peer.id,
-                        time: Date.now(),
-                        username: localUsername
-                    });
-                    storage.setItem(RANDOM_POOL_PREFIX + peer.id, peerData);
-                } catch (e) {
-                    // Ignore errors
+            // Read all available peers from localStorage with the same prefix
+            poolPeers = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(poolId) && key !== ourPoolKey) {
+                    // Check if this entry is recent (within last 30 seconds)
+                    const timestamp = parseInt(localStorage.getItem(key));
+                    if (Date.now() - timestamp < 30000) {
+                        const peerId = key.split('_')[1];
+                        poolPeers.push(peerId);
+                    } else {
+                        // Remove stale entries
+                        localStorage.removeItem(key);
+                    }
+                }
+            }
+            
+            log(`Found ${poolPeers.length} potential peers in pool ${poolId}`);
+            
+            // If we found peers, try to connect to a random one
+            if (poolPeers.length > 0) {
+                const randomIndex = Math.floor(Math.random() * poolPeers.length);
+                const targetPeerId = poolPeers[randomIndex];
+                
+                log(`Attempting to connect to random peer: ${targetPeerId}`);
+                matchingStatus.textContent = 'Found someone! Connecting...';
+                
+                // Try to connect to this peer
+                if (connectToPeer(targetPeerId)) {
+                    // Connection attempt started
+                    stopMatching();
+                } else {
+                    log('Connection attempt failed, will try again');
+                    // Remove this peer from the pool as it didn't work
+                    localStorage.removeItem(`${poolId}_${targetPeerId}`);
+                }
+            } else {
+                matchingStatus.textContent = 'Looking for someone to chat with...';
+            }
+        } catch (error) {
+            log(`Error during matching: ${error.message}`);
+        }
+    };
+    
+    // Run the search immediately and then every 5 seconds
+    searchForMatch();
+    matchingInterval = setInterval(searchForMatch, 5000);
+    
+    // Clean up old entries every 10 seconds
+    setInterval(() => {
+        // Clean up old entries from localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(RANDOM_POOL_PREFIX)) {
+                const timestamp = parseInt(localStorage.getItem(key));
+                if (Date.now() - timestamp > 30000) {
+                    localStorage.removeItem(key);
                 }
             }
         }
-        setInterval(updateAvailability, 10000);
+    }, 10000);
+}
+
+// Stop matching process
+function stopMatching() {
+    log('Stopping matching process');
+    isMatching = false;
+    
+    if (matchingInterval) {
+        clearInterval(matchingInterval);
+        matchingInterval = null;
+    }
+    
+    matchingIndicator.style.display = 'none';
+    findMatchBtn.style.display = 'block';
+    
+    // Clean up our entry in the matching pool
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(peer.id)) {
+            localStorage.removeItem(key);
+        }
+    }
+    
+    updateStatus('Disconnected');
+}
+
+// Initialize PeerJS on page load
+window.addEventListener('load', () => {
+    // Initialize PeerJS
+    initializePeer();
+    
+    // Set up event handlers
+    connectForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const peerId = peerIdInput.value.trim();
         
-        // Event Listeners
-        connectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const peerId = peerIdInput.value.trim();
-            if (peerId) {
-                connectToPeer(peerId);
-                // Keep the setup screen visible until connection is established
-            } else {
-                showError('Please enter a peer ID');
-            }
-        });
+        if (peerId) {
+            connectToPeer(peerId);
+        } else {
+            showError('Please enter a valid peer ID');
+        }
+    });
+    
+    messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
         
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            if (message) {
-                sendMessage(message);
-                messageInput.value = '';
-            }
-        });
+        if (message) {
+            sendMessage(message);
+        }
+    });
+    
+    disconnectBtn.addEventListener('click', () => {
+        if (connection) {
+            connection.close();
+        }
+        handleDisconnect('Disconnected from chat');
+    });
+    
+    nextChatBtn.addEventListener('click', () => {
+        if (connection) {
+            connection.close();
+        }
         
-        disconnectBtn.addEventListener('click', disconnect);
+        handleDisconnect('Finding next chat...');
         
-        findMatchBtn.addEventListener('click', findRandomMatch);
-        
-        cancelMatchBtn.addEventListener('click', stopMatching);
-        
-        nextChatBtn.addEventListener('click', () => {
-            disconnect();
-            setTimeout(() => {
-                findRandomMatch();
-            }, 500);
-        });
-        
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', () => {
-            // Remove our availability status
+        // Wait a moment before finding a new match
+        setTimeout(() => {
+            findRandomMatch();
+        }, 1000);
+    });
+    
+    findMatchBtn.addEventListener('click', () => {
+        findRandomMatch();
+    });
+    
+    cancelMatchBtn.addEventListener('click', () => {
+        stopMatching();
+    });
+});
+
+// Handle page visibility changes to maintain connection
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        log('Page is now visible');
+        if (peer && !peer.open && !isConnected) {
+            log('Reconnecting to PeerJS server');
             try {
-                const storage = getStorageMethod();
-                storage.removeItem(RANDOM_POOL_PREFIX + peer.id);
-            } catch (e) {
-                // Ignore errors
+                peer.reconnect();
+            } catch (error) {
+                log(`Error reconnecting: ${error.message}`);
+                // Reinitialize if reconnect fails
+                peerInitialized = false;
+                initializePeer();
             }
-            
-            if (peer) {
-                if (connection) connection.close();
-                if (heartbeatInterval) clearInterval(heartbeatInterval);
-                if (pingInterval) clearInterval(pingInterval);
-                peer.destroy();
-            }
-        });
-        
-        // Initialize PeerJS on page load
-        initializePeer();
+        }
+    } else {
+        log('Page is now hidden');
+    }
+});
+
+// Handle page unload to clean up
+window.addEventListener('beforeunload', () => {
+    // Clean up our entries in the matching pool
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(peer.id)) {
+            localStorage.removeItem(key);
+        }
+    }
+    
+    // Close any open connections
+    if (connection) {
+        connection.close();
+    }
+    
+    // Close the peer connection
+    if (peer) {
+        peer.destroy();
+    }
+});
     </script>
-</body>
-</html>
+    </body>
+    </html>
