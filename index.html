@@ -3,912 +3,631 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORLEQTOR - Chat with Real Humans</title>
+    <title>Chat with Strangers</title>
     <style>
         :root {
-            --primary: #8A2BE2;
-            --primary-dark: #6A1CB2;
-            --secondary: #FF4500;
-            --dark-bg: #121212;
-            --dark-surface: #1E1E1E;
-            --text: #E0E0E0;
-            --text-muted: #9E9E9E;
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #7c4dff;
+            --accent-hover: #9370DB;
+            --danger: #cf6679;
         }
-       
+        
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
-        }
-       
-        body {
+            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--dark-bg);
-            color: var(--text);
-            line-height: 1.6;
-            height: 100vh;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             display: flex;
             flex-direction: column;
+            min-height: 100vh;
         }
-       
+        
         header {
-            background-color: var(--dark-surface);
-            color: var(--text);
-            text-align: center;
-            padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-       
-        .logo {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary);
-            letter-spacing: 2px;
-        }
-       
-        .tagline {
-            margin-top: 0.5rem;
-            font-size: 1rem;
-            color: var(--text-muted);
-        }
-       
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-        }
-       
-        .home-container {
-            max-width: 800px;
-            width: 100%;
-            text-align: center;
-        }
-       
-        .welcome-text {
-            margin-bottom: 2rem;
-            font-size: 1.2rem;
-        }
-       
-        .buttons-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-       
-        .chat-button {
+            background-color: var(--bg-secondary);
             padding: 1rem;
-            border: none;
-            border-radius: 8px;
-            background-color: var(--primary);
-            color: white;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .container {
+            flex: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1rem;
+            width: 100%;
             display: flex;
+            flex-direction: column;
+        }
+        
+        #welcome-screen {
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            text-align: center;
+            flex: 1;
+            gap: 2rem;
         }
-       
-        .chat-button:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        
+        #welcome-screen h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
         }
-       
-        .chat-button i {
-            margin-right: 10px;
+        
+        #welcome-screen p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
         }
-       
-        .chat-container {
+        
+        #chat-screen {
             display: none;
             flex-direction: column;
-            width: 100%;
-            max-width: 900px;
-            height: 70vh;
-            background-color: var(--dark-surface);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            flex: 1;
         }
-       
-        .chat-header {
-            background-color: var(--primary);
-            color: white;
+        
+        #connection-status {
             padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: var(--bg-secondary);
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            text-align: center;
         }
-       
-        .chat-title {
-            font-weight: bold;
-        }
-       
-        .chat-actions {
-            display: flex;
-            gap: 10px;
-        }
-       
-        .action-button {
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-       
-        .message-area {
+        
+        #messages {
             flex: 1;
             overflow-y: auto;
             padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.5rem;
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            min-height: 300px;
+            max-height: 60vh;
         }
-       
+        
         .message {
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
             max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            word-wrap: break-word;
+            word-break: break-word;
         }
-       
-        .incoming {
-            align-self: flex-start;
-            background-color: #333;
-            border-bottom-left-radius: 5px;
-        }
-       
-        .outgoing {
+        
+        .message.sent {
+            background-color: var(--accent);
             align-self: flex-end;
-            background-color: var(--primary);
-            border-bottom-right-radius: 5px;
+            border-bottom-right-radius: 0;
         }
-       
-        .message-meta {
-            font-size: 0.75rem;
-            margin-top: 5px;
-            color: var(--text-muted);
+        
+        .message.received {
+            background-color: #2a2a2a;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
         }
-       
-        .message-input {
+        
+        .username {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 0.2rem;
+        }
+        
+        #message-form {
             display: flex;
-            padding: 1rem;
-            background-color: #222;
-            border-top: 1px solid #333;
+            gap: 0.5rem;
         }
-       
-        .message-input input {
-            flex: 1;
-            padding: 12px;
-            border-radius: 25px;
+        
+        input, button {
+            padding: 0.75rem 1rem;
             border: none;
-            background-color: #333;
-            color: var(--text);
-            outline: none;
-        }
-       
-        .send-button {
-            width: 50px;
-            height: 50px;
-            margin-left: 10px;
-            border-radius: 50%;
-            border: none;
-            background-color: var(--primary);
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-       
-        .send-button:hover {
-            background-color: var(--primary-dark);
-        }
-       
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-        }
-       
-        .modal-content {
-            background-color: var(--dark-surface);
-            padding: 2rem;
-            border-radius: 10px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-       
-        .modal-title {
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-            color: var(--primary);
-        }
-       
-        .modal-body {
-            margin-bottom: 1.5rem;
-        }
-       
-        .code-display {
-            background-color: #333;
-            padding: 1rem;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 1.5rem;
-            margin: 1rem 0;
-            text-align: center;
-            letter-spacing: 5px;
-            color: var(--secondary);
-        }
-       
-        .form-group {
-            margin-bottom: 1rem;
-        }
-       
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-        }
-       
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background-color: #222;
-            color: var(--text);
+            border-radius: 4px;
             font-size: 1rem;
         }
-       
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
+        
+        input {
+            flex: 1;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
         }
-       
-        .modal-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-       
-        .cancel-button {
-            background-color: #444;
-            color: var(--text);
-        }
-       
-        .proceed-button {
-            background-color: var(--primary);
+        
+        button {
+            background-color: var(--accent);
             color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
         }
-       
-        .cancel-button:hover {
-            background-color: #555;
+        
+        button:hover {
+            background-color: var(--accent-hover);
         }
-       
-        .proceed-button:hover {
-            background-color: var(--primary-dark);
+        
+        #connect-btn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border-radius: 2rem;
         }
-       
-        .status-message {
-            color: var(--secondary);
+        
+        #disconnect-btn {
+            background-color: var(--danger);
             margin-top: 1rem;
-            font-style: italic;
         }
-       
+        
+        #disconnect-btn:hover {
+            background-color: #ff5c8d;
+        }
+        
         footer {
             text-align: center;
             padding: 1rem;
-            background-color: var(--dark-surface);
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-       
-        .online-count {
-            background-color: var(--secondary);
-            color: white;
-            border-radius: 50px;
-            padding: 2px 10px;
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
             font-size: 0.8rem;
-            font-weight: bold;
-            margin-left: 10px;
-            display: inline-flex;
-            align-items: center;
         }
-       
-        .online-count i {
-            font-size: 0.7rem;
-            margin-right: 4px;
+        
+        .status-connecting {
+            color: #ffab40;
         }
-       
-        .username-input {
-            margin-bottom: 1.5rem;
+        
+        .status-connected {
+            color: #69f0ae;
         }
-       
-        .system-message {
-            align-self: center;
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 5px 15px;
-            border-radius: 15px;
-            font-style: italic;
-            color: var(--text-muted);
-            font-size: 0.9rem;
+        
+        .status-disconnected {
+            color: var(--danger);
         }
-       
-        .typing-indicator {
-            color: var(--text-muted);
-            font-style: italic;
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            height: 20px;
+        
+        #loading-spinner {
+            display: none;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--accent);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
         }
-       
-        @media (max-width: 768px) {
-            .buttons-container {
-                padding: 0 1rem;
-            }
-           
-            .chat-container {
-                height: 80vh;
-                width: 95%;
-            }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
     <header>
-        <div class="logo">ORLEQTOR</div>
-        <div class="tagline">Connect with Real Humans <span class="online-count" id="online-count"><i class="fas fa-circle"></i> 0 online</span></div>
+        <h1>Chat with Strangers</h1>
     </header>
-   
-    <main>
-        <div class="home-container">
-            <div class="welcome-text">
-                <h2>Welcome to ORLEQTOR</h2>
-                <p>Choose how you want to connect with other real humans.</p>
+    
+    <div class="container">
+        <div id="welcome-screen">
+            <div>
+                <h1>Welcome to Anonymous Chat</h1>
+                <p>Connect with random people from around the world.<br>Chat anonymously with no registration required.</p>
             </div>
-           
-            <div class="username-input">
-                <div class="form-group">
-                    <label for="username">Your Display Name:</label>
-                    <input type="text" id="username" placeholder="Enter your name">
-                </div>
-            </div>
-           
-            <div class="buttons-container">
-                <button class="chat-button" id="random-chat-btn">
-                    <i class="fas fa-random"></i> Chat with Strangers
-                </button>
-                <button class="chat-button" id="friend-chat-btn">
-                    <i class="fas fa-user-friends"></i> Chat with a Friend
-                </button>
-                <button class="chat-button" id="join-chat-btn">
-                    <i class="fas fa-sign-in-alt"></i> Join a Chat Room
-                </button>
-            </div>
+            <button id="connect-btn">Chat with a Stranger</button>
         </div>
-       
-        <div class="chat-container" id="chat-interface">
-            <div class="chat-header">
-                <span class="chat-title" id="chat-title">Chat Room</span>
-                <div class="chat-actions">
-                    <button class="action-button" id="leave-chat">
-                        <i class="fas fa-sign-out-alt"></i> Leave
-                    </button>
-                </div>
+        
+        <div id="chat-screen">
+            <div id="connection-status">
+                <p id="status-text" class="status-disconnected">Disconnected</p>
+                <div id="loading-spinner"></div>
+                <p id="username-display"></p>
             </div>
-           
-            <div class="message-area" id="message-area">
-                <!-- Messages will appear here -->
-            </div>
-           
-            <div class="typing-indicator" id="typing-indicator"></div>
-           
-            <div class="message-input">
-                <input type="text" id="message-input" placeholder="Type your message...">
-                <button class="send-button" id="send-button">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-        </div>
-    </main>
-   
-    <!-- Friend Chat Modal -->
-    <div class="modal" id="friend-chat-modal">
-        <div class="modal-content">
-            <div class="modal-title">Chat with a Friend</div>
-            <div class="modal-body">
-                <p>Share this code with your friend to start a chat:</p>
-                <div class="code-display" id="friend-code"></div>
-                <p>Waiting for your friend to join...</p>
-                <div class="status-message" id="friend-status"></div>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-button cancel-button" id="cancel-friend-chat">Cancel</button>
-            </div>
+            
+            <div id="messages"></div>
+            
+            <form id="message-form">
+                <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                <button type="submit" id="send-btn" disabled>Send</button>
+            </form>
+            
+            <button id="disconnect-btn">Disconnect & Find New Chat</button>
         </div>
     </div>
-   
-    <!-- Join Chat Modal -->
-    <div class="modal" id="join-chat-modal">
-        <div class="modal-content">
-            <div class="modal-title">Join a Chat Room</div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="join-code">Enter the chat code:</label>
-                    <input type="text" id="join-code" placeholder="Example: FRD-123-456">
-                </div>
-                <div class="status-message" id="join-status"></div>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-button cancel-button" id="cancel-join">Cancel</button>
-                <button class="modal-button proceed-button" id="proceed-join">Join</button>
-            </div>
-        </div>
-    </div>
-   
-    <!-- Random Chat Modal -->
-    <div class="modal" id="random-chat-modal">
-        <div class="modal-content">
-            <div class="modal-title">Chat with Strangers</div>
-            <div class="modal-body">
-                <p>Looking for someone to chat with...</p>
-                <div class="status-message" id="random-status">Searching for a chat partner...</div>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-button cancel-button" id="cancel-random-chat">Cancel</button>
-            </div>
-        </div>
-    </div>
-   
+    
     <footer>
-        <p>ORLEQTOR &copy; 2025 - For Real Human Connections</p>
+        <p>Chat with Strangers &copy; 2025</p>
     </footer>
-   
+    
     <script>
         // DOM Elements
-        const homeContainer = document.querySelector('.home-container');
-        const chatInterface = document.getElementById('chat-interface');
-        const messageArea = document.getElementById('message-area');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const statusText = document.getElementById('status-text');
+        const usernameDisplay = document.getElementById('username-display');
+        const messagesContainer = document.getElementById('messages');
+        const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const leaveChat = document.getElementById('leave-chat');
-        const chatTitle = document.getElementById('chat-title');
-        const usernameInput = document.getElementById('username');
-        const onlineCount = document.getElementById('online-count');
-        const typingIndicator = document.getElementById('typing-indicator');
-       
-        // Buttons
-        const randomChatBtn = document.getElementById('random-chat-btn');
-        const friendChatBtn = document.getElementById('friend-chat-btn');
-        const joinChatBtn = document.getElementById('join-chat-btn');
-       
-        // Modals
-        const randomChatModal = document.getElementById('random-chat-modal');
-        const friendChatModal = document.getElementById('friend-chat-modal');
-        const joinChatModal = document.getElementById('join-chat-modal');
-       
-        // Modal buttons
-        const cancelRandomChat = document.getElementById('cancel-random-chat');
-        const cancelFriendChat = document.getElementById('cancel-friend-chat');
-        const cancelJoin = document.getElementById('cancel-join');
-        const proceedJoin = document.getElementById('proceed-join');
-       
-        // Status messages
-        const randomStatus = document.getElementById('random-status');
-        const friendStatus = document.getElementById('friend-status');
-        const joinStatus = document.getElementById('join-status');
-       
-        // Friend code display and join code input
-        const friendCode = document.getElementById('friend-code');
-        const joinCode = document.getElementById('join-code');
-       
-        // Chat state
-        let currentRoomId = '';
-        let currentUsername = '';
-        let socket = null;
-        let typing = false;
-        let typingTimeout = null;
-       
-        // Set random username as placeholder
-        usernameInput.placeholder = "User_" + Math.floor(Math.random() * 10000);
-       
-        // Connect to Socket.io server
-        function connectToServer() {
-            // Connect to your deployed server URL
-            socket = io('https://10aklas.github.io/ORLEQTOR/server.js');
-           
-            // Socket event listeners
-            socket.on('connect', () => {
-                console.log('Connected to server');
-                socket.emit('update_online_count');
-            });
-           
-            socket.on('disconnect', () => {
-                console.log('Disconnected from server');
-            });
-           
-            socket.on('online_count', (count) => {
-                onlineCount.innerHTML = `<i class="fas fa-circle"></i> ${count} online`;
-            });
-           
-            socket.on('chat_message', (data) => {
-                addMessage(data.message, data.username === currentUsername);
-            });
-           
-            socket.on('user_joined', (username) => {
-                addSystemMessage(`${username} has joined the chat`);
-            });
-           
-            socket.on('user_left', (username) => {
-                addSystemMessage(`${username} has left the chat`);
-            });
-           
-            socket.on('room_created', (roomId) => {
-                currentRoomId = roomId;
-                friendCode.textContent = roomId;
-            });
-           
-            socket.on('room_joined', (roomData) => {
-                currentRoomId = roomData.roomId;
-               
-                if (roomData.success) {
-                    if (roomData.type === 'friend') {
-                        friendStatus.textContent = 'Successfully joined room!';
-                        setTimeout(() => {
-                            friendChatModal.style.display = 'none';
-                            showChatInterface(`Chat Room: ${currentRoomId}`);
-                        }, 1000);
-                    } else if (roomData.type === 'join') {
-                        joinStatus.textContent = 'Successfully joined room!';
-                        setTimeout(() => {
-                            joinChatModal.style.display = 'none';
-                            showChatInterface(`Chat Room: ${currentRoomId}`);
-                        }, 1000);
-                    } else if (roomData.type === 'random') {
-                        randomStatus.textContent = 'Found a chat partner!';
-                        setTimeout(() => {
-                            randomChatModal.style.display = 'none';
-                            showChatInterface('Random Chat');
-                        }, 1000);
-                    }
-                } else {
-                    if (roomData.type === 'join') {
-                        joinStatus.textContent = 'Room not found or full';
-                    }
-                }
-            });
-           
-            socket.on('room_closed', () => {
-                addSystemMessage('The chat room has been closed');
-                setTimeout(() => {
-                    returnToHome();
-                }, 3000);
-            });
-           
-            socket.on('typing', (username) => {
-                if (username !== currentUsername) {
-                    typingIndicator.textContent = `${username} is typing...`;
-                }
-            });
-           
-            socket.on('stop_typing', () => {
-                typingIndicator.textContent = '';
+        const sendBtn = document.getElementById('send-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        
+        // WebRTC Variables
+        let peerConnection;
+        let dataChannel;
+        let localUsername;
+        let remoteUsername;
+        let isInitiator = false;
+        let isConnected = false;
+        
+        // Create a UUID for this browser tab
+        const clientId = generateUUID();
+        
+        // Use BroadcastChannel for signaling between tabs
+        const signalingChannel = new BroadcastChannel('stranger-chat-signaling');
+        
+        // Generate a unique identifier for this client
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
             });
         }
-       
-        // Show the chat interface
-        function showChatInterface(title) {
-            homeContainer.style.display = 'none';
-            chatInterface.style.display = 'flex';
-            chatTitle.textContent = title;
-            messageArea.innerHTML = ''; // Clear previous messages
-           
-            // Add welcome system message
-            addSystemMessage('Welcome to the chat! Remember to be respectful.');
+        
+        // Generate a random username
+        function generateUsername() {
+            const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind', 'Wise', 'Quiet', 'Swift', 'Smart', 'Jolly'];
+            const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther', 'Shark', 'Whale', 'Falcon', 'Raven', 'Cobra'];
+            const randomNumber = Math.floor(Math.random() * 1000);
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            return `${adj}${noun}${randomNumber}`;
         }
-       
-        function returnToHome() {
-    if (currentRoomId && socket) {
-        socket.emit('leave_room', {
-            roomId: currentRoomId,
-            username: currentUsername
-        });
-    }
-    currentRoomId = '';
-    homeContainer.style.display = 'block';
-    chatInterface.style.display = 'none';
-}
-
-// Add message to the chat
-function addMessage(message, isOutgoing = false) {
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    messageElement.classList.add(isOutgoing ? 'outgoing' : 'incoming');
-    messageElement.textContent = message;
-    
-    const messageMetaElement = document.createElement('div');
-    messageMetaElement.classList.add('message-meta');
-    
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    messageMetaElement.textContent = isOutgoing ? `You • ${timestamp}` : `${currentPartnerName || 'User'} • ${timestamp}`;
-    
-    messageElement.appendChild(messageMetaElement);
-    messageArea.appendChild(messageElement);
-    messageArea.scrollTop = messageArea.scrollHeight;
-}
-
-// Add system message
-function addSystemMessage(message) {
-    const systemElement = document.createElement('div');
-    systemElement.classList.add('system-message');
-    systemElement.textContent = message;
-    messageArea.appendChild(systemElement);
-    messageArea.scrollTop = messageArea.scrollHeight;
-}
-
-// Validate username
-function validateUsername() {
-    const username = usernameInput.value.trim() || usernameInput.placeholder;
-    if (username.length < 3) {
-        alert('Username must be at least 3 characters long');
-        return false;
-    }
-    currentUsername = username;
-    return true;
-}
-
-// Handle sending messages
-function sendMessage() {
-    const message = messageInput.value.trim();
-    if (message && currentRoomId) {
-        socket.emit('send_message', {
-            roomId: currentRoomId,
-            message: message,
-            username: currentUsername
-        });
-        messageInput.value = '';
-    }
-}
-
-// Handle typing indicator
-function handleTyping() {
-    if (!typing) {
-        typing = true;
-        socket.emit('typing', {
-            roomId: currentRoomId,
-            username: currentUsername
-        });
-    }
-    
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-        typing = false;
-        socket.emit('stop_typing', {
-            roomId: currentRoomId
-        });
-    }, 1000);
-}
-
-// Initialize Socket.io connection on page load
-document.addEventListener('DOMContentLoaded', connectToServer);
-
-// Event listeners
-randomChatBtn.addEventListener('click', () => {
-    if (!validateUsername()) return;
-    
-    randomChatModal.style.display = 'flex';
-    socket.emit('join_random', {
-        username: currentUsername
-    });
-});
-
-friendChatBtn.addEventListener('click', () => {
-    if (!validateUsername()) return;
-    
-    friendChatModal.style.display = 'flex';
-    socket.emit('create_room', {
-        username: currentUsername,
-        type: 'friend'
-    });
-});
-
-joinChatBtn.addEventListener('click', () => {
-    if (!validateUsername()) return;
-    
-    joinChatModal.style.display = 'flex';
-});
-
-proceedJoin.addEventListener('click', () => {
-    const code = joinCode.value.trim();
-    if (!code) {
-        joinStatus.textContent = 'Please enter a valid code';
-        return;
-    }
-    
-    socket.emit('join_room', {
-        roomId: code,
-        username: currentUsername
-    });
-});
-
-cancelRandomChat.addEventListener('click', () => {
-    socket.emit('cancel_random', {
-        username: currentUsername
-    });
-    randomChatModal.style.display = 'none';
-});
-
-cancelFriendChat.addEventListener('click', () => {
-    socket.emit('cancel_friend', {
-        roomId: currentRoomId,
-        username: currentUsername
-    });
-    friendChatModal.style.display = 'none';
-});
-
-cancelJoin.addEventListener('click', () => {
-    joinChatModal.style.display = 'none';
-});
-
-leaveChat.addEventListener('click', () => {
-    returnToHome();
-});
-
-sendButton.addEventListener('click', sendMessage);
-
-messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        sendMessage();
-    }
-    handleTyping();
-});
-
-messageInput.addEventListener('input', handleTyping);
-
-// Variables to track real user verification
-let currentPartnerName = '';
-let verifiedUsers = new Set();
-let pendingVerification = new Set();
-
-// Add real user verification
-socket.on('user_verification_request', (data) => {
-    pendingVerification.add(data.userId);
-    addSystemMessage(`Verifying ${data.username} is a real person...`);
-    
-    // Simple CAPTCHA like verification
-    setTimeout(() => {
-        socket.emit('verify_user_response', {
-            userId: data.userId,
-            roomId: currentRoomId,
-            verified: true
-        });
-    }, 2000);
-});
-
-socket.on('user_verified', (data) => {
-    verifiedUsers.add(data.userId);
-    currentPartnerName = data.username;
-    addSystemMessage(`${data.username} has been verified as a real user!`);
-});
-
-socket.on('bot_detected', (data) => {
-    addSystemMessage(`Warning: ${data.username} appears to be automated and has been flagged.`);
-});
-
-// Add inactivity detection to prevent fake users
-let activityTimeout;
-function resetActivityTimer() {
-    clearTimeout(activityTimeout);
-    activityTimeout = setTimeout(() => {
-        // Prompt user to verify they're still active
-        addSystemMessage("Are you still there? Please send a message to continue.");
         
-        socket.emit('activity_check', {
-            roomId: currentRoomId,
-            username: currentUsername
-        });
+        // Configure STUN servers for NAT traversal
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
         
-        // Give user 30 seconds to respond before disconnecting
-        setTimeout(() => {
-            if (!recentActivity) {
-                returnToHome();
-                addSystemMessage("You've been disconnected due to inactivity.");
+        // Function to create peer connection and set up data channel
+        function setupPeerConnection() {
+            peerConnection = new RTCPeerConnection(iceServers);
+            
+            if (isInitiator) {
+                dataChannel = peerConnection.createDataChannel('chat');
+                setupDataChannel(dataChannel);
+            } else {
+                peerConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel(dataChannel);
+                };
             }
-        }, 30000);
-    }, 300000); // 5 minutes of inactivity
-}
-
-let recentActivity = false;
-document.addEventListener('mousemove', () => {
-    recentActivity = true;
-    resetActivityTimer();
-});
-
-document.addEventListener('keypress', () => {
-    recentActivity = true;
-    resetActivityTimer();
-});
-
-// Function to authenticate connected users
-function authenticateUser(userId) {
-    if (verifiedUsers.has(userId)) {
-        return true;
-    }
-    
-    socket.emit('request_verification', {
-        userId: userId,
-        roomId: currentRoomId
-    });
-    
-    return false;
-}
-
-// Use IP verification to prevent multiple accounts
-socket.on('duplicate_ip_warning', () => {
-    addSystemMessage("Warning: Multiple connections detected from your IP address. This may restrict your ability to join new chats.");
-});
-
-// Implement rate limiting for messages
-let messageCount = 0;
-let lastMessageTime = Date.now();
-
-function checkMessageRateLimit() {
-    const currentTime = Date.now();
-    const timeElapsed = currentTime - lastMessageTime;
-    
-    if (timeElapsed < 500) { // Less than 0.5 second between messages
-        messageCount++;
+            
+            peerConnection.onicecandidate = handleIceCandidate;
+            peerConnection.oniceconnectionstatechange = handleIceConnectionStateChange;
+        }
         
-        if (messageCount > 5) { // More than 5 rapid messages
-            addSystemMessage("Warning: You're sending messages too quickly. Please slow down.");
-            return false;
+        // Set up the data channel event handlers
+        function setupDataChannel(channel) {
+            channel.onopen = handleChannelOpen;
+            channel.onclose = handleChannelClose;
+            channel.onmessage = handleChannelMessage;
+            channel.onerror = handleChannelError;
         }
-    } else {
-        // Reset counter if enough time has passed
-        if (timeElapsed > 5000) { // 5 seconds
-            messageCount = 0;
+        
+        // Handle channel opening
+        function handleChannelOpen() {
+            statusText.textContent = 'Connected';
+            statusText.className = 'status-connected';
+            loadingSpinner.style.display = 'none';
+            isConnected = true;
+            
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            
+            // Send our username to the peer
+            dataChannel.send(JSON.stringify({
+                type: 'username',
+                username: localUsername
+            }));
         }
-    }
-    
-    lastMessageTime = currentTime;
-    return true;
-}
-
-// Override the sendMessage function to include rate limiting
-const originalSendMessage = sendMessage;
-sendMessage = function() {
-    if (!checkMessageRateLimit()) {
-        return;
-    }
-    originalSendMessage();
-};
-
-// Add connection quality monitoring
-socket.on('connection_quality', (data) => {
-    if (data.quality === 'poor') {
-        addSystemMessage("Warning: Poor connection quality detected. Messages may be delayed.");
-    }
-});
+        
+        // Handle channel closing
+        function handleChannelClose() {
+            updateStatus('Disconnected');
+            isConnected = false;
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+        }
+        
+        // Handle incoming messages
+        function handleChannelMessage(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'username') {
+                    remoteUsername = data.username;
+                    usernameDisplay.textContent = `You are chatting with: ${remoteUsername}`;
+                } else if (data.type === 'message') {
+                    addMessage(data.text, false);
+                }
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
+        }
+        
+        // Handle channel errors
+        function handleChannelError(error) {
+            console.error('Data channel error:', error);
+            updateStatus('Error in connection');
+        }
+        
+        // Handle ICE candidates
+        function handleIceCandidate(event) {
+            if (event.candidate) {
+                // Send the ICE candidate to the other peer via the signaling channel
+                signalingChannel.postMessage({
+                    type: 'candidate',
+                    candidate: event.candidate,
+                    senderId: clientId,
+                    targetId: remotePeerId
+                });
+            }
+        }
+        
+        // Handle ICE connection state changes
+        function handleIceConnectionStateChange() {
+            console.log('ICE connection state:', peerConnection.iceConnectionState);
+            
+            if (peerConnection.iceConnectionState === 'disconnected' || 
+                peerConnection.iceConnectionState === 'failed' || 
+                peerConnection.iceConnectionState === 'closed') {
+                updateStatus('Disconnected');
+                isConnected = false;
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+        
+        // Variable to store current remote peer ID
+        let remotePeerId = null;
+        let waitingClients = new Set();
+        
+        // Listen for messages on the signaling channel
+        signalingChannel.onmessage = function(event) {
+            const message = event.data;
+            
+            // Ignore messages from ourselves
+            if (message.senderId === clientId) return;
+            
+            if (message.type === 'looking' && isInitiator && !isConnected) {
+                // We're an initiator looking for someone, and someone else is looking too
+                // Respond to the first one we see
+                remotePeerId = message.senderId;
+                
+                signalingChannel.postMessage({
+                    type: 'offer-coming',
+                    senderId: clientId,
+                    targetId: remotePeerId
+                });
+                
+                // Create and send an offer
+                peerConnection.createOffer()
+                    .then(offer => {
+                        return peerConnection.setLocalDescription(offer);
+                    })
+                    .then(() => {
+                        signalingChannel.postMessage({
+                            type: 'offer',
+                            offer: peerConnection.localDescription,
+                            senderId: clientId,
+                            targetId: remotePeerId
+                        });
+                        
+                        updateStatus('Connecting...');
+                    })
+                    .catch(handleError);
+            }
+            
+            // If we get a message that an offer is coming, stop broadcasting that we're looking
+            if (message.type === 'offer-coming' && message.targetId === clientId) {
+                clearInterval(broadcastInterval);
+            }
+            
+            // Process an incoming offer
+            if (message.type === 'offer' && message.targetId === clientId) {
+                remotePeerId = message.senderId;
+                
+                // Set up as a responder
+                isInitiator = false;
+                setupPeerConnection();
+                
+                peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer))
+                    .then(() => {
+                        return peerConnection.createAnswer();
+                    })
+                    .then(answer => {
+                        return peerConnection.setLocalDescription(answer);
+                    })
+                    .then(() => {
+                        signalingChannel.postMessage({
+                            type: 'answer',
+                            answer: peerConnection.localDescription,
+                            senderId: clientId,
+                            targetId: remotePeerId
+                        });
+                        
+                        updateStatus('Connecting...');
+                    })
+                    .catch(handleError);
+            }
+            
+            // Process an incoming answer
+            if (message.type === 'answer' && message.targetId === clientId) {
+                peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
+                    .catch(handleError);
+            }
+            
+            // Process an incoming ICE candidate
+            if (message.type === 'candidate' && message.targetId === clientId) {
+                peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate))
+                    .catch(handleError);
+            }
+        };
+        
+        // Start the connection process
+        let broadcastInterval;
+        function startConnection() {
+            localUsername = generateUsername();
+            usernameDisplay.textContent = `Your username: ${localUsername}`;
+            
+            welcomeScreen.style.display = 'none';
+            chatScreen.style.display = 'flex';
+            
+            updateStatus('Looking for a stranger...');
+            
+            // Set up as an initiator
+            isInitiator = true;
+            setupPeerConnection();
+            
+            // Broadcast that we're looking for a peer
+            broadcastInterval = setInterval(() => {
+                if (!isConnected) {
+                    signalingChannel.postMessage({
+                        type: 'looking',
+                        senderId: clientId
+                    });
+                } else {
+                    clearInterval(broadcastInterval);
+                }
+            }, 1000);
+        }
+        
+        // Update the connection status UI
+        function updateStatus(status) {
+            statusText.textContent = status;
+            
+            if (status === 'Connecting...' || status === 'Looking for a stranger...') {
+                statusText.className = 'status-connecting';
+                loadingSpinner.style.display = 'block';
+            } else if (status === 'Connected') {
+                statusText.className = 'status-connected';
+                loadingSpinner.style.display = 'none';
+            } else {
+                statusText.className = 'status-disconnected';
+                loadingSpinner.style.display = 'none';
+            }
+        }
+        
+        // Add a message to the chat
+        function addMessage(text, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            
+            const usernameSpan = document.createElement('div');
+            usernameSpan.classList.add('username');
+            usernameSpan.textContent = isSent ? localUsername : remoteUsername || 'Stranger';
+            
+            const textSpan = document.createElement('div');
+            textSpan.textContent = text;
+            
+            messageDiv.appendChild(usernameSpan);
+            messageDiv.appendChild(textSpan);
+            
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Handle errors
+        function handleError(error) {
+            console.error('Error:', error);
+            updateStatus('Connection error');
+        }
+        
+        // Send a message
+        function sendMessage(text) {
+            if (!isConnected || !dataChannel || dataChannel.readyState !== 'open') {
+                alert('Not connected to a stranger yet!');
+                return;
+            }
+            
+            const message = {
+                type: 'message',
+                text: text
+            };
+            
+            dataChannel.send(JSON.stringify(message));
+            addMessage(text, true);
+        }
+        
+        // Disconnect from current peer
+        function disconnect() {
+            if (dataChannel) {
+                dataChannel.close();
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            // Clear remote peer ID
+            remotePeerId = null;
+            
+            messagesContainer.innerHTML = '';
+            usernameDisplay.textContent = '';
+            
+            isConnected = false;
+            
+            // Start a new connection
+            startConnection();
+        }
+        
+        // Event Listeners
+        connectBtn.addEventListener('click', startConnection);
+        
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message) {
+                sendMessage(message);
+                messageInput.value = '';
+            }
+        });
+        
+        disconnectBtn.addEventListener('click', disconnect);
+        
+        // Clean up when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            signalingChannel.close();
+            if (dataChannel) dataChannel.close();
+            if (peerConnection) peerConnection.close();
+        });
+        
+        // Handle page visibility to conserve resources
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && broadcastInterval) {
+                clearInterval(broadcastInterval);
+            } else if (!document.hidden && !isConnected && chatScreen.style.display === 'flex') {
+                // Resume broadcasting if we're looking for a peer
+                broadcastInterval = setInterval(() => {
+                    if (!isConnected) {
+                        signalingChannel.postMessage({
+                            type: 'looking',
+                            senderId: clientId
+                        });
+                    } else {
+                        clearInterval(broadcastInterval);
+                    }
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
