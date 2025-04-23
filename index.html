@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat with Strangers</title>
+    <!-- Include PeerJS from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     <style>
         :root {
             --bg-primary: #121212;
@@ -201,6 +203,17 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        #online-counter {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        #active-users {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -213,6 +226,7 @@
             <div>
                 <h1>Welcome to Anonymous Chat</h1>
                 <p>Connect with random people from around the world.<br>Chat anonymously with no registration required.</p>
+                <p id="active-users">People online: <span id="online-counter">connecting...</span></p>
             </div>
             <button id="connect-btn">Chat with a Stranger</button>
         </div>
@@ -252,29 +266,19 @@
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const onlineCounter = document.getElementById('online-counter');
         
-        // WebRTC Variables
-        let peerConnection;
-        let dataChannel;
+        // Variables
+        let peer;
+        let connection;
         let localUsername;
         let remoteUsername;
-        let isInitiator = false;
         let isConnected = false;
+        let waitingRoom = [];
+        let heartbeatInterval;
         
-        // Create a UUID for this browser tab
-        const clientId = generateUUID();
-        
-        // Use BroadcastChannel for signaling between tabs
-        const signalingChannel = new BroadcastChannel('stranger-chat-signaling');
-        
-        // Generate a unique identifier for this client
-        function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
+        // Waiting room server (a simple data store to find other users)
+        const WAITING_ROOM_URL = 'https://stranger-chat-waiting-room.glitch.me';
         
         // Generate a random username
         function generateUsername() {
@@ -286,233 +290,275 @@
             return `${adj}${noun}${randomNumber}`;
         }
         
-        // Configure STUN servers for NAT traversal
-        const iceServers = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-        
-        // Function to create peer connection and set up data channel
-        function setupPeerConnection() {
-            peerConnection = new RTCPeerConnection(iceServers);
-            
-            if (isInitiator) {
-                dataChannel = peerConnection.createDataChannel('chat');
-                setupDataChannel(dataChannel);
-            } else {
-                peerConnection.ondatachannel = (event) => {
-                    dataChannel = event.channel;
-                    setupDataChannel(dataChannel);
-                };
-            }
-            
-            peerConnection.onicecandidate = handleIceCandidate;
-            peerConnection.oniceconnectionstatechange = handleIceConnectionStateChange;
+        // Generate a user ID for using with the waiting room
+        function generateUserId() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
         
-        // Set up the data channel event handlers
-        function setupDataChannel(channel) {
-            channel.onopen = handleChannelOpen;
-            channel.onclose = handleChannelClose;
-            channel.onmessage = handleChannelMessage;
-            channel.onerror = handleChannelError;
-        }
-        
-        // Handle channel opening
-        function handleChannelOpen() {
-            statusText.textContent = 'Connected';
-            statusText.className = 'status-connected';
-            loadingSpinner.style.display = 'none';
-            isConnected = true;
+        // Initialize PeerJS
+        function initializePeer() {
+            // Create a random peer ID
+            const peerId = generateUserId();
             
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
+            // Initialize the peer connection
+            peer = new Peer(peerId, {
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
             
-            // Send our username to the peer
-            dataChannel.send(JSON.stringify({
-                type: 'username',
-                username: localUsername
-            }));
-        }
-        
-        // Handle channel closing
-        function handleChannelClose() {
-            updateStatus('Disconnected');
-            isConnected = false;
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-        }
-        
-        // Handle incoming messages
-        function handleChannelMessage(event) {
-            try {
-                const data = JSON.parse(event.data);
+            // Handle peer connection open
+            peer.on('open', (id) => {
+                console.log('My peer ID is: ' + id);
                 
+                // Start fetching online users count
+                fetchOnlineUsersCount();
+                startHeartbeat();
+            });
+            
+            // Handle incoming connections
+            peer.on('connection', (conn) => {
+                // Only accept the connection if we're not already connected
+                if (!isConnected) {
+                    connection = conn;
+                    setupConnection();
+                    
+                    // Remove ourselves from the waiting room since we're now connected
+                    leaveWaitingRoom();
+                } else {
+                    // We're already connected, so reject this connection
+                    conn.close();
+                }
+            });
+            
+            // Handle peer errors
+            peer.on('error', (error) => {
+                console.error('Peer error:', error);
+                updateStatus('Connection error');
+                
+                // If the peer error is fatal, reinitialize
+                if (error.type === 'peer-unavailable') {
+                    // The peer we're trying to connect to is unavailable
+                    // Try to find another peer
+                    findRandomPeer();
+                } else if (error.type !== 'network' && error.type !== 'disconnected') {
+                    // For other errors except network issues, reinitialize
+                    setTimeout(() => {
+                        if (peer) peer.destroy();
+                        initializePeer();
+                    }, 2000);
+                }
+            });
+        }
+        
+        // Set up connection event handlers
+        function setupConnection() {
+            connection.on('open', () => {
+                console.log('Connection opened');
+                updateStatus('Connected');
+                isConnected = true;
+                
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                
+                // Send our username to the peer
+                connection.send({
+                    type: 'username',
+                    username: localUsername
+                });
+            });
+            
+            connection.on('data', (data) => {
                 if (data.type === 'username') {
                     remoteUsername = data.username;
                     usernameDisplay.textContent = `You are chatting with: ${remoteUsername}`;
                 } else if (data.type === 'message') {
                     addMessage(data.text, false);
                 }
-            } catch (error) {
-                console.error('Error parsing message:', error);
-            }
+            });
+            
+            connection.on('close', () => {
+                handleDisconnect("Your chat partner disconnected");
+            });
+            
+            connection.on('error', (error) => {
+                console.error('Connection error:', error);
+                handleDisconnect("Connection error");
+            });
         }
         
-        // Handle channel errors
-        function handleChannelError(error) {
-            console.error('Data channel error:', error);
-            updateStatus('Error in connection');
+        // Handle disconnection
+        function handleDisconnect(message) {
+            updateStatus(message || 'Disconnected');
+            isConnected = false;
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Add a system message
+            const systemMessage = document.createElement('div');
+            systemMessage.textContent = message || "Disconnected";
+            systemMessage.style.textAlign = 'center';
+            systemMessage.style.padding = '0.5rem';
+            systemMessage.style.margin = '0.5rem 0';
+            systemMessage.style.color = 'var(--danger)';
+            messagesContainer.appendChild(systemMessage);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // Handle ICE candidates
-        function handleIceCandidate(event) {
-            if (event.candidate) {
-                // Send the ICE candidate to the other peer via the signaling channel
-                signalingChannel.postMessage({
-                    type: 'candidate',
-                    candidate: event.candidate,
-                    senderId: clientId,
-                    targetId: remotePeerId
+        // Join the waiting room to be matched with other users
+        function joinWaitingRoom() {
+            const userData = {
+                peerId: peer.id,
+                timestamp: Date.now()
+            };
+            
+            fetch(`${WAITING_ROOM_URL}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Joined waiting room:', data);
+            })
+            .catch(error => {
+                console.error('Error joining waiting room:', error);
+                // Try again after a few seconds
+                setTimeout(joinWaitingRoom, 3000);
+            });
+        }
+        
+        // Leave the waiting room
+        function leaveWaitingRoom() {
+            fetch(`${WAITING_ROOM_URL}/leave`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ peerId: peer.id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Left waiting room:', data);
+            })
+            .catch(error => {
+                console.error('Error leaving waiting room:', error);
+            });
+        }
+        
+        // Get the number of online users
+        function fetchOnlineUsersCount() {
+            fetch(`${WAITING_ROOM_URL}/count`)
+            .then(response => response.json())
+            .then(data => {
+                onlineCounter.textContent = data.count || '0';
+            })
+            .catch(error => {
+                console.error('Error fetching online users count:', error);
+                onlineCounter.textContent = 'unavailable';
+            });
+        }
+        
+        // Send heartbeat to keep connection alive and update online count
+        function startHeartbeat() {
+            // Clear any existing interval
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            
+            // Set new interval
+            heartbeatInterval = setInterval(() => {
+                // Send heartbeat to waiting room
+                fetch(`${WAITING_ROOM_URL}/heartbeat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ peerId: peer.id })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Update online users count
+                    onlineCounter.textContent = data.count || '0';
+                })
+                .catch(error => {
+                    console.error('Error sending heartbeat:', error);
                 });
-            }
+            }, 10000); // Every 10 seconds
         }
         
-        // Handle ICE connection state changes
-        function handleIceConnectionStateChange() {
-            console.log('ICE connection state:', peerConnection.iceConnectionState);
+        // Find a random peer to connect with
+        function findRandomPeer() {
+            updateStatus('Looking for a stranger...');
+            loadingSpinner.style.display = 'block';
             
-            if (peerConnection.iceConnectionState === 'disconnected' || 
-                peerConnection.iceConnectionState === 'failed' || 
-                peerConnection.iceConnectionState === 'closed') {
-                updateStatus('Disconnected');
-                isConnected = false;
-                messageInput.disabled = true;
-                sendBtn.disabled = true;
-            }
+            fetch(`${WAITING_ROOM_URL}/find`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ peerId: peer.id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.peerId && data.peerId !== peer.id) {
+                    // We found someone to connect to!
+                    updateStatus('Connecting to a stranger...');
+                    
+                    // Connect to the peer
+                    connection = peer.connect(data.peerId, {
+                        reliable: true
+                    });
+                    
+                    setupConnection();
+                    
+                    // We're no longer in the waiting room since we're initiating a connection
+                    leaveWaitingRoom();
+                } else {
+                    // No one found yet, join the waiting room
+                    joinWaitingRoom();
+                    
+                    // Check again in a few seconds
+                    setTimeout(findRandomPeer, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error finding random peer:', error);
+                
+                // Try again after a delay
+                setTimeout(findRandomPeer, 3000);
+            });
         }
         
-        // Variable to store current remote peer ID
-        let remotePeerId = null;
-        let waitingClients = new Set();
-        
-        // Listen for messages on the signaling channel
-        signalingChannel.onmessage = function(event) {
-            const message = event.data;
-            
-            // Ignore messages from ourselves
-            if (message.senderId === clientId) return;
-            
-            if (message.type === 'looking' && isInitiator && !isConnected) {
-                // We're an initiator looking for someone, and someone else is looking too
-                // Respond to the first one we see
-                remotePeerId = message.senderId;
-                
-                signalingChannel.postMessage({
-                    type: 'offer-coming',
-                    senderId: clientId,
-                    targetId: remotePeerId
-                });
-                
-                // Create and send an offer
-                peerConnection.createOffer()
-                    .then(offer => {
-                        return peerConnection.setLocalDescription(offer);
-                    })
-                    .then(() => {
-                        signalingChannel.postMessage({
-                            type: 'offer',
-                            offer: peerConnection.localDescription,
-                            senderId: clientId,
-                            targetId: remotePeerId
-                        });
-                        
-                        updateStatus('Connecting...');
-                    })
-                    .catch(handleError);
-            }
-            
-            // If we get a message that an offer is coming, stop broadcasting that we're looking
-            if (message.type === 'offer-coming' && message.targetId === clientId) {
-                clearInterval(broadcastInterval);
-            }
-            
-            // Process an incoming offer
-            if (message.type === 'offer' && message.targetId === clientId) {
-                remotePeerId = message.senderId;
-                
-                // Set up as a responder
-                isInitiator = false;
-                setupPeerConnection();
-                
-                peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer))
-                    .then(() => {
-                        return peerConnection.createAnswer();
-                    })
-                    .then(answer => {
-                        return peerConnection.setLocalDescription(answer);
-                    })
-                    .then(() => {
-                        signalingChannel.postMessage({
-                            type: 'answer',
-                            answer: peerConnection.localDescription,
-                            senderId: clientId,
-                            targetId: remotePeerId
-                        });
-                        
-                        updateStatus('Connecting...');
-                    })
-                    .catch(handleError);
-            }
-            
-            // Process an incoming answer
-            if (message.type === 'answer' && message.targetId === clientId) {
-                peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
-                    .catch(handleError);
-            }
-            
-            // Process an incoming ICE candidate
-            if (message.type === 'candidate' && message.targetId === clientId) {
-                peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate))
-                    .catch(handleError);
-            }
-        };
-        
-        // Start the connection process
-        let broadcastInterval;
-        function startConnection() {
+        // Start the chat process
+        function startChat() {
             localUsername = generateUsername();
             usernameDisplay.textContent = `Your username: ${localUsername}`;
             
             welcomeScreen.style.display = 'none';
             chatScreen.style.display = 'flex';
             
-            updateStatus('Looking for a stranger...');
-            
-            // Set up as an initiator
-            isInitiator = true;
-            setupPeerConnection();
-            
-            // Broadcast that we're looking for a peer
-            broadcastInterval = setInterval(() => {
-                if (!isConnected) {
-                    signalingChannel.postMessage({
-                        type: 'looking',
-                        senderId: clientId
-                    });
-                } else {
-                    clearInterval(broadcastInterval);
-                }
-            }, 1000);
+            // Initialize PeerJS if not already done
+            if (!peer) {
+                initializePeer();
+                
+                // Give it a moment to initialize before looking for peers
+                setTimeout(findRandomPeer, 1000);
+            } else {
+                findRandomPeer();
+            }
         }
         
         // Update the connection status UI
         function updateStatus(status) {
             statusText.textContent = status;
             
-            if (status === 'Connecting...' || status === 'Looking for a stranger...') {
+            if (status === 'Connecting to a stranger...' || status === 'Looking for a stranger...') {
                 statusText.className = 'status-connecting';
                 loadingSpinner.style.display = 'block';
             } else if (status === 'Connected') {
@@ -526,6 +572,8 @@
         
         // Add a message to the chat
         function addMessage(text, isSent) {
+            if (!text.trim()) return;
+            
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', isSent ? 'sent' : 'received');
             
@@ -545,15 +593,9 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // Handle errors
-        function handleError(error) {
-            console.error('Error:', error);
-            updateStatus('Connection error');
-        }
-        
         // Send a message
         function sendMessage(text) {
-            if (!isConnected || !dataChannel || dataChannel.readyState !== 'open') {
+            if (!isConnected || !connection) {
                 alert('Not connected to a stranger yet!');
                 return;
             }
@@ -563,34 +605,31 @@
                 text: text
             };
             
-            dataChannel.send(JSON.stringify(message));
+            connection.send(message);
             addMessage(text, true);
         }
         
-        // Disconnect from current peer
+        // Disconnect from current peer and find a new one
         function disconnect() {
-            if (dataChannel) {
-                dataChannel.close();
+            if (connection) {
+                connection.close();
+                connection = null;
             }
-            
-            if (peerConnection) {
-                peerConnection.close();
-            }
-            
-            // Clear remote peer ID
-            remotePeerId = null;
-            
-            messagesContainer.innerHTML = '';
-            usernameDisplay.textContent = '';
             
             isConnected = false;
+            remoteUsername = null;
+            messagesContainer.innerHTML = '';
+            usernameDisplay.textContent = `Your username: ${localUsername}`;
             
-            // Start a new connection
-            startConnection();
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Start looking for a new peer
+            findRandomPeer();
         }
         
         // Event Listeners
-        connectBtn.addEventListener('click', startConnection);
+        connectBtn.addEventListener('click', startChat);
         
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -603,30 +642,24 @@
         
         disconnectBtn.addEventListener('click', disconnect);
         
-        // Clean up when page is unloaded
-        window.addEventListener('beforeunload', () => {
-            signalingChannel.close();
-            if (dataChannel) dataChannel.close();
-            if (peerConnection) peerConnection.close();
+        // Initial fetch of online users count
+        fetch(`${WAITING_ROOM_URL}/count`)
+        .then(response => response.json())
+        .then(data => {
+            onlineCounter.textContent = data.count || '0';
+        })
+        .catch(error => {
+            console.error('Error fetching online users count:', error);
+            onlineCounter.textContent = 'unavailable';
         });
         
-        // Handle page visibility to conserve resources
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && broadcastInterval) {
-                clearInterval(broadcastInterval);
-            } else if (!document.hidden && !isConnected && chatScreen.style.display === 'flex') {
-                // Resume broadcasting if we're looking for a peer
-                broadcastInterval = setInterval(() => {
-                    if (!isConnected) {
-                        signalingChannel.postMessage({
-                            type: 'looking',
-                            senderId: clientId
-                        });
-                    } else {
-                        clearInterval(broadcastInterval);
-                    }
-                }, 1000);
+        // Clean up when the page is closed
+        window.addEventListener('beforeunload', () => {
+            if (peer) {
+                leaveWaitingRoom();
+                peer.destroy();
             }
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
         });
     </script>
 </body>
