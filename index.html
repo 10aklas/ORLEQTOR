@@ -15,6 +15,8 @@
             --accent: #7c4dff;
             --accent-hover: #9370DB;
             --danger: #cf6679;
+            --success: #69f0ae;
+            --warning: #ffab40;
         }
         
         * {
@@ -49,6 +51,36 @@
             flex-direction: column;
         }
         
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 1rem;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 0.75rem;
+            background-color: var(--bg-secondary);
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            background-color: var(--accent);
+            color: white;
+        }
+        
+        .tab-button:first-child {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .tab-button:last-child {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        
         #setup-screen {
             display: flex;
             flex-direction: column;
@@ -62,6 +94,17 @@
         #setup-screen h2 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
+        }
+        
+        .connection-mode {
+            display: none;
+            width: 100%;
+        }
+        
+        .connection-mode.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         #my-id-display {
@@ -174,6 +217,46 @@
             background-color: #ff5c8d;
         }
         
+        #next-chat-btn {
+            background-color: var(--warning);
+            margin-top: 0.5rem;
+        }
+        
+        #next-chat-btn:hover {
+            background-color: #ffc166;
+        }
+        
+        .match-button {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        
+        #matching-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        #matching-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--bg-secondary);
+            border-top: 5px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         footer {
             text-align: center;
             padding: 1rem;
@@ -183,15 +266,26 @@
         }
         
         .status-connecting {
-            color: #ffab40;
+            color: var(--warning);
         }
         
         .status-connected {
-            color: #69f0ae;
+            color: var(--success);
         }
         
         .status-disconnected {
             color: var(--danger);
+        }
+        
+        .status-matching {
+            color: var(--warning);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
         
         #error-display {
@@ -215,6 +309,12 @@
             font-size: 0.8rem;
             white-space: pre-wrap;
         }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -224,19 +324,39 @@
     
     <div class="container">
         <div id="setup-screen">
-            <h2>Manual Connection Mode</h2>
-            <p>For privacy and security reasons, automatic matching is disabled.</p>
-            
-            <div id="my-id-display">
-                <p>Your ID: <span id="my-id">Connecting...</span></p>
-                <p>Share this ID with someone you want to chat with.</p>
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="random-mode">Random Chat</button>
+                <button class="tab-button" data-tab="manual-mode">Manual Connect</button>
             </div>
             
-            <form id="connect-form">
-                <h3>Connect to someone</h3>
-                <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
-                <button type="submit" id="connect-btn">Connect</button>
-            </form>
+            <div id="random-mode" class="connection-mode active">
+                <h2>Find a Random Chat Partner</h2>
+                <p>Click the button below to be matched with a random stranger.</p>
+                
+                <button id="find-match-btn" class="match-button">Find Someone to Chat With</button>
+                
+                <div id="matching-indicator">
+                    <div id="matching-spinner"></div>
+                    <p id="matching-status">Looking for someone to chat with...</p>
+                    <button id="cancel-match-btn">Cancel</button>
+                </div>
+            </div>
+            
+            <div id="manual-mode" class="connection-mode">
+                <h2>Manual Connection Mode</h2>
+                <p>Connect directly using an ID.</p>
+                
+                <div id="my-id-display">
+                    <p>Your ID: <span id="my-id">Connecting...</span></p>
+                    <p>Share this ID with someone you want to chat with.</p>
+                </div>
+                
+                <form id="connect-form">
+                    <h3>Connect to someone</h3>
+                    <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
+                    <button type="submit" id="connect-btn">Connect</button>
+                </form>
+            </div>
             
             <div id="error-display"></div>
         </div>
@@ -254,7 +374,10 @@
                 <button type="submit" id="send-btn" disabled>Send</button>
             </form>
             
-            <button id="disconnect-btn">Disconnect</button>
+            <div class="action-buttons">
+                <button id="next-chat-btn">Next Chat</button>
+                <button id="disconnect-btn">Disconnect</button>
+            </div>
         </div>
         
         <div id="debug-log"></div>
@@ -268,11 +391,18 @@
         // DOM Elements
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const connectionModes = document.querySelectorAll('.connection-mode');
         const myIdDisplay = document.getElementById('my-id');
         const peerIdInput = document.getElementById('peer-id-input');
         const connectForm = document.getElementById('connect-form');
         const connectBtn = document.getElementById('connect-btn');
         const disconnectBtn = document.getElementById('disconnect-btn');
+        const nextChatBtn = document.getElementById('next-chat-btn');
+        const findMatchBtn = document.getElementById('find-match-btn');
+        const cancelMatchBtn = document.getElementById('cancel-match-btn');
+        const matchingIndicator = document.getElementById('matching-indicator');
+        const matchingStatus = document.getElementById('matching-status');
         const statusText = document.getElementById('status-text');
         const usernameDisplay = document.getElementById('username-display');
         const messagesContainer = document.getElementById('messages');
@@ -291,6 +421,34 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
+        let isMatching = false;
+        
+        // Signaling server for random matching
+        const SIGNALING_SERVER = 'https://chatmatcher.example.com'; // This would be a real server in production
+        let matchingInterval;
+        
+        // Random matching queue simulation
+        const activeUsers = new Set();
+        let currentMatchAttempt = null;
+        
+        // Tab switching
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                
+                // Update tab buttons
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update visible connection mode
+                connectionModes.forEach(mode => {
+                    mode.classList.remove('active');
+                    if (mode.id === tabName) {
+                        mode.classList.add('active');
+                    }
+                });
+            });
+        });
         
         // Debug log function
         function log(message) {
@@ -346,6 +504,9 @@
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
+                    
+                    // Add to active users for matching simulation
+                    activeUsers.add(id);
                 });
                 
                 peer.on('connection', (conn) => {
@@ -354,6 +515,9 @@
                     if (!isConnected) {
                         connection = conn;
                         setupConnection();
+                        
+                        // If we were matching, stop
+                        stopMatching();
                     } else {
                         conn.close();
                     }
@@ -361,10 +525,14 @@
                 
                 peer.on('error', (err) => {
                     log(`Peer error: ${err.type}`);
-                    showError(`Connection error: ${err.type}`);
                     
                     if (err.type === 'peer-unavailable') {
                         showError('Peer ID not found. Check the ID and try again.');
+                        
+                        if (isMatching) {
+                            // Try another match if in random mode
+                            findRandomMatch();
+                        }
                     } else if (err.type === 'network') {
                         showError('Network error. Check your internet connection.');
                     } else if (err.type === 'disconnected') {
@@ -410,13 +578,7 @@
                 });
                 
                 // Add system message
-                const systemMessage = document.createElement('div');
-                systemMessage.textContent = 'Connected to chat!';
-                systemMessage.style.textAlign = 'center';
-                systemMessage.style.padding = '0.5rem';
-                systemMessage.style.margin = '0.5rem 0';
-                systemMessage.style.color = 'var(--accent)';
-                messagesContainer.appendChild(systemMessage);
+                addSystemMessage('Connected to chat!', 'accent');
             });
             
             connection.on('data', (data) => {
@@ -451,13 +613,7 @@
             updateStatus('Disconnected');
             
             // Add system message
-            const systemMessage = document.createElement('div');
-            systemMessage.textContent = message || 'Disconnected';
-            systemMessage.style.textAlign = 'center';
-            systemMessage.style.padding = '0.5rem';
-            systemMessage.style.margin = '0.5rem 0';
-            systemMessage.style.color = 'var(--danger)';
-            messagesContainer.appendChild(systemMessage);
+            addSystemMessage(message || 'Disconnected', 'danger');
             
             // Show setup screen again after a short delay
             setTimeout(() => {
@@ -498,9 +654,33 @@
                 statusText.className = 'status-connecting';
             } else if (status === 'Connected') {
                 statusText.className = 'status-connected';
+            } else if (status === 'Matching...') {
+                statusText.className = 'status-matching';
             } else {
                 statusText.className = 'status-disconnected';
             }
+        }
+        
+        // Add a system message to the chat
+        function addSystemMessage(text, type = 'accent') {
+            const systemMessage = document.createElement('div');
+            systemMessage.textContent = text;
+            systemMessage.style.textAlign = 'center';
+            systemMessage.style.padding = '0.5rem';
+            systemMessage.style.margin = '0.5rem 0';
+            
+            if (type === 'accent') {
+                systemMessage.style.color = 'var(--accent)';
+            } else if (type === 'danger') {
+                systemMessage.style.color = 'var(--danger)';
+            } else if (type === 'warning') {
+                systemMessage.style.color = 'var(--warning)';
+            } else if (type === 'success') {
+                systemMessage.style.color = 'var(--success)';
+            }
+            
+            messagesContainer.appendChild(systemMessage);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
         // Add a message to the chat
@@ -569,6 +749,78 @@
             // Show setup screen
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
+            stopMatching();
+        }
+        
+        // Find a random match
+        function findRandomMatch() {
+            if (isMatching) return;
+            
+            log('Looking for a random match');
+            isMatching = true;
+            updateStatus('Matching...');
+            
+            // Show matching indicator
+            matchingIndicator.style.display = 'flex';
+            findMatchBtn.disabled = true;
+            
+            // In a real app, this would make an API call to a matching server
+            // For this demo, we'll simulate the matching process
+            simulateMatching();
+        }
+        
+        // Simulate the matching process
+        function simulateMatching() {
+            // Create a simulation of server-side matching
+            const availableUsers = Array.from(activeUsers).filter(id => id !== peer.id);
+            
+            if (availableUsers.length === 0) {
+                // No users available, keep trying
+                matchingStatus.textContent = "Waiting for other users to join...";
+                matchingInterval = setTimeout(simulateMatching, 3000);
+                return;
+            }
+            
+            // Random delay to simulate network latency
+            const delay = Math.floor(Math.random() * 3000) + 1000;
+            
+            matchingStatus.textContent = "Found potential match...";
+            
+            setTimeout(() => {
+                // Try to connect to a random user
+                const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                const targetPeerId = availableUsers[randomIndex];
+                
+                matchingStatus.textContent = "Connecting to a chat partner...";
+                
+                // Store current match attempt
+                currentMatchAttempt = targetPeerId;
+                
+                // Try connection
+                connectToPeer(targetPeerId);
+                
+                // Set timeout for connection attempt
+                setTimeout(() => {
+                    if (isMatching && currentMatchAttempt === targetPeerId) {
+                        // If still matching and this is still our current attempt
+                        log("Connection attempt timed out, trying another match");
+                        simulateMatching();
+                    }
+                }, 5000);
+            }, delay);
+        }
+        
+        // Stop matching process
+        function stopMatching() {
+            if (!isMatching) return;
+            
+            log('Stopping match finding');
+            isMatching = false;
+            
+            clearTimeout(matchingInterval);
+            matchingIndicator.style.display = 'none';
+            findMatchBtn.disabled = false;
+            currentMatchAttempt = null;
         }
         
         // Event Listeners
@@ -594,9 +846,21 @@
         
         disconnectBtn.addEventListener('click', disconnect);
         
+        findMatchBtn.addEventListener('click', findRandomMatch);
+        
+        cancelMatchBtn.addEventListener('click', stopMatching);
+        
+        nextChatBtn.addEventListener('click', () => {
+            disconnect();
+            setTimeout(() => {
+                findRandomMatch();
+            }, 500);
+        });
+        
         // Clean up when the page is closed
         window.addEventListener('beforeunload', () => {
             if (peer) {
+                activeUsers.delete(peer.id);
                 if (connection) connection.close();
                 peer.destroy();
             }
