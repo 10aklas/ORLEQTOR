@@ -15,8 +15,6 @@
             --accent: #7c4dff;
             --accent-hover: #9370DB;
             --danger: #cf6679;
-            --success: #69f0ae;
-            --warning: #ffab40;
         }
         
         * {
@@ -64,60 +62,6 @@
         #setup-screen h2 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
-        }
-        
-        .connection-options {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .option-divider {
-            display: flex;
-            align-items: center;
-            margin: 1rem 0;
-            color: var(--text-secondary);
-        }
-        
-        .option-divider::before,
-        .option-divider::after {
-            content: "";
-            flex: 1;
-            border-bottom: 1px solid var(--text-secondary);
-            margin: 0 1rem;
-        }
-        
-        #random-connect-btn {
-            padding: 1rem;
-            background-color: var(--success);
-            color: #000;
-            border: none;
-            border-radius: 4px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        #random-connect-btn:hover {
-            background-color: #4ade80;
-            transform: translateY(-2px);
-        }
-        
-        #random-connect-btn:disabled {
-            background-color: #2a2a2a;
-            color: var(--text-secondary);
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        #matching-status {
-            margin-top: 1rem;
-            padding: 0.5rem;
-            color: var(--warning);
-            display: none;
         }
         
         #my-id-display {
@@ -230,22 +174,6 @@
             background-color: #ff5c8d;
         }
         
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        #new-chat-btn {
-            background-color: var(--success);
-            color: #000;
-            flex: 1;
-        }
-        
-        #new-chat-btn:hover {
-            background-color: #4ade80;
-        }
-        
         footer {
             text-align: center;
             padding: 1rem;
@@ -255,26 +183,15 @@
         }
         
         .status-connecting {
-            color: var(--warning);
+            color: #ffab40;
         }
         
         .status-connected {
-            color: var(--success);
+            color: #69f0ae;
         }
         
         .status-disconnected {
             color: var(--danger);
-        }
-        
-        .status-matching {
-            color: var(--warning);
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
         }
         
         #error-display {
@@ -307,25 +224,19 @@
     
     <div class="container">
         <div id="setup-screen">
-            <h2>Choose Your Chat Mode</h2>
+            <h2>Manual Connection Mode</h2>
+            <p>For privacy and security reasons, automatic matching is disabled.</p>
             
-            <div class="connection-options">
-                <button id="random-connect-btn">Chat with Random Stranger</button>
-                <div id="matching-status">Looking for a stranger...</div>
-                
-                <div class="option-divider">OR</div>
-                
-                <div id="my-id-display">
-                    <p>Your ID: <span id="my-id">Connecting...</span></p>
-                    <p>Share this ID with someone you want to chat with.</p>
-                </div>
-                
-                <form id="connect-form">
-                    <h3>Connect to someone specific</h3>
-                    <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
-                    <button type="submit" id="connect-btn">Connect</button>
-                </form>
+            <div id="my-id-display">
+                <p>Your ID: <span id="my-id">Connecting...</span></p>
+                <p>Share this ID with someone you want to chat with.</p>
             </div>
+            
+            <form id="connect-form">
+                <h3>Connect to someone</h3>
+                <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
+                <button type="submit" id="connect-btn">Connect</button>
+            </form>
             
             <div id="error-display"></div>
         </div>
@@ -343,10 +254,7 @@
                 <button type="submit" id="send-btn" disabled>Send</button>
             </form>
             
-            <div class="action-buttons">
-                <button id="new-chat-btn">New Random Chat</button>
-                <button id="disconnect-btn">Disconnect</button>
-            </div>
+            <button id="disconnect-btn">Disconnect</button>
         </div>
         
         <div id="debug-log"></div>
@@ -364,10 +272,7 @@
         const peerIdInput = document.getElementById('peer-id-input');
         const connectForm = document.getElementById('connect-form');
         const connectBtn = document.getElementById('connect-btn');
-        const randomConnectBtn = document.getElementById('random-connect-btn');
-        const matchingStatus = document.getElementById('matching-status');
         const disconnectBtn = document.getElementById('disconnect-btn');
-        const newChatBtn = document.getElementById('new-chat-btn');
         const statusText = document.getElementById('status-text');
         const usernameDisplay = document.getElementById('username-display');
         const messagesContainer = document.getElementById('messages');
@@ -386,13 +291,6 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        let isMatchmaking = false;
-        
-        // For simple matchmaking (in a real app, use a server)
-        const WAITING_POOL = [];
-        let AUTO_MATCH_ENABLED = false;
-        let waitingForMatch = false;
-        let matchmakingTimeout = null;
         
         // Debug log function
         function log(message) {
@@ -448,49 +346,21 @@
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
-                    
-                    // Enable UI now that we're connected to the signaling server
-                    randomConnectBtn.disabled = false;
-                    
-                    // For demo purposes only: simulate another peer being available
-                    if (AUTO_MATCH_ENABLED) {
-                        simulateAnotherUser();
-                    }
                 });
                 
                 peer.on('connection', (conn) => {
                     log(`Incoming connection from: ${conn.peer}`);
                     
-                    if (isMatchmaking) {
-                        stopMatchmaking();
-                    }
-                    
                     if (!isConnected) {
                         connection = conn;
                         setupConnection();
                     } else {
-                        // Already in a chat, reject this connection
                         conn.close();
                     }
                 });
                 
                 peer.on('error', (err) => {
                     log(`Peer error: ${err.type}`);
-                    
-                    if (isMatchmaking && err.type === 'peer-unavailable') {
-                        // During matchmaking, peer unavailable is expected sometimes
-                        log('Peer unavailable during matchmaking, continuing search...');
-                        
-                        // If we were trying to connect to a specific peer ID that failed,
-                        // we should try another one after a short delay
-                        setTimeout(() => {
-                            if (isMatchmaking) {
-                                matchmakingCycle();
-                            }
-                        }, 1000);
-                        return;
-                    }
-                    
                     showError(`Connection error: ${err.type}`);
                     
                     if (err.type === 'peer-unavailable') {
@@ -500,16 +370,11 @@
                     } else if (err.type === 'disconnected') {
                         showError('Disconnected from server. Try refreshing the page.');
                     }
-                    
-                    // If we were matchmaking, stop it
-                    if (isMatchmaking) {
-                        stopMatchmaking();
-                    }
                 });
                 
                 peer.on('disconnected', () => {
                     log('Peer disconnected from server');
-                    showError('Disconnected from server. Trying to reconnect...');
+                    showError('Disconnected from server. Click to reconnect.');
                     
                     // Try to reconnect
                     setTimeout(() => {
@@ -520,15 +385,6 @@
                 log(`Error initializing PeerJS: ${error.message}`);
                 showError(`Failed to initialize connection: ${error.message}`);
             }
-        }
-        
-        // DEMO ONLY: Simulate another user for matching
-        function simulateAnotherUser() {
-            // This is just for demonstration purposes
-            // In a real app, you would have real users connecting
-            const simulatedId = generateSimpleId();
-            WAITING_POOL.push(simulatedId);
-            log(`Simulated user joined the waiting pool: ${simulatedId}`);
         }
         
         // Set up connection event handlers
@@ -634,180 +490,6 @@
             }
         }
         
-        // Start random matchmaking
-        function startRandomMatch() {
-            if (!peer || !peer.id) {
-                showError('Connection not initialized. Please refresh the page.');
-                return;
-            }
-            
-            log('Starting random matchmaking');
-            isMatchmaking = true;
-            waitingForMatch = true;
-            
-            // Update UI
-            randomConnectBtn.disabled = true;
-            randomConnectBtn.textContent = 'Cancel Matching';
-            randomConnectBtn.disabled = false;
-            matchingStatus.style.display = 'block';
-            matchingStatus.textContent = 'Looking for a stranger...';
-            statusText.textContent = 'Matching...';
-            statusText.className = 'status-matching';
-            
-            // Add ourselves to the waiting pool in a real app
-            // Here we'll just simulate finding a match
-            
-            // Start the matchmaking cycle
-            matchmakingCycle();
-        }
-        
-        // Stop matchmaking
-        function stopMatchmaking() {
-            log('Stopping matchmaking');
-            isMatchmaking = false;
-            waitingForMatch = false;
-            
-            // Clear any pending timeouts
-            if (matchmakingTimeout) {
-                clearTimeout(matchmakingTimeout);
-                matchmakingTimeout = null;
-            }
-            
-            // Update UI
-            randomConnectBtn.disabled = false;
-            randomConnectBtn.textContent = 'Chat with Random Stranger';
-            matchingStatus.style.display = 'none';
-            statusText.textContent = 'Disconnected';
-            statusText.className = 'status-disconnected';
-        }
-        
-        // The matchmaking cycle - tries to find a match or simulates one
-        function matchmakingCycle() {
-            if (!isMatchmaking) return;
-            
-            log('Running matchmaking cycle');
-            
-            // In a real app, we'd query the server for matches
-            // For demo purposes, we'll simulate finding a match after a few cycles
-            
-            // For the demo: either use a waiting peer or create a simulated chat
-            if (WAITING_POOL.length > 0 && Math.random() > 0.5) {
-                // Try to connect to someone from the waiting pool
-                const randomPeerIndex = Math.floor(Math.random() * WAITING_POOL.length);
-                const randomPeerId = WAITING_POOL[randomPeerIndex];
-                
-                log(`Attempting to connect to waiting peer: ${randomPeerId}`);
-                matchingStatus.textContent = 'Found a potential match!';
-                
-                // Remove from the pool to prevent reconnecting
-                WAITING_POOL.splice(randomPeerIndex, 1);
-                
-                // Try to connect
-                connectToPeer(randomPeerId);
-            } else {
-                // For demonstration purposes, simulate a delayed match
-                // In a real app, this would be a server-side matchmaking process
-                
-                // Update the UI to show we're still searching
-                const dots = '.'.repeat((Math.floor(Date.now() / 500) % 3) + 1);
-                matchingStatus.textContent = `Looking for a stranger${dots}`;
-                
-                // After a few seconds, simulate a successful match by creating our own peer
-                matchmakingTimeout = setTimeout(() => {
-                    if (!isMatchmaking) return;
-                    
-                    log('Simulating a matched peer for demo purposes');
-                    matchingStatus.textContent = 'Found a stranger! Connecting...';
-                    
-                    // For a real implementation, server would provide a real peer ID
-                    // Here we're just simulating a successful connection
-                    
-                    // This is where the demo simulation happens - in a real app,
-                    // we would actually connect to a real peer
-                    simulateSuccessfulMatch();
-                }, 3000);
-            }
-        }
-        
-        // Simulate a successful match for demo purposes
-        function simulateSuccessfulMatch() {
-            // Stop the matchmaking UI
-            stopMatchmaking();
-            
-            // Show the chat UI
-            setupScreen.style.display = 'none';
-            chatScreen.style.display = 'flex';
-            
-            // Set up a simulated connection
-            isConnected = true;
-            updateStatus('Connected');
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
-            
-            // Generate a random name for the "stranger"
-            remoteUsername = generateUsername();
-            usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
-            
-            // Add system message
-            const systemMessage = document.createElement('div');
-            systemMessage.textContent = 'Connected to chat!';
-            systemMessage.style.textAlign = 'center';
-            systemMessage.style.padding = '0.5rem';
-            systemMessage.style.margin = '0.5rem 0';
-            systemMessage.style.color = 'var(--accent)';
-            messagesContainer.appendChild(systemMessage);
-            
-            // Set up a simulated chat experience
-            setupSimulatedChat();
-        }
-        
-        // Set up a simulated chat for demo purposes
-        function setupSimulatedChat() {
-            // Create a mock connection object that doesn't actually connect
-            // but simulates the behavior for demo purposes
-            connection = {
-                send: function(data) {
-                    log(`Sent data to simulated peer: ${JSON.stringify(data)}`);
-                    
-                    // If this is a chat message, simulate a response after a delay
-                    if (data.type === 'message') {
-                        setTimeout(() => {
-                            // Only respond if still connected
-                            if (isConnected) {
-                                const responses = [
-                                    "Hi there! How are you?",
-                                    "That's interesting. Tell me more!",
-                                    "I'm just a simulated chat partner for this demo.",
-                                    "What do you like doing in your free time?",
-                                    "Have you used chat applications like this before?",
-                                    "This is just a demo - in a real app you'd be chatting with real people!",
-                                    "Nice to meet you!",
-                                    "What brings you here today?"
-                                ];
-                                
-                                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                                addMessage(randomResponse, false);
-                            }
-                        }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
-                    }
-                },
-                close: function() {
-                    log('Simulated connection closed');
-                    isConnected = false;
-                }
-            };
-            
-            // Add event for simulated disconnection after some time
-            // This simulates the other person leaving the chat
-            const disconnectAfter = 5*60*1000; // 5 minutes
-            setTimeout(() => {
-                if (isConnected) {
-                    log('Simulated peer disconnected');
-                    handleDisconnect('Chat partner disconnected');
-                }
-            }, disconnectAfter);
-        }
-        
         // Update the connection status UI
         function updateStatus(status) {
             statusText.textContent = status;
@@ -816,8 +498,6 @@
                 statusText.className = 'status-connecting';
             } else if (status === 'Connected') {
                 statusText.className = 'status-connected';
-            } else if (status === 'Matching...') {
-                statusText.className = 'status-matching';
             } else {
                 statusText.className = 'status-disconnected';
             }
@@ -848,7 +528,7 @@
         
         // Send a message
         function sendMessage(text) {
-            if (!isConnected) {
+            if (!isConnected || !connection) {
                 showError('Not connected to a chat partner!');
                 return;
             }
@@ -856,12 +536,10 @@
             log(`Sending message: ${text}`);
             
             try {
-                if (connection) {
-                    connection.send({
-                        type: 'message',
-                        text: text
-                    });
-                }
+                connection.send({
+                    type: 'message',
+                    text: text
+                });
                 
                 addMessage(text, true);
             } catch (error) {
@@ -905,21 +583,6 @@
             }
         });
         
-        randomConnectBtn.addEventListener('click', () => {
-            if (!isMatchmaking) {
-                startRandomMatch();
-            } else {
-                stopMatchmaking();
-            }
-        });
-        
-        newChatBtn.addEventListener('click', () => {
-            disconnect();
-            setTimeout(() => {
-                startRandomMatch();
-            }, 500);
-        });
-        
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const message = messageInput.value.trim();
@@ -929,43 +592,18 @@
             }
         });
         
-        disconnectBtn.addEventListener('click', () => {
-            disconnect();
+        disconnectBtn.addEventListener('click', disconnect);
+        
+        // Clean up when the page is closed
+        window.addEventListener('beforeunload', () => {
+            if (peer) {
+                if (connection) connection.close();
+                peer.destroy();
+            }
         });
         
-        // Initialize PeerJS when the page loads
+        // Initialize PeerJS on page load
         initializePeer();
-        
-        // Fix the matchmaking system
-        function matchmakingCycle() {
-            if (!isMatchmaking) return;
-            
-            log('Running matchmaking cycle');
-            
-            // Instead of trying to connect to random peers that don't exist,
-            // we'll simply simulate finding a match after a delay
-            
-            // Update the UI to show we're still searching
-            const dots = '.'.repeat((Math.floor(Date.now() / 500) % 3) + 1);
-            matchingStatus.textContent = `Looking for a stranger${dots}`;
-            
-            // After a few seconds, simulate a successful match
-            matchmakingTimeout = setTimeout(() => {
-                if (!isMatchmaking) return;
-                
-                log('Simulating a matched peer for demo');
-                matchingStatus.textContent = 'Found a stranger! Connecting...';
-                
-                // Use simulateSuccessfulMatch instead of trying to connect to random peers
-                simulateSuccessfulMatch();
-            }, 3000);
-            
-            // Clear the WAITING_POOL array since we're not using it properly
-            WAITING_POOL.length = 0;
-        }
-        
-        // For demo purposes only - hide debug log in production
-        debugLog.style.display = 'none';
     </script>
 </body>
 </html>
