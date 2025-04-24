@@ -15,7 +15,8 @@
             --accent: #7c4dff;
             --accent-hover: #9370DB;
             --danger: #cf6679;
-            --online: #69f0ae;
+            --success: #69f0ae;
+            --warning: #ffab40;
         }
         
         * {
@@ -40,108 +41,28 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
         
-        .app-container {
-            flex: 1;
-            display: flex;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-        }
-        
         .container {
             flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 1rem;
+            width: 100%;
             display: flex;
             flex-direction: column;
         }
         
-        /* Online Users Panel */
-        .online-users-panel {
-            width: 250px;
-            background-color: var(--bg-secondary);
-            padding: 1rem;
-            overflow-y: auto;
-            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .online-users-header {
+        .main-content {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #333;
+            gap: 1rem;
+            flex: 1;
         }
         
-        .online-count {
+        .chat-container {
+            flex: 2;
             display: flex;
-            align-items: center;
+            flex-direction: column;
         }
         
-        .online-indicator {
-            width: 10px;
-            height: 10px;
-            background-color: var(--online);
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-        
-        .user-list {
-            list-style: none;
-        }
-        
-        .user-item {
-            padding: 0.5rem;
-            margin-bottom: 0.5rem;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .user-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .user-name {
-            font-weight: bold;
-            margin-bottom: 0.2rem;
-        }
-        
-        .user-id {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            word-break: break-all;
-        }
-        
-        .user-actions button {
-            background: transparent;
-            color: var(--accent);
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        
-        .user-actions button:hover {
-            text-decoration: underline;
-        }
-        
-        .refresh-btn {
-            background-color: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-        }
-        
-        .refresh-btn:hover {
-            background-color: rgba(124, 77, 255, 0.1);
-        }
-        
-        /* Main content styles */
         #setup-screen {
             display: flex;
             flex-direction: column;
@@ -246,6 +167,12 @@
             font-size: 1rem;
         }
         
+        input {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
         button {
             background-color: var(--accent);
             color: white;
@@ -267,6 +194,80 @@
             background-color: #ff5c8d;
         }
         
+        /* Online Users Panel */
+        .online-users-panel {
+            flex: 1;
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            max-width: 300px;
+        }
+        
+        .online-users-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        .online-count {
+            background-color: var(--accent);
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .user-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .user-item {
+            padding: 0.75rem;
+            background-color: #252525;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .user-item:hover {
+            background-color: #303030;
+        }
+        
+        .user-item.online {
+            border-left: 3px solid var(--success);
+        }
+        
+        .user-id {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-online {
+            background-color: var(--success);
+        }
+        
+        .status-busy {
+            background-color: var(--warning);
+        }
+        
         footer {
             text-align: center;
             padding: 1rem;
@@ -276,11 +277,11 @@
         }
         
         .status-connecting {
-            color: #ffab40;
+            color: var(--warning);
         }
         
         .status-connected {
-            color: var(--online);
+            color: var(--success);
         }
         
         .status-disconnected {
@@ -309,15 +310,33 @@
             white-space: pre-wrap;
         }
         
-        /* Responsive design */
+        /* Register form */
+        #register-form {
+            margin-bottom: 2rem;
+        }
+        
+        #username-input {
+            margin-bottom: 1rem;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .user-actions button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
         @media (max-width: 768px) {
-            .app-container {
+            .main-content {
                 flex-direction: column;
             }
             
             .online-users-panel {
-                width: 100%;
-                max-height: 200px;
+                max-width: none;
                 margin-bottom: 1rem;
             }
         }
@@ -328,58 +347,61 @@
         <h1>Chat with Strangers</h1>
     </header>
     
-    <div class="app-container">
-        <div class="container">
-            <div id="setup-screen">
-                <h2>Manual Connection Mode</h2>
-                <p>For privacy and security reasons, automatic matching is disabled.</p>
-                
-                <div id="my-id-display">
-                    <p>Your ID: <span id="my-id">Connecting...</span></p>
-                    <p>Share this ID with someone you want to chat with.</p>
+    <div class="container">
+        <div class="main-content">
+            <div class="chat-container">
+                <div id="setup-screen">
+                    <h2>Chat Setup</h2>
+                    
+                    <form id="register-form">
+                        <h3>Your Username</h3>
+                        <input type="text" id="username-input" placeholder="Enter your username...">
+                        <button type="submit" id="register-btn">Register</button>
+                    </form>
+                    
+                    <div id="my-id-display">
+                        <p>Your ID: <span id="my-id">Not connected yet</span></p>
+                        <p>Share this ID with someone you want to chat with.</p>
+                    </div>
+                    
+                    <form id="connect-form">
+                        <h3>Connect to someone</h3>
+                        <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
+                        <button type="submit" id="connect-btn">Connect</button>
+                    </form>
+                    
+                    <div id="error-display"></div>
                 </div>
                 
-                <form id="connect-form">
-                    <h3>Connect to someone</h3>
-                    <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
-                    <button type="submit" id="connect-btn">Connect</button>
-                </form>
-                
-                <div id="error-display"></div>
-            </div>
-            
-            <div id="chat-screen">
-                <div id="connection-status">
-                    <p id="status-text" class="status-disconnected">Disconnected</p>
-                    <p id="username-display"></p>
+                <div id="chat-screen">
+                    <div id="connection-status">
+                        <p id="status-text" class="status-disconnected">Disconnected</p>
+                        <p id="username-display"></p>
+                    </div>
+                    
+                    <div id="messages"></div>
+                    
+                    <form id="message-form">
+                        <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                        <button type="submit" id="send-btn" disabled>Send</button>
+                    </form>
+                    
+                    <button id="disconnect-btn">Disconnect</button>
                 </div>
-                
-                <div id="messages"></div>
-                
-                <form id="message-form">
-                    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
-                    <button type="submit" id="send-btn" disabled>Send</button>
-                </form>
-                
-                <button id="disconnect-btn">Disconnect</button>
             </div>
             
-            <div id="debug-log"></div>
+            <div class="online-users-panel">
+                <div class="online-users-header">
+                    <h3>Online Users</h3>
+                    <span class="online-count" id="online-count">0</span>
+                </div>
+                <div class="user-list" id="user-list">
+                    <!-- Users will be added here dynamically -->
+                </div>
+            </div>
         </div>
         
-        <div class="online-users-panel">
-            <div class="online-users-header">
-                <div class="online-count">
-                    <div class="online-indicator"></div>
-                    <span id="users-count">0 users online</span>
-                </div>
-                <button class="refresh-btn" id="refresh-users-btn">Refresh</button>
-            </div>
-            
-            <ul class="user-list" id="online-users-list">
-                <!-- Online users will be populated here -->
-            </ul>
-        </div>
+        <div id="debug-log"></div>
     </div>
     
     <footer>
@@ -391,6 +413,8 @@
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
         const myIdDisplay = document.getElementById('my-id');
+        const usernameInput = document.getElementById('username-input');
+        const registerForm = document.getElementById('register-form');
         const peerIdInput = document.getElementById('peer-id-input');
         const connectForm = document.getElementById('connect-form');
         const connectBtn = document.getElementById('connect-btn');
@@ -403,25 +427,141 @@
         const sendBtn = document.getElementById('send-btn');
         const errorDisplay = document.getElementById('error-display');
         const debugLog = document.getElementById('debug-log');
-        const usersCountDisplay = document.getElementById('users-count');
-        const onlineUsersList = document.getElementById('online-users-list');
-        const refreshUsersBtn = document.getElementById('refresh-users-btn');
+        const onlineCount = document.getElementById('online-count');
+        const userList = document.getElementById('user-list');
         
-        // Initially hide chat screen
+        // Initially hide chat screen and disable connect button
         chatScreen.style.display = 'none';
+        connectBtn.disabled = true;
+        connectForm.style.display = 'none';
+        myIdDisplay.style.display = 'none';
         
         // Variables
         let peer;
         let connection;
         let localUsername;
+        let localPeerId;
         let remoteUsername;
         let isConnected = false;
-        let onlineUsers = new Map(); // Store online users with their info
+        let onlineUsers = {}; // Our local cache of online users
+        let heartbeatServer; // For the WebSocket connection to our signaling server
         
-        // Server simulation for tracking online users
-        // In a real app, this would be managed by a server
-        const trackingServerUrl = 'https://chat-tracker-simulation.example';
-        let heartbeatInterval;
+        // Mock server for online users (in real app, this would be WebSocket)
+        class MockUserServer {
+            constructor() {
+                this.connections = [];
+                this.users = {};
+                
+                // Auto add some fake users for testing
+                this.addFakeUsers();
+                
+                // Simulate some users coming online and going offline
+                setInterval(() => this.simulateUserActivity(), 10000);
+            }
+            
+            addFakeUsers() {
+                const fakeUsers = [
+                    { id: 'abc123', username: 'HappyTiger42', status: 'online' },
+                    { id: 'def456', username: 'CalmPanther87', status: 'online' },
+                    { id: 'ghi789', username: 'BraveEagle21', status: 'busy' }
+                ];
+                
+                fakeUsers.forEach(user => {
+                    this.users[user.id] = user;
+                });
+                
+                this.broadcastUserList();
+            }
+            
+            simulateUserActivity() {
+                // Simple random activity simulation
+                const userIds = Object.keys(this.users).filter(id => 
+                    id !== localPeerId && id.startsWith('abc') || id.startsWith('def') || id.startsWith('ghi')
+                );
+                
+                if (userIds.length > 0 && Math.random() > 0.7) {
+                    const randomUserId = userIds[Math.floor(Math.random() * userIds.length)];
+                    const currentUser = this.users[randomUserId];
+                    
+                    if (currentUser.status === 'online') {
+                        this.users[randomUserId].status = 'busy';
+                    } else {
+                        this.users[randomUserId].status = 'online';
+                    }
+                    
+                    this.broadcastUserList();
+                }
+                
+                // Occasionally add a new user
+                if (Math.random() > 0.9) {
+                    const id = 'user' + Math.floor(Math.random() * 1000);
+                    const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle'];
+                    const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle'];
+                    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+                    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                    const username = `${adj}${noun}${Math.floor(Math.random() * 100)}`;
+                    
+                    this.users[id] = { id, username, status: 'online' };
+                    this.broadcastUserList();
+                    
+                    // Remove this user after some time
+                    setTimeout(() => {
+                        delete this.users[id];
+                        this.broadcastUserList();
+                    }, 30000);
+                }
+            }
+            
+            connect(callback) {
+                // Simulate connection
+                log('Connected to user tracking server');
+                this.connections.push(callback);
+                
+                // Send initial user list
+                setTimeout(() => {
+                    callback({ type: 'userList', users: this.users });
+                }, 500);
+                
+                return {
+                    close: () => {
+                        this.connections = this.connections.filter(conn => conn !== callback);
+                        log('Disconnected from user tracking server');
+                    }
+                };
+            }
+            
+            registerUser(id, username) {
+                // Register this user
+                this.users[id] = { id, username, status: 'online' };
+                this.broadcastUserList();
+                
+                log(`Registered user: ${username} (${id})`);
+            }
+            
+            updateUserStatus(id, status) {
+                if (this.users[id]) {
+                    this.users[id].status = status;
+                    this.broadcastUserList();
+                    log(`Updated user status: ${id} -> ${status}`);
+                }
+            }
+            
+            removeUser(id) {
+                delete this.users[id];
+                this.broadcastUserList();
+                log(`Removed user: ${id}`);
+            }
+            
+            broadcastUserList() {
+                const message = { type: 'userList', users: this.users };
+                this.connections.forEach(callback => {
+                    callback(message);
+                });
+            }
+        }
+        
+        // Create our mock server
+        const userServer = new MockUserServer();
         
         // Debug log function
         function log(message) {
@@ -460,157 +600,108 @@
             return result;
         }
         
-        // Simulate server interaction - In a real app, this would be API calls
-        function simulateServerCommunication() {
-            // Simulate users for demo purposes (in production would come from a real server)
-            simulateOnlineUsers();
+        // Update online users list
+        function updateOnlineUsers(users) {
+            onlineUsers = users || {};
+            const userCount = Object.keys(onlineUsers).length;
+            onlineCount.textContent = userCount;
             
-            // Set up a heartbeat to update online status
-            heartbeatInterval = setInterval(() => {
-                if (peer && peer.id) {
-                    log('Sending heartbeat to server');
-                    // This would be an actual API call in a real application
-                    // Instead, we're just updating our local simulation
-                    updateOnlineStatus(peer.id, localUsername);
-                }
-            }, 30000); // Every 30 seconds
-        }
-        
-        // Simulate fetching online users
-        function fetchOnlineUsers() {
-            log('Fetching online users');
+            // Clear user list
+            userList.innerHTML = '';
             
-            // In a real app, this would be an API call
-            // For this demo, we'll just refresh our simulated users
-            simulateOnlineUsers();
-            updateOnlineUsersUI();
-        }
-        
-        // Update online status
-        function updateOnlineStatus(peerId, username) {
-            log(`Updating online status for ${username} (${peerId})`);
-            
-            // In a real app, this would be an API call
-            // For demo purposes, we'll just update our local Map
-            if (!onlineUsers is .has(peerId)) {
-                onlineUsers.set(peerId, {
-                    id: peerId,
-                    username: username,
-                    lastSeen: new Date()
-                });
+            // Add each user to the list
+            Object.entries(onlineUsers).forEach(([id, userData]) => {
+                const userItem = document.createElement('div');
+                userItem.classList.add('user-item');
                 
-                updateOnlineUsersUI();
-            }
+                if (userData.status === 'online') {
+                    userItem.classList.add('online');
+                }
+                
+                // Create username with status indicator
+                const usernameDiv = document.createElement('div');
+                const statusIndicator = document.createElement('span');
+                statusIndicator.classList.add('status-indicator');
+                
+                if (userData.status === 'online') {
+                    statusIndicator.classList.add('status-online');
+                } else if (userData.status === 'busy') {
+                    statusIndicator.classList.add('status-busy');
+                }
+                
+                usernameDiv.appendChild(statusIndicator);
+                usernameDiv.appendChild(document.createTextNode(userData.username));
+                
+                // Create ID element
+                const idDiv = document.createElement('div');
+                idDiv.classList.add('user-id');
+                idDiv.textContent = `ID: ${id}`;
+                
+                // Add elements to user item
+                userItem.appendChild(usernameDiv);
+                userItem.appendChild(idDiv);
+                
+                // Add user actions
+                if (id !== localPeerId && userData.status === 'online') {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.classList.add('user-actions');
+                    
+                    const connectButton = document.createElement('button');
+                    connectButton.textContent = 'Connect';
+                    connectButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        peerIdInput.value = id;
+                        connectToPeer(id);
+                    });
+                    
+                    actionsDiv.appendChild(connectButton);
+                    userItem.appendChild(actionsDiv);
+                }
+                
+                // Add to user list
+                userList.appendChild(userItem);
+                
+                // Highlight if this is the current user
+                if (id === localPeerId) {
+                    userItem.style.backgroundColor = '#303030';
+                    userItem.style.borderLeft = '3px solid var(--accent)';
+                }
+            });
         }
         
-        // Remove user from online list
-        function removeOnlineUser(peerId) {
-            log(`Removing user ${peerId} from online list`);
-            
-            // In a real app, this would be an API call
-            onlineUsers.delete(peerId);
-            updateOnlineUsersUI();
-        }
-        
-        // Simulate online users (for demo purposes)
-        function simulateOnlineUsers() {
-            // Keep existing real users
-            const existingUsers = new Map(onlineUsers);
-            
-            // Clear and regenerate
-            onlineUsers.clear();
-            
-            // Add back real users
-            existingUsers.forEach((user, id) => {
-                // Check if user was seen in the last 2 minutes
-                const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-                if (user.lastSeen > twoMinutesAgo) {
-                    onlineUsers.set(id, user);
+        // Connect to user tracking
+        function connectToUserTracking() {
+            heartbeatServer = userServer.connect((message) => {
+                if (message.type === 'userList') {
+                    updateOnlineUsers(message.users);
                 }
             });
             
-            // Add our own user if we're connected
-            if (peer && peer.id) {
-                onlineUsers.set(peer.id, {
-                    id: peer.id,
-                    username: localUsername,
-                    lastSeen: new Date()
-                });
-            }
-            
-            // Add some simulated users (in a real app, this would be actual users)
-            if (onlineUsers.size < 5) {
-                const simulatedCount = Math.floor(Math.random() * (10 - onlineUsers.size)) + 1;
-                
-                for (let i = 0; i < simulatedCount; i++) {
-                    const simId = generateSimpleId();
-                    const simUsername = generateUsername();
-                    
-                    if (!onlineUsers.has(simId)) {
-                        onlineUsers.set(simId, {
-                            id: simId,
-                            username: simUsername,
-                            lastSeen: new Date(),
-                            simulated: true
-                        });
-                    }
+            // Send periodic heartbeats to keep connection alive
+            const heartbeatInterval = setInterval(() => {
+                if (localPeerId) {
+                    log('Sending heartbeat');
+                    // In a real implementation, we'd send a heartbeat to the server
                 }
-            }
+            }, 30000);
             
-            log(`Online users updated: ${onlineUsers.size} users`);
-        }
-        
-        // Update the online users UI
-        function updateOnlineUsersUI() {
-            // Update counter
-            usersCountDisplay.textContent = `${onlineUsers.size} users online`;
-            
-            // Clear current list
-            onlineUsersList.innerHTML = '';
-            
-            // Add each user to the list
-            onlineUsers.forEach((user) => {
-                const userItem = document.createElement('li');
-                userItem.classList.add('user-item');
-                
-                const userInfo = document.createElement('div');
-                userInfo.classList.add('user-info');
-                
-                const userName = document.createElement('div');
-                userName.classList.add('user-name');
-                userName.textContent = user.username;
-                
-                const userId = document.createElement('div');
-                userId.classList.add('user-id');
-                userId.textContent = user.id;
-                
-                userInfo.appendChild(userName);
-                userInfo.appendChild(userId);
-                
-                const userActions = document.createElement('div');
-                userActions.classList.add('user-actions');
-                
-                // Don't add connect button to ourselves
-                if (user.id !== peer.id) {
-                    const connectBtn = document.createElement('button');
-                    connectBtn.textContent = 'Connect';
-                    connectBtn.addEventListener('click', () => {
-                        peerIdInput.value = user.id;
-                        connectToPeer(user.id);
-                    });
-                    userActions.appendChild(connectBtn);
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                clearInterval(heartbeatInterval);
+                if (heartbeatServer) {
+                    heartbeatServer.close();
                 }
-                
-                userItem.appendChild(userInfo);
-                userItem.appendChild(userActions);
-                onlineUsersList.appendChild(userItem);
+                if (localPeerId) {
+                    userServer.removeUser(localPeerId);
+                }
             });
         }
         
         // Initialize PeerJS
-        function initializePeer() {
+        function initializePeer(username) {
             const peerId = generateSimpleId();
-            localUsername = generateUsername();
+            localUsername = username;
+            localPeerId = peerId;
             
             log(`Initializing PeerJS with ID: ${peerId}`);
             
@@ -625,9 +716,13 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    // Update our online status and start communication with the "server"
-                    updateOnlineStatus(id, localUsername);
-                    simulateServerCommunication();
+                    // Show the connection form
+                    connectForm.style.display = 'flex';
+                    myIdDisplay.style.display = 'block';
+                    connectBtn.disabled = false;
+                    
+                    // Register with our user tracking system
+                    userServer.registerUser(id, localUsername);
                 });
                 
                 peer.on('connection', (conn) => {
@@ -636,6 +731,9 @@
                     if (!isConnected) {
                         connection = conn;
                         setupConnection();
+                        
+                        // Update status to busy
+                        userServer.updateUserStatus(localPeerId, 'busy');
                     } else {
                         conn.close();
                     }
@@ -732,6 +830,9 @@
             sendBtn.disabled = true;
             updateStatus('Disconnected');
             
+            // Update status to online
+            userServer.updateUserStatus(localPeerId, 'online');
+            
             // Add system message
             const systemMessage = document.createElement('div');
             systemMessage.textContent = message || 'Disconnected';
@@ -764,6 +865,15 @@
                 });
                 
                 setupConnection();
+                
+                // Update status to busy
+                userServer.updateUserStatus(localPeerId, 'busy');
+                
+                // If we're connecting to someone who's in our user list
+                if (onlineUsers[peerId]) {
+                    userServer.updateUserStatus(peerId, 'busy');
+                }
+                
                 return true;
             } catch (error) {
                 log(`Error connecting to peer: ${error.message}`);
@@ -818,95 +928,4 @@
             log(`Sending message: ${text}`);
             
             try {
-                connection.send({
-                    type: 'message',
-                    text: text
-                });
-                
-                addMessage(text, true);
-            } catch (error) {
-                log(`Error sending message: ${error.message}`);
-                showError('Failed to send message. Connection may be lost.');
-            }
-        }
-        
-        // Disconnect from current peer
-        function disconnect() {
-            log('Disconnecting from current peer');
-            
-            if (connection) {
-                connection.close();
-                connection = null;
-            }
-            
-            isConnected = false;
-            remoteUsername = null;
-            messagesContainer.innerHTML = '';
-            
-            // Reset UI
-            updateStatus('Disconnected');
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            
-            // Show setup screen
-            setupScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-        }
-        
-        // Clean up when leaving
-        function cleanUp() {
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-            }
-            
-            if (peer && peer.id) {
-                removeOnlineUser(peer.id);
-            }
-            
-            if (connection) {
-                connection.close();
-            }
-            
-            if (peer) {
-                peer.destroy();
-            }
-        }
-        
-        // Event Listeners
-        connectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const peerId = peerIdInput.value.trim();
-            if (peerId) {
-                connectToPeer(peerId);
-                // Keep the setup screen visible until connection is established
-            } else {
-                showError('Please enter a peer ID');
-            }
-        });
-        
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            if (message) {
-                sendMessage(message);
-                messageInput.value = '';
-            }
-        });
-        
-        disconnectBtn.addEventListener('click', disconnect);
-        
-        refreshUsersBtn.addEventListener('click', () => {
-            fetchOnlineUsers();
-        });
-        
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', cleanUp);
-        
-        // Initialize on page load
-        initializePeer();
-        // Initial fetch of online users (in a real app, this would be from a server)
-        simulateOnlineUsers();
-        updateOnlineUsersUI();
-    </script>
-</body>
-</html>
+                connection
