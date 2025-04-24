@@ -215,6 +215,44 @@
             font-size: 0.8rem;
             white-space: pre-wrap;
         }
+        
+        /* New styles for online users panel */
+        #online-users-panel {
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        #online-users-panel h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            color: var(--accent);
+        }
+        
+        #online-users-list {
+            list-style: none;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        #online-users-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        #online-users-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .user-status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #69f0ae;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -223,6 +261,14 @@
     </header>
     
     <div class="container">
+        <!-- New Online Users Panel -->
+        <div id="online-users-panel">
+            <h3>Online Users: <span id="user-count">0</span></h3>
+            <ul id="online-users-list">
+                <!-- Users will be added here dynamically -->
+            </ul>
+        </div>
+        
         <div id="setup-screen">
             <h2>Manual Connection Mode</h2>
             <p>For privacy and security reasons, automatic matching is disabled.</p>
@@ -281,6 +327,8 @@
         const sendBtn = document.getElementById('send-btn');
         const errorDisplay = document.getElementById('error-display');
         const debugLog = document.getElementById('debug-log');
+        const userCountDisplay = document.getElementById('user-count');
+        const onlineUsersList = document.getElementById('online-users-list');
         
         // Initially hide chat screen
         chatScreen.style.display = 'none';
@@ -291,6 +339,11 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
+        
+        // Online users tracking
+        const onlineUsers = new Map(); // Map to store online users (id -> username)
+        let userHeartbeatInterval;
+        let trackOnlineUsersInterval;
         
         // Debug log function
         function log(message) {
@@ -329,6 +382,67 @@
             return result;
         }
         
+        // Update online users list UI
+        function updateOnlineUsersList() {
+            // Clear the list
+            onlineUsersList.innerHTML = '';
+            
+            // Update the count
+            userCountDisplay.textContent = onlineUsers.size;
+            
+            // Add each user to the list
+            onlineUsers.forEach((username, id) => {
+                const li = document.createElement('li');
+                
+                const indicator = document.createElement('span');
+                indicator.classList.add('user-status-indicator');
+                
+                const userText = document.createTextNode(username + (id === peer.id ? ' (You)' : ''));
+                
+                li.appendChild(indicator);
+                li.appendChild(userText);
+                onlineUsersList.appendChild(li);
+            });
+        }
+        
+        // Add user to online users list
+        function addOnlineUser(id, username) {
+            if (!onlineUsers.has(id)) {
+                log(`Adding user to online list: ${username} (${id})`);
+                onlineUsers.set(id, username);
+                updateOnlineUsersList();
+            }
+        }
+        
+        // Remove user from online users list
+        function removeOnlineUser(id) {
+            if (onlineUsers.has(id)) {
+                log(`Removing user from online list: ${onlineUsers.get(id)} (${id})`);
+                onlineUsers.delete(id);
+                updateOnlineUsersList();
+            }
+        }
+        
+        // Send heartbeat to other connected peers
+        function sendHeartbeat() {
+            // Add ourselves to the list
+            if (peer && peer.id) {
+                addOnlineUser(peer.id, localUsername);
+            }
+            
+            // If we're connected to a peer, send them our online users list
+            if (isConnected && connection) {
+                try {
+                    connection.send({
+                        type: 'heartbeat',
+                        users: Array.from(onlineUsers.entries())
+                    });
+                } catch (error) {
+                    log(`Error sending heartbeat: ${error.message}`);
+                }
+            }
+        }
+        
         // Initialize PeerJS
         function initializePeer() {
             const peerId = generateSimpleId();
@@ -346,6 +460,12 @@
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
+                    
+                    // Add ourselves to the online users list
+                    addOnlineUser(id, localUsername);
+                    
+                    // Start heartbeat and tracking intervals
+                    startUserTracking();
                 });
                 
                 peer.on('connection', (conn) => {
@@ -387,6 +507,29 @@
             }
         }
         
+        // Start user tracking mechanisms
+        function startUserTracking() {
+            // Clear any existing intervals
+            if (userHeartbeatInterval) clearInterval(userHeartbeatInterval);
+            if (trackOnlineUsersInterval) clearInterval(trackOnlineUsersInterval);
+            
+            // Send heartbeats every 5 seconds
+            userHeartbeatInterval = setInterval(sendHeartbeat, 5000);
+            
+            // Send first heartbeat immediately
+            sendHeartbeat();
+        }
+        
+        // Process received heartbeat data
+        function processHeartbeat(heartbeatData) {
+            if (!Array.isArray(heartbeatData.users)) return;
+            
+            // Update our online users list with the received data
+            heartbeatData.users.forEach(([id, username]) => {
+                addOnlineUser(id, username);
+            });
+        }
+        
         // Set up connection event handlers
         function setupConnection() {
             log('Setting up connection handlers');
@@ -409,6 +552,9 @@
                     username: localUsername
                 });
                 
+                // Send our online users list
+                sendHeartbeat();
+                
                 // Add system message
                 const systemMessage = document.createElement('div');
                 systemMessage.textContent = 'Connected to chat!';
@@ -425,13 +571,22 @@
                 if (data.type === 'username') {
                     remoteUsername = data.username;
                     usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
+                    
+                    // Add the remote user to our online users list
+                    addOnlineUser(connection.peer, remoteUsername);
                 } else if (data.type === 'message') {
                     addMessage(data.text, false);
+                } else if (data.type === 'heartbeat') {
+                    processHeartbeat(data);
                 }
             });
             
             connection.on('close', () => {
                 log('Connection closed');
+                // Remove the remote user from the online users list
+                if (connection && connection.peer) {
+                    removeOnlineUser(connection.peer);
+                }
                 handleDisconnect('Chat partner disconnected');
             });
             
@@ -600,6 +755,9 @@
                 if (connection) connection.close();
                 peer.destroy();
             }
+            
+            if (userHeartbeatInterval) clearInterval(userHeartbeatInterval);
+            if (trackOnlineUsersInterval) clearInterval(trackOnlineUsersInterval);
         });
         
         // Initialize PeerJS on page load
