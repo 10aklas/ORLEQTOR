@@ -6,9 +6,6 @@
     <title>Chat with Strangers</title>
     <!-- Include PeerJS from CDN with a specific version known to work -->
     <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
-    <!-- Include Firebase for online user tracking -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database.js"></script>
     <style>
         :root {
             --bg-primary: #121212;
@@ -18,6 +15,7 @@
             --accent: #7c4dff;
             --accent-hover: #9370DB;
             --danger: #cf6679;
+            --online: #69f0ae;
         }
         
         * {
@@ -42,16 +40,108 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
         
+        .app-container {
+            flex: 1;
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
         .container {
             flex: 1;
-            max-width: 1000px;
-            margin: 0 auto;
             padding: 1rem;
-            width: 100%;
             display: flex;
             flex-direction: column;
         }
         
+        /* Online Users Panel */
+        .online-users-panel {
+            width: 250px;
+            background-color: var(--bg-secondary);
+            padding: 1rem;
+            overflow-y: auto;
+            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .online-users-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        .online-count {
+            display: flex;
+            align-items: center;
+        }
+        
+        .online-indicator {
+            width: 10px;
+            height: 10px;
+            background-color: var(--online);
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .user-list {
+            list-style: none;
+        }
+        
+        .user-item {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .user-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .user-name {
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+        }
+        
+        .user-id {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        
+        .user-actions button {
+            background: transparent;
+            color: var(--accent);
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .user-actions button:hover {
+            text-decoration: underline;
+        }
+        
+        .refresh-btn {
+            background-color: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .refresh-btn:hover {
+            background-color: rgba(124, 77, 255, 0.1);
+        }
+        
+        /* Main content styles */
         #setup-screen {
             display: flex;
             flex-direction: column;
@@ -190,7 +280,7 @@
         }
         
         .status-connected {
-            color: #69f0ae;
+            color: var(--online);
         }
         
         .status-disconnected {
@@ -219,67 +309,16 @@
             white-space: pre-wrap;
         }
         
-        /* New styles for online users */
-        .online-users-container {
-            background-color: var(--bg-secondary);
-            border-radius: 4px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .online-users-container h3 {
-            margin-bottom: 0.5rem;
-            font-size: 1.2rem;
-            color: var(--accent);
-        }
-        
-        #online-users-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 0.5rem;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .online-user {
-            background-color: #2a2a2a;
-            padding: 0.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            text-align: center;
-            font-family: monospace;
-            font-size: 0.9rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .online-user:hover {
-            background-color: #3a3a3a;
-        }
-        
-        .online-user.self {
-            border: 1px solid var(--accent);
-        }
-        
-        .layout-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        @media screen and (min-width: 900px) {
-            .layout-container {
-                flex-direction: row;
-                align-items: flex-start;
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
             }
             
-            .chat-container {
-                flex: 1;
-            }
-            
-            .online-users-container {
-                width: 300px;
+            .online-users-panel {
+                width: 100%;
+                max-height: 200px;
+                margin-bottom: 1rem;
             }
         }
     </style>
@@ -289,53 +328,58 @@
         <h1>Chat with Strangers</h1>
     </header>
     
-    <div class="container">
-        <div id="setup-screen">
-            <h2>Connect with Others</h2>
-            <p>Choose a user from the list below or share your ID with someone.</p>
-            
-            <div id="my-id-display">
-                <p>Your ID: <span id="my-id">Connecting...</span></p>
-                <p>Share this ID with someone you want to chat with.</p>
+    <div class="app-container">
+        <div class="container">
+            <div id="setup-screen">
+                <h2>Manual Connection Mode</h2>
+                <p>For privacy and security reasons, automatic matching is disabled.</p>
+                
+                <div id="my-id-display">
+                    <p>Your ID: <span id="my-id">Connecting...</span></p>
+                    <p>Share this ID with someone you want to chat with.</p>
+                </div>
+                
+                <form id="connect-form">
+                    <h3>Connect to someone</h3>
+                    <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
+                    <button type="submit" id="connect-btn">Connect</button>
+                </form>
+                
+                <div id="error-display"></div>
             </div>
             
-            <form id="connect-form">
-                <h3>Connect to someone</h3>
-                <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
-                <button type="submit" id="connect-btn">Connect</button>
-            </form>
+            <div id="chat-screen">
+                <div id="connection-status">
+                    <p id="status-text" class="status-disconnected">Disconnected</p>
+                    <p id="username-display"></p>
+                </div>
+                
+                <div id="messages"></div>
+                
+                <form id="message-form">
+                    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                    <button type="submit" id="send-btn" disabled>Send</button>
+                </form>
+                
+                <button id="disconnect-btn">Disconnect</button>
+            </div>
             
-            <div id="error-display"></div>
+            <div id="debug-log"></div>
         </div>
         
-        <div class="layout-container">
-            <div class="online-users-container">
-                <h3>Online Users</h3>
-                <div id="online-users-list">
-                    <p>Loading users...</p>
+        <div class="online-users-panel">
+            <div class="online-users-header">
+                <div class="online-count">
+                    <div class="online-indicator"></div>
+                    <span id="users-count">0 users online</span>
                 </div>
+                <button class="refresh-btn" id="refresh-users-btn">Refresh</button>
             </div>
             
-            <div class="chat-container">
-                <div id="chat-screen">
-                    <div id="connection-status">
-                        <p id="status-text" class="status-disconnected">Disconnected</p>
-                        <p id="username-display"></p>
-                    </div>
-                    
-                    <div id="messages"></div>
-                    
-                    <form id="message-form">
-                        <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
-                        <button type="submit" id="send-btn" disabled>Send</button>
-                    </form>
-                    
-                    <button id="disconnect-btn">Disconnect</button>
-                </div>
-            </div>
+            <ul class="user-list" id="online-users-list">
+                <!-- Online users will be populated here -->
+            </ul>
         </div>
-        
-        <div id="debug-log"></div>
     </div>
     
     <footer>
@@ -359,7 +403,9 @@
         const sendBtn = document.getElementById('send-btn');
         const errorDisplay = document.getElementById('error-display');
         const debugLog = document.getElementById('debug-log');
+        const usersCountDisplay = document.getElementById('users-count');
         const onlineUsersList = document.getElementById('online-users-list');
+        const refreshUsersBtn = document.getElementById('refresh-users-btn');
         
         // Initially hide chat screen
         chatScreen.style.display = 'none';
@@ -370,39 +416,12 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        let peerId;
-        let database;
-        let usersRef;
-        let userStatusRef;
-        let onlineUsers = {};
+        let onlineUsers = new Map(); // Store online users with their info
         
-        // Initialize Firebase (replace with your Firebase project configuration)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDemoKeyForChatWithStrangers",
-            authDomain: "chatwithstrangers-demo.firebaseapp.com",
-            projectId: "chatwithstrangers-demo",
-            storageBucket: "chatwithstrangers-demo.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:a1b2c3d4e5f6a7b8c9d0e1",
-            databaseURL: "https://chatwithstrangers-demo-default-rtdb.firebaseio.com"
-        };
-        
-        // Initialize Firebase
-        function initializeFirebase() {
-            try {
-                // Initialize Firebase
-                firebase.initializeApp(firebaseConfig);
-                database = firebase.database();
-                usersRef = database.ref('online-users');
-                
-                log('Firebase initialized successfully');
-                return true;
-            } catch (error) {
-                log(`Error initializing Firebase: ${error.message}`);
-                showError('Could not connect to user database. Some features may be limited.');
-                return false;
-            }
-        }
+        // Server simulation for tracking online users
+        // In a real app, this would be managed by a server
+        const trackingServerUrl = 'https://chat-tracker-simulation.example';
+        let heartbeatInterval;
         
         // Debug log function
         function log(message) {
@@ -441,9 +460,156 @@
             return result;
         }
         
+        // Simulate server interaction - In a real app, this would be API calls
+        function simulateServerCommunication() {
+            // Simulate users for demo purposes (in production would come from a real server)
+            simulateOnlineUsers();
+            
+            // Set up a heartbeat to update online status
+            heartbeatInterval = setInterval(() => {
+                if (peer && peer.id) {
+                    log('Sending heartbeat to server');
+                    // This would be an actual API call in a real application
+                    // Instead, we're just updating our local simulation
+                    updateOnlineStatus(peer.id, localUsername);
+                }
+            }, 30000); // Every 30 seconds
+        }
+        
+        // Simulate fetching online users
+        function fetchOnlineUsers() {
+            log('Fetching online users');
+            
+            // In a real app, this would be an API call
+            // For this demo, we'll just refresh our simulated users
+            simulateOnlineUsers();
+            updateOnlineUsersUI();
+        }
+        
+        // Update online status
+        function updateOnlineStatus(peerId, username) {
+            log(`Updating online status for ${username} (${peerId})`);
+            
+            // In a real app, this would be an API call
+            // For demo purposes, we'll just update our local Map
+            if (!onlineUsers is .has(peerId)) {
+                onlineUsers.set(peerId, {
+                    id: peerId,
+                    username: username,
+                    lastSeen: new Date()
+                });
+                
+                updateOnlineUsersUI();
+            }
+        }
+        
+        // Remove user from online list
+        function removeOnlineUser(peerId) {
+            log(`Removing user ${peerId} from online list`);
+            
+            // In a real app, this would be an API call
+            onlineUsers.delete(peerId);
+            updateOnlineUsersUI();
+        }
+        
+        // Simulate online users (for demo purposes)
+        function simulateOnlineUsers() {
+            // Keep existing real users
+            const existingUsers = new Map(onlineUsers);
+            
+            // Clear and regenerate
+            onlineUsers.clear();
+            
+            // Add back real users
+            existingUsers.forEach((user, id) => {
+                // Check if user was seen in the last 2 minutes
+                const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+                if (user.lastSeen > twoMinutesAgo) {
+                    onlineUsers.set(id, user);
+                }
+            });
+            
+            // Add our own user if we're connected
+            if (peer && peer.id) {
+                onlineUsers.set(peer.id, {
+                    id: peer.id,
+                    username: localUsername,
+                    lastSeen: new Date()
+                });
+            }
+            
+            // Add some simulated users (in a real app, this would be actual users)
+            if (onlineUsers.size < 5) {
+                const simulatedCount = Math.floor(Math.random() * (10 - onlineUsers.size)) + 1;
+                
+                for (let i = 0; i < simulatedCount; i++) {
+                    const simId = generateSimpleId();
+                    const simUsername = generateUsername();
+                    
+                    if (!onlineUsers.has(simId)) {
+                        onlineUsers.set(simId, {
+                            id: simId,
+                            username: simUsername,
+                            lastSeen: new Date(),
+                            simulated: true
+                        });
+                    }
+                }
+            }
+            
+            log(`Online users updated: ${onlineUsers.size} users`);
+        }
+        
+        // Update the online users UI
+        function updateOnlineUsersUI() {
+            // Update counter
+            usersCountDisplay.textContent = `${onlineUsers.size} users online`;
+            
+            // Clear current list
+            onlineUsersList.innerHTML = '';
+            
+            // Add each user to the list
+            onlineUsers.forEach((user) => {
+                const userItem = document.createElement('li');
+                userItem.classList.add('user-item');
+                
+                const userInfo = document.createElement('div');
+                userInfo.classList.add('user-info');
+                
+                const userName = document.createElement('div');
+                userName.classList.add('user-name');
+                userName.textContent = user.username;
+                
+                const userId = document.createElement('div');
+                userId.classList.add('user-id');
+                userId.textContent = user.id;
+                
+                userInfo.appendChild(userName);
+                userInfo.appendChild(userId);
+                
+                const userActions = document.createElement('div');
+                userActions.classList.add('user-actions');
+                
+                // Don't add connect button to ourselves
+                if (user.id !== peer.id) {
+                    const connectBtn = document.createElement('button');
+                    connectBtn.textContent = 'Connect';
+                    connectBtn.addEventListener('click', () => {
+                        peerIdInput.value = user.id;
+                        connectToPeer(user.id);
+                    });
+                    userActions.appendChild(connectBtn);
+                }
+                
+                userItem.appendChild(userInfo);
+                userItem.appendChild(userActions);
+                onlineUsersList.appendChild(userItem);
+            });
+        }
+        
         // Initialize PeerJS
         function initializePeer() {
-            peerId = generateSimpleId();
+            const peerId = generateSimpleId();
             localUsername = generateUsername();
             
             log(`Initializing PeerJS with ID: ${peerId}`);
@@ -459,10 +625,9 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    // Register as online user
-                    if (database) {
-                        registerOnlineUser(id);
-                    }
+                    // Update our online status and start communication with the "server"
+                    updateOnlineStatus(id, localUsername);
+                    simulateServerCommunication();
                 });
                 
                 peer.on('connection', (conn) => {
@@ -502,69 +667,6 @@
                 log(`Error initializing PeerJS: ${error.message}`);
                 showError(`Failed to initialize connection: ${error.message}`);
             }
-        }
-        
-        // Register as an online user
-        function registerOnlineUser(id) {
-            userStatusRef = usersRef.child(id);
-            
-            // Add this user to the online users list
-            userStatusRef.set({
-                id: id,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-            
-            // Remove the user when they disconnect
-            userStatusRef.onDisconnect().remove();
-            
-            // Listen for online users
-            listenForOnlineUsers();
-        }
-        
-        // Listen for online users
-        function listenForOnlineUsers() {
-            usersRef.on('value', (snapshot) => {
-                onlineUsers = {};
-                onlineUsersList.innerHTML = '';
-                
-                if (snapshot.exists()) {
-                    const users = snapshot.val();
-                    Object.keys(users).forEach(userId => {
-                        onlineUsers[userId] = users[userId];
-                        
-                        // Add user to the list
-                        const userElement = document.createElement('div');
-                        userElement.classList.add('online-user');
-                        if (userId === peerId) {
-                            userElement.classList.add('self');
-                            userElement.textContent = `${userId} (You)`;
-                        } else {
-                            userElement.textContent = userId;
-                            userElement.addEventListener('click', () => {
-                                // Fill in the peer ID input and focus the connect button
-                                peerIdInput.value = userId;
-                                connectBtn.focus();
-                                // Optionally, auto-connect
-                                // connectToPeer(userId);
-                            });
-                        }
-                        onlineUsersList.appendChild(userElement);
-                    });
-                    
-                    log(`Updated online users: ${Object.keys(onlineUsers).length} users`);
-                } else {
-                    const noUsersElement = document.createElement('p');
-                    noUsersElement.textContent = 'No users online';
-                    onlineUsersList.appendChild(noUsersElement);
-                    log('No online users');
-                }
-            });
-            
-            // Handle errors
-            usersRef.on('error', (error) => {
-                log(`Error getting online users: ${error.message}`);
-                showError('Could not retrieve online users');
-            });
         }
         
         // Set up connection event handlers
@@ -751,6 +853,25 @@
             chatScreen.style.display = 'none';
         }
         
+        // Clean up when leaving
+        function cleanUp() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+            
+            if (peer && peer.id) {
+                removeOnlineUser(peer.id);
+            }
+            
+            if (connection) {
+                connection.close();
+            }
+            
+            if (peer) {
+                peer.destroy();
+            }
+        }
+        
         // Event Listeners
         connectForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -774,23 +895,18 @@
         
         disconnectBtn.addEventListener('click', disconnect);
         
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', () => {
-            // Remove from online users
-            if (userStatusRef) {
-                userStatusRef.remove();
-            }
-            
-            // Close peer connection
-            if (peer) {
-                if (connection) connection.close();
-                peer.destroy();
-            }
+        refreshUsersBtn.addEventListener('click', () => {
+            fetchOnlineUsers();
         });
         
-        // Initialize Firebase and PeerJS on page load
-        initializeFirebase();
+        // Clean up when the page is closed
+        window.addEventListener('beforeunload', cleanUp);
+        
+        // Initialize on page load
         initializePeer();
+        // Initial fetch of online users (in a real app, this would be from a server)
+        simulateOnlineUsers();
+        updateOnlineUsersUI();
     </script>
 </body>
 </html>
