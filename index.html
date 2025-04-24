@@ -368,6 +368,9 @@ let onlineUsers = new Map(); // Map to store online users (id -> {username, time
 let trackerConnection;
 let isTracker = false;
 const trackerId = 'user-tracker-xyz123'; // A fixed ID for our user tracker peer
+let trackerPeer = null;
+let heartbeatInterval = null;
+let cleanupInterval = null;
 
 // Debug log function
 function log(message) {
@@ -425,11 +428,56 @@ function copyToClipboard(text) {
     });
 }
 
+// Function to send user list to a specific connection
+function sendUserList(conn) {
+    try {
+        // Convert the map to an array of user objects
+        const userArray = Array.from(onlineUsers.entries()).map(([userId, userData]) => {
+            return {
+                userId: userId,
+                username: userData.username,
+                timestamp: userData.timestamp
+            };
+        });
+        
+        conn.send({
+            type: 'userList',
+            users: userArray
+        });
+        log(`Sent user list to ${conn.peer} with ${userArray.length} users`);
+    } catch (err) {
+        log(`Error sending user list to ${conn.peer}: ${err.message}`);
+    }
+}
+
+// Function to broadcast user list to all connections
+function broadcastUserList() {
+    log(`Broadcasting user list with ${onlineUsers.size} users`);
+    
+    if (trackerPeer && trackerPeer.connections) {
+        // Loop through all connections and send the updated list
+        Object.keys(trackerPeer.connections).forEach(peerId => {
+            const conns = trackerPeer.connections[peerId];
+            if (Array.isArray(conns)) {
+                conns.forEach(conn => {
+                    if (conn && conn.open) {
+                        sendUserList(conn);
+                    }
+                });
+            }
+        });
+    }
+}
+
 // Connect to the tracker
 function connectToTracker() {
     log('Connecting to user tracker...');
     
-    // First check if tracker exists by trying to connect to it directly
+    if (trackerConnection) {
+        // Close existing connection first
+        trackerConnection.close();
+    }
+    
     try {
         // Try to connect to the tracker
         trackerConnection = peer.connect(trackerId, {
@@ -452,7 +500,11 @@ function connectToTracker() {
             });
             
             // Set up heartbeat to keep registration active
-            const heartbeatInterval = setInterval(() => {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+            
+            heartbeatInterval = setInterval(() => {
                 if (trackerConnection && trackerConnection.open) {
                     trackerConnection.send({
                         type: 'heartbeat',
@@ -463,6 +515,7 @@ function connectToTracker() {
                     log('Sent heartbeat to tracker');
                 } else {
                     clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
                 }
             }, 20000); // Send heartbeat every 20 seconds
             
@@ -477,20 +530,20 @@ function connectToTracker() {
                 onlineUsers = new Map();
                 
                 // Parse the user list properly
-                data.users.forEach(user => {
-                    onlineUsers.set(user.userId, {
-                        username: user.username,
-                        timestamp: user.timestamp
-                    });
-                });
-                
-                // Always ensure we're in the list
-                if (!onlineUsers.has(peer.id)) {
-                    onlineUsers.set(peer.id, { 
-                        username: localUsername,
-                        timestamp: Date.now()
+                if (Array.isArray(data.users)) {
+                    data.users.forEach(user => {
+                        onlineUsers.set(user.userId, {
+                            username: user.username,
+                            timestamp: user.timestamp
+                        });
                     });
                 }
+                
+                // Always ensure we're in the list
+                onlineUsers.set(peer.id, { 
+                    username: localUsername,
+                    timestamp: Date.now()
+                });
                 
                 updateOnlineUsersList();
             } else if (data.type === 'reregister') {
@@ -504,9 +557,22 @@ function connectToTracker() {
             }
         });
         
-        trackerConnection.on('error', () => {
-            log('Error connecting to tracker, attempting to become tracker');
-            becomeTracker();
+        trackerConnection.on('error', (err) => {
+            log(`Error with tracker connection: ${err}`);
+            trackerConnection = null;
+            setTimeout(() => {
+                becomeTracker();
+            }, 2000);
+        });
+        
+        trackerConnection.on('close', () => {
+            log('Tracker connection closed');
+            trackerConnection = null;
+            
+            // Try to become the tracker
+            setTimeout(() => {
+                becomeTracker();
+            }, 2000);
         });
         
     } catch (error) {
@@ -517,6 +583,11 @@ function connectToTracker() {
 
 // Become the user tracker (if one doesn't exist)
 function becomeTracker() {
+    if (isTracker) {
+        log('Already acting as tracker');
+        return;
+    }
+    
     log('Attempting to become the user tracker');
     
     // Add ourselves to the user list immediately
@@ -528,7 +599,7 @@ function becomeTracker() {
     
     // Create a new peer with the tracker ID
     try {
-        const trackerPeer = new Peer(trackerId, {
+        trackerPeer = new Peer(trackerId, {
             debug: 2
         });
         
@@ -546,9 +617,14 @@ function becomeTracker() {
             updateOnlineUsersList();
             
             // Clean up inactive users periodically
-            const cleanupInterval = setInterval(() => {
+            if (cleanupInterval) {
+                clearInterval(cleanupInterval);
+            }
+            
+            cleanupInterval = setInterval(() => {
                 if (!isTracker) {
                     clearInterval(cleanupInterval);
+                    cleanupInterval = null;
                     return;
                 }
                 
@@ -575,7 +651,7 @@ function becomeTracker() {
             log(`Tracker received connection from: ${conn.peer}`);
             
             conn.on('open', () => {
-                // Send current user list
+                // Send current user list immediately
                 sendUserList(conn);
             });
             
@@ -599,10 +675,11 @@ function becomeTracker() {
                 }
                 else if (data.type === 'heartbeat') {
                     // Update user's timestamp
-                    const userData = onlineUsers.get(data.userId);
-                    if (userData) {
-                        userData.timestamp = data.timestamp || Date.now();
-                        onlineUsers.set(data.userId, userData);
+                    if (onlineUsers.has(data.userId)) {
+                        onlineUsers.set(data.userId, {
+                            username: onlineUsers.get(data.userId).username,
+                            timestamp: data.timestamp || Date.now()
+                        });
                         log(`Updated heartbeat for: ${data.userId}`);
                     } else {
                         // If user not found, ask them to register again
@@ -628,6 +705,7 @@ function becomeTracker() {
         trackerPeer.on('error', (err) => {
             log(`Tracker peer error: ${err.type}`);
             isTracker = false;
+            trackerPeer = null;
             
             // If we couldn't become the tracker, try to connect as a client again
             if (err.type === 'unavailable-id') {
@@ -638,51 +716,17 @@ function becomeTracker() {
         
     } catch (error) {
         log(`Error becoming tracker: ${error.message}`);
+        isTracker = false;
+        
         // If we fail to become tracker, add ourselves to local list at least
         onlineUsers.set(peer.id, {
             username: localUsername,
             timestamp: Date.now()
         });
         updateOnlineUsersList();
-    }
-    
-    // Function to send user list to a specific connection
-    function sendUserList(conn) {
-        try {
-            // Convert the map to an array of user objects
-            const userArray = Array.from(onlineUsers.entries()).map(([userId, userData]) => {
-                return {
-                    userId: userId,
-                    username: userData.username,
-                    timestamp: userData.timestamp
-                };
-            });
-            
-            conn.send({
-                type: 'userList',
-                users: userArray
-            });
-            log(`Sent user list to ${conn.peer} with ${userArray.length} users`);
-        } catch (err) {
-            log(`Error sending user list to ${conn.peer}: ${err.message}`);
-        }
-    }
-    
-    // Function to broadcast user list to all connections
-    function broadcastUserList() {
-        log(`Broadcasting user list with ${onlineUsers.size} users`);
         
-        // Check if trackerPeer.connections exists
-        if (trackerPeer && trackerPeer.connections) {
-            Object.keys(trackerPeer.connections).forEach(peerId => {
-                const conns = trackerPeer.connections[peerId];
-                conns.forEach(conn => {
-                    if (conn && conn.open) {
-                        sendUserList(conn);
-                    }
-                });
-            });
-        }
+        // Try to connect as client again after a delay
+        setTimeout(connectToTracker, 5000);
     }
 }
 
@@ -827,6 +871,7 @@ function handleDisconnect(message) {
     log(`Disconnected: ${message}`);
     
     isConnected = false;
+    connection = null;
     messageInput.disabled = true;
     sendBtn.disabled = true;
     updateStatus('Disconnected');
@@ -994,7 +1039,7 @@ function initializePeer() {
             myIdDisplay.textContent = id;
             usernameDisplay.textContent = `Your username: ${localUsername}`;
             
-            // Always add ourselves to the local list first
+            // Always add ourselves to the local list first  
             onlineUsers.set(id, {
                 username: localUsername,
                 timestamp: Date.now()
@@ -1046,7 +1091,7 @@ function initializePeer() {
         
         peer.on('disconnected', () => {
             log('Peer disconnected from server');
-            showError('Disconnected from server. Click to reconnect.');
+            showError('Disconnected from server. Attempting to reconnect...');
             
             // Try to reconnect
             setTimeout(() => {
@@ -1089,8 +1134,17 @@ document.getElementById('my-id').addEventListener('click', function() {
 
 // Clean up when the page is closed
 window.addEventListener('beforeunload', () => {
+    // Stop intervals
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    if (cleanupInterval) clearInterval(cleanupInterval);
+    
     // Unregister from tracker
     unregisterFromTracker();
+    
+    // Clean up PeerJS connections
+    if (isTracker && trackerPeer) {
+        trackerPeer.destroy();
+    }
     
     if (peer) {
         if (connection) connection.close();
