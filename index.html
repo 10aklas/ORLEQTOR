@@ -425,320 +425,331 @@
             });
         }
         
-        // Update online users list in UI
-        function updateOnlineUsersList() {
-            onlineUsersCount.textContent = onlineUsers.size;
-            onlineUsersList.innerHTML = '';
-            
-            // For debugging:
-            log(`Updating users list with ${onlineUsers.size} users`);
-            
-            onlineUsers.forEach((userData, userId) => {
-                const li = document.createElement('li');
-                
-                // Create left side with status indicator and username
-                const leftSide = document.createElement('div');
-                leftSide.style.display = 'flex';
-                leftSide.style.alignItems = 'center';
-                
-                const statusIndicator = document.createElement('span');
-                statusIndicator.classList.add('user-status-indicator');
-                
-                const usernameSpan = document.createElement('span');
-                usernameSpan.textContent = userData.username;
-                
-                leftSide.appendChild(statusIndicator);
-                leftSide.appendChild(usernameSpan);
-                
-                // Create right side with user ID and copy button
-                const rightSide = document.createElement('div');
-                rightSide.style.display = 'flex';
-                rightSide.style.alignItems = 'center';
-                
-                const userIdSpan = document.createElement('span');
-                userIdSpan.classList.add('user-id');
-                userIdSpan.textContent = userId;
-                
-                const copyButton = document.createElement('button');
-                copyButton.classList.add('copy-id-btn');
-                copyButton.textContent = 'Copy';
-                copyButton.onclick = function(e) {
-                    e.preventDefault();
-                    copyToClipboard(userId);
-                    copyButton.textContent = 'Copied!';
-                    setTimeout(() => {
-                        copyButton.textContent = 'Copy';
-                    }, 2000);
-                };
-                
-                rightSide.appendChild(userIdSpan);
-                rightSide.appendChild(copyButton);
-                
-                // If this is you, add an indicator
-                if (userId === peer.id) {
-                    const youBadge = document.createElement('span');
-                    youBadge.textContent = ' (You)';
-                    youBadge.style.marginLeft = '0.5rem';
-                    youBadge.style.opacity = '0.7';
-                    leftSide.appendChild(youBadge);
-                }
-                
-                li.appendChild(leftSide);
-                li.appendChild(rightSide);
-                
-                onlineUsersList.appendChild(li);
-            });
+        // Replace the connectToTracker function with this improved version
+function connectToTracker() {
+    log('Connecting to user tracker...');
+    
+    // Try to connect to the tracker
+    trackerConnection = peer.connect(trackerId, {
+        reliable: true,
+        metadata: {
+            type: 'tracker-connection',
+            username: localUsername
         }
+    });
+    
+    trackerConnection.on('open', () => {
+        log('Connected to user tracker');
         
-        // Connect to the user tracker
-        function connectToTracker() {
-            log('Connecting to user tracker...');
-            
-            try {
-                // Try to connect to the tracker
-                trackerConnection = peer.connect(trackerId, {
-                    reliable: true,
-                    metadata: {
-                        type: 'tracker-connection',
-                        username: localUsername
-                    }
+        // Register ourselves
+        trackerConnection.send({
+            type: 'register',
+            userId: peer.id,
+            username: localUsername,
+            timestamp: Date.now()
+        });
+        
+        // Set up heartbeat to keep registration active
+        const heartbeatInterval = setInterval(() => {
+            if (trackerConnection && trackerConnection.open) {
+                trackerConnection.send({
+                    type: 'heartbeat',
+                    userId: peer.id,
+                    username: localUsername,
+                    timestamp: Date.now()
                 });
-                
-                trackerConnection.on('open', () => {
-                    log('Connected to user tracker');
-                    
-                    // Register ourselves
-                    trackerConnection.send({
-                        type: 'register',
-                        userId: peer.id,
-                        username: localUsername,
-                        timestamp: Date.now()
-                    });
-                    
-                    // Set up heartbeat to keep registration active
-                    const heartbeatInterval = setInterval(() => {
-                        if (trackerConnection && trackerConnection.open) {
-                            trackerConnection.send({
-                                type: 'heartbeat',
-                                userId: peer.id,
-                                timestamp: Date.now()
-                            });
-                            log('Sent heartbeat to tracker');
-                        } else {
-                            clearInterval(heartbeatInterval);
-                        }
-                    }, 20000); // Send heartbeat every 20 seconds
-                    
-                    showError('Connected to user tracker', false);
-                });
-                
-                trackerConnection.on('data', (data) => {
-                    log(`Received tracker data: ${JSON.stringify(data)}`);
-                    
-                    if (data.type === 'userList') {
-                        // Update our local copy of online users
-                        onlineUsers = new Map(data.users);
-                        
-                        // Always ensure we're in the list
-                        if (!onlineUsers.has(peer.id)) {
-                            onlineUsers.set(peer.id, { 
-                                username: localUsername,
-                                timestamp: Date.now()
-                            });
-                        }
-                        
-                        updateOnlineUsersList();
-                    }
-                });
-                
-                trackerConnection.on('close', () => {
-                    log('User tracker connection closed');
-                    // Try to reconnect after a delay
-                    setTimeout(connectToTracker, 3000);
-                });
-                
-                trackerConnection.on('error', (err) => {
-                    log(`User tracker connection error: ${err}`);
-                    
-                    // Try to reconnect after a delay
-                    setTimeout(connectToTracker, 3000);
-                });
-                
-            } catch (error) {
-                log(`Error connecting to tracker: ${error.message}`);
-                
-                // Try to become the tracker
-                becomeTracker();
+                log('Sent heartbeat to tracker');
+            } else {
+                clearInterval(heartbeatInterval);
             }
-        }
+        }, 20000); // Send heartbeat every 20 seconds
         
-        // Become the user tracker (if one doesn't exist)
-        function becomeTracker() {
-            log('Attempting to become the user tracker');
+        showError('Connected to user tracker', false);
+    });
+    
+    trackerConnection.on('data', (data) => {
+        log(`Received tracker data: ${JSON.stringify(data)}`);
+        
+        if (data.type === 'userList') {
+            // Update our local copy of online users
+            onlineUsers = new Map();
             
-            // Add ourselves to the user list immediately
-            onlineUsers.set(peer.id, {
+            // Parse the user list properly
+            data.users.forEach(userEntry => {
+                const [userId, userData] = userEntry;
+                onlineUsers.set(userId, userData);
+            });
+            
+            // Always ensure we're in the list
+            if (!onlineUsers.has(peer.id)) {
+                onlineUsers.set(peer.id, { 
+                    username: localUsername,
+                    timestamp: Date.now()
+                });
+            }
+            
+            updateOnlineUsersList();
+        } else if (data.type === 'reregister') {
+            // The tracker asked us to register again
+            trackerConnection.send({
+                type: 'register',
+                userId: peer.id,
                 username: localUsername,
                 timestamp: Date.now()
             });
-            updateOnlineUsersList();
+        }
+    });
+    
+    trackerConnection.on('close', () => {
+        log('User tracker connection closed');
+        // Try to reconnect after a delay
+        setTimeout(() => {
+            try {
+                if (peer && peer.id) {
+                    connectToTracker();
+                }
+            } catch (err) {
+                log(`Error reconnecting to tracker: ${err}`);
+            }
+        }, 3000);
+    });
+    
+    trackerConnection.on('error', (err) => {
+        log(`User tracker connection error: ${err}`);
+        
+        // Try to reconnect after a delay
+        setTimeout(() => {
+            try {
+                if (peer && peer.id) {
+                    connectToTracker();
+                }
+            } catch (err) {
+                log(`Error reconnecting to tracker: ${err}`);
+            }
+        }, 3000);
+    });
+}
+
+// Replace the becomeTracker function with this improved version
+function becomeTracker() {
+    log('Attempting to become the user tracker');
+    
+    // Add ourselves to the user list immediately
+    onlineUsers.set(peer.id, {
+        username: localUsername,
+        timestamp: Date.now()
+    });
+    updateOnlineUsersList();
+    
+    // Create a new peer with the tracker ID
+    const trackerPeer = new Peer(trackerId, {
+        debug: 2
+    });
+    
+    trackerPeer.on('open', (id) => {
+        log(`Tracker peer connected with ID: ${id}`);
+        isTracker = true;
+        
+        showError('You are now hosting the user tracker', false);
+        
+        // Clean up inactive users periodically
+        const cleanupInterval = setInterval(() => {
+            if (!isTracker) {
+                clearInterval(cleanupInterval);
+                return;
+            }
             
-            // Create a new peer with the tracker ID
-            const trackerPeer = new Peer(trackerId, {
-                debug: 2
-            });
+            const now = Date.now();
+            let hasChanges = false;
             
-            trackerPeer.on('open', (id) => {
-                log(`Tracker peer connected with ID: ${id}`);
-                isTracker = true;
-                
-                showError('You are now hosting the user tracker', false);
-                
-                // Clean up inactive users periodically
-                const cleanupInterval = setInterval(() => {
-                    if (!isTracker) {
-                        clearInterval(cleanupInterval);
-                        return;
-                    }
-                    
-                    const now = Date.now();
-                    let hasChanges = false;
-                    
-                    onlineUsers.forEach((userData, userId) => {
-                        // Remove users inactive for more than 1 minute
-                        if (now - userData.timestamp > 60000) {
-                            log(`Removing inactive user: ${userId}`);
-                            onlineUsers.delete(userId);
-                            hasChanges = true;
-                        }
-                    });
-                    
-                    if (hasChanges) {
-                        broadcastUserList();
-                        updateOnlineUsersList();
-                    }
-                }, 30000); // Check every 30 seconds
-            });
-            
-            trackerPeer.on('connection', (conn) => {
-                log(`Tracker received connection from: ${conn.peer}`);
-                
-                conn.on('open', () => {
-                    // Send current user list
-                    sendUserList(conn);
-                });
-                
-                conn.on('data', (data) => {
-                    log(`Tracker received data: ${JSON.stringify(data)}`);
-                    
-                    if (data.type === 'register') {
-                        // Add user to our list
-                        onlineUsers.set(data.userId, {
-                            username: data.username,
-                            timestamp: data.timestamp || Date.now()
-                        });
-                        
-                        log(`Registered user: ${data.userId} (${data.username})`);
-                        
-                        // Broadcast updated list to all connections
-                        broadcastUserList();
-                        
-                        // Update our own UI
-                        updateOnlineUsersList();
-                    }
-                    else if (data.type === 'heartbeat') {
-                        // Update user's timestamp
-                        const userData = onlineUsers.get(data.userId);
-                        if (userData) {
-                            userData.timestamp = data.timestamp || Date.now();
-                            onlineUsers.set(data.userId, userData);
-                            log(`Updated heartbeat for: ${data.userId}`);
-                        } else {
-                            // If user not found, ask them to register again
-                            conn.send({
-                                type: 'reregister'
-                            });
-                        }
-                    }
-                    else if (data.type === 'unregister') {
-                        // Remove user from our list
-                        onlineUsers.delete(data.userId);
-                        log(`Unregistered user: ${data.userId}`);
-                        
-                        // Broadcast updated list
-                        broadcastUserList();
-                        
-                        // Update our own UI
-                        updateOnlineUsersList();
-                    }
-                });
-                
-                conn.on('close', () => {
-                    log(`Tracker connection closed: ${conn.peer}`);
-                    // Note: We don't immediately remove users on connection close
-                    // The heartbeat system will clean them up if they don't reconnect
-                });
-                
-                conn.on('error', (err) => {
-                    log(`Tracker connection error for ${conn.peer}: ${err}`);
-                });
-            });
-            
-            trackerPeer.on('error', (err) => {
-                log(`Tracker peer error: ${err.type}`);
-                isTracker = false;
-                
-                // If we couldn't become the tracker, try to connect as a client again
-                if (err.type === 'unavailable-id') {
-                    log('Tracker ID is already taken, reverting to client mode');
-                    setTimeout(connectToTracker, 2000);
+            onlineUsers.forEach((userData, userId) => {
+                // Remove users inactive for more than 1 minute
+                if (now - userData.timestamp > 60000) {
+                    log(`Removing inactive user: ${userId}`);
+                    onlineUsers.delete(userId);
+                    hasChanges = true;
                 }
             });
             
-            // Function to send user list to a specific connection
-            function sendUserList(conn) {
-                try {
+            if (hasChanges) {
+                broadcastUserList();
+                updateOnlineUsersList();
+            }
+        }, 30000); // Check every 30 seconds
+    });
+    
+    trackerPeer.on('connection', (conn) => {
+        log(`Tracker received connection from: ${conn.peer}`);
+        
+        conn.on('open', () => {
+            // Send current user list
+            sendUserList(conn);
+        });
+        
+        conn.on('data', (data) => {
+            log(`Tracker received data: ${JSON.stringify(data)}`);
+            
+            if (data.type === 'register') {
+                // Add user to our list
+                onlineUsers.set(data.userId, {
+                    username: data.username,
+                    timestamp: data.timestamp || Date.now()
+                });
+                
+                log(`Registered user: ${data.userId} (${data.username})`);
+                
+                // Broadcast updated list to all connections
+                broadcastUserList();
+                
+                // Update our own UI
+                updateOnlineUsersList();
+            }
+            else if (data.type === 'heartbeat') {
+                // Update user's timestamp
+                const userData = onlineUsers.get(data.userId);
+                if (userData) {
+                    userData.timestamp = data.timestamp || Date.now();
+                    onlineUsers.set(data.userId, userData);
+                    log(`Updated heartbeat for: ${data.userId}`);
+                } else {
+                    // If user not found, ask them to register again
                     conn.send({
-                        type: 'userList',
-                        users: Array.from(onlineUsers)
+                        type: 'reregister'
                     });
-                    log(`Sent user list to ${conn.peer} with ${onlineUsers.size} users`);
-                } catch (err) {
-                    log(`Error sending user list to ${conn.peer}: ${err.message}`);
                 }
             }
-            
-            // Function to broadcast user list to all connections
-            function broadcastUserList() {
-                log(`Broadcasting user list with ${onlineUsers.size} users`);
+            else if (data.type === 'unregister') {
+                // Remove user from our list
+                onlineUsers.delete(data.userId);
+                log(`Unregistered user: ${data.userId}`);
                 
-                for (const peerId in trackerPeer.connections) {
-                    const conns = trackerPeer.connections[peerId];
-                    conns.forEach(conn => {
-                        if (conn.open) {
-                            sendUserList(conn);
-                        }
-                    });
-                }
+                // Broadcast updated list
+                broadcastUserList();
+                
+                // Update our own UI
+                updateOnlineUsersList();
             }
+        });
+        
+        conn.on('close', () => {
+            log(`Tracker connection closed: ${conn.peer}`);
+            // Note: We don't immediately remove users on connection close
+            // The heartbeat system will clean them up if they don't reconnect
+        });
+        
+        conn.on('error', (err) => {
+            log(`Tracker connection error for ${conn.peer}: ${err}`);
+        });
+    });
+    
+    trackerPeer.on('error', (err) => {
+        log(`Tracker peer error: ${err.type}`);
+        isTracker = false;
+        
+        // If we couldn't become the tracker, try to connect as a client again
+        if (err.type === 'unavailable-id') {
+            log('Tracker ID is already taken, reverting to client mode');
+            setTimeout(connectToTracker, 2000);
+        }
+    });
+    
+    // Function to send user list to a specific connection
+    function sendUserList(conn) {
+        try {
+            conn.send({
+                type: 'userList',
+                users: Array.from(onlineUsers)
+            });
+            log(`Sent user list to ${conn.peer} with ${onlineUsers.size} users`);
+        } catch (err) {
+            log(`Error sending user list to ${conn.peer}: ${err.message}`);
+        }
+    }
+    
+    // Function to broadcast user list to all connections
+    function broadcastUserList() {
+        log(`Broadcasting user list with ${onlineUsers.size} users`);
+        
+        trackerPeer.connections && Object.keys(trackerPeer.connections).forEach(peerId => {
+            const conns = trackerPeer.connections[peerId];
+            conns.forEach(conn => {
+                if (conn.open) {
+                    sendUserList(conn);
+                }
+            });
+        });
+    }
+}
+
+// Update the updateOnlineUsersList function for better debugging
+function updateOnlineUsersList() {
+    onlineUsersCount.textContent = onlineUsers.size;
+    onlineUsersList.innerHTML = '';
+    
+    // For debugging:
+    log(`Updating users list with ${onlineUsers.size} users`);
+    
+    onlineUsers.forEach((userData, userId) => {
+        // Debug each user
+        log(`User in list: ${userId} - ${userData.username}`);
+        
+        const li = document.createElement('li');
+        
+        // Create left side with status indicator and username
+        const leftSide = document.createElement('div');
+        leftSide.style.display = 'flex';
+        leftSide.style.alignItems = 'center';
+        
+        const statusIndicator = document.createElement('span');
+        statusIndicator.classList.add('user-status-indicator');
+        
+        const usernameSpan = document.createElement('span');
+        usernameSpan.textContent = userData.username;
+        
+        leftSide.appendChild(statusIndicator);
+        leftSide.appendChild(usernameSpan);
+        
+        // Create right side with user ID and copy button
+        const rightSide = document.createElement('div');
+        rightSide.style.display = 'flex';
+        rightSide.style.alignItems = 'center';
+        
+        const userIdSpan = document.createElement('span');
+        userIdSpan.classList.add('user-id');
+        userIdSpan.textContent = userId;
+        
+        const copyButton = document.createElement('button');
+        copyButton.classList.add('copy-id-btn');
+        copyButton.textContent = 'Copy';
+        copyButton.onclick = function(e) {
+            e.preventDefault();
+            copyToClipboard(userId);
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+                copyButton.textContent = 'Copy';
+            }, 2000);
+        };
+        
+        rightSide.appendChild(userIdSpan);
+        rightSide.appendChild(copyButton);
+        
+        // If this is you, add an indicator
+        if (userId === peer.id) {
+            const youBadge = document.createElement('span');
+            youBadge.textContent = ' (You)';
+            youBadge.style.marginLeft = '0.5rem';
+            youBadge.style.opacity = '0.7';
+            leftSide.appendChild(youBadge);
         }
         
-        // Unregister from the tracker
-        function unregisterFromTracker() {
-            if (trackerConnection && trackerConnection.open) {
-                log('Unregistering from user tracker');
-                
-                trackerConnection.send({
-                    type: 'unregister',
-                    userId: peer.id
-                });
-                
-                // Wait a bit for the message to be sent before closing
-                setTimeout(() => {
-                    trackerConnection.close();
-                }, 500);
-            }
-        }
+        li.appendChild(leftSide);
+        li.appendChild(rightSide);
+        
+        onlineUsersList.appendChild(li);
+    });
+}
+
+
         
         // Initialize PeerJS
         function initializePeer() {
