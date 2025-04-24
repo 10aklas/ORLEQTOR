@@ -216,7 +216,7 @@
             white-space: pre-wrap;
         }
         
-        /* New styles for online users panel */
+        /* Improved styles for online users panel */
         #online-users-panel {
             background-color: var(--bg-secondary);
             border-radius: 4px;
@@ -239,10 +239,19 @@
         #online-users-list li {
             padding: 0.5rem;
             border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         #online-users-list li:last-child {
             border-bottom: none;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
         }
         
         .user-status-indicator {
@@ -251,7 +260,38 @@
             height: 8px;
             border-radius: 50%;
             background-color: #69f0ae;
-            margin-right: 5px;
+            margin-right: 8px;
+        }
+        
+        .user-id {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+            padding-left: 10px;
+            word-break: break-all;
+            max-width: 120px;
+            text-align: right;
+        }
+        
+        .connect-to-user {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .connect-to-user:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        .user-info-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
         }
     </style>
 </head>
@@ -261,7 +301,7 @@
     </header>
     
     <div class="container">
-        <!-- New Online Users Panel -->
+        <!-- Improved Online Users Panel -->
         <div id="online-users-panel">
             <h3>Online Users: <span id="user-count">0</span></h3>
             <ul id="online-users-list">
@@ -382,7 +422,13 @@
             return result;
         }
         
-        // Update online users list UI
+        // Connect to a user from the online users list
+        function connectToOnlineUser(peerId) {
+            peerIdInput.value = peerId;
+            connectToPeer(peerId);
+        }
+        
+        // Update online users list UI with IDs
         function updateOnlineUsersList() {
             // Clear the list
             onlineUsersList.innerHTML = '';
@@ -394,13 +440,41 @@
             onlineUsers.forEach((username, id) => {
                 const li = document.createElement('li');
                 
+                // Create user info wrapper
+                const userInfoWrapper = document.createElement('div');
+                userInfoWrapper.classList.add('user-info-wrapper');
+                
+                // Create user info section (indicator + username)
+                const userInfo = document.createElement('div');
+                userInfo.classList.add('user-info');
+                
                 const indicator = document.createElement('span');
                 indicator.classList.add('user-status-indicator');
                 
                 const userText = document.createTextNode(username + (id === peer.id ? ' (You)' : ''));
                 
-                li.appendChild(indicator);
-                li.appendChild(userText);
+                userInfo.appendChild(indicator);
+                userInfo.appendChild(userText);
+                
+                // Create user ID section
+                const userIdSpan = document.createElement('span');
+                userIdSpan.classList.add('user-id');
+                userIdSpan.textContent = id;
+                
+                // Add elements to the wrapper
+                userInfoWrapper.appendChild(userInfo);
+                userInfoWrapper.appendChild(userIdSpan);
+                
+                // Add connect button for other users
+                if (id !== peer.id && !isConnected) {
+                    const connectBtn = document.createElement('button');
+                    connectBtn.classList.add('connect-to-user');
+                    connectBtn.textContent = 'Connect';
+                    connectBtn.addEventListener('click', () => connectToOnlineUser(id));
+                    userInfoWrapper.appendChild(connectBtn);
+                }
+                
+                li.appendChild(userInfoWrapper);
                 onlineUsersList.appendChild(li);
             });
         }
@@ -409,6 +483,11 @@
         function addOnlineUser(id, username) {
             if (!onlineUsers.has(id)) {
                 log(`Adding user to online list: ${username} (${id})`);
+                onlineUsers.set(id, username);
+                updateOnlineUsersList();
+            } else if (onlineUsers.get(id) !== username) {
+                // Update username if changed
+                log(`Updating username for ${id}: ${onlineUsers.get(id)} -> ${username}`);
                 onlineUsers.set(id, username);
                 updateOnlineUsersList();
             }
@@ -423,9 +502,22 @@
             }
         }
         
+        // Clean up stale users
+        function cleanupStaleUsers() {
+            const now = Date.now();
+            const staleTimeout = 15000; // 15 seconds
+            
+            onlineUsers.forEach((userData, id) => {
+                if (userData.lastSeen && now - userData.lastSeen > staleTimeout) {
+                    log(`Removing stale user: ${userData.username} (${id})`);
+                    removeOnlineUser(id);
+                }
+            });
+        }
+        
         // Send heartbeat to other connected peers
         function sendHeartbeat() {
-            // Add ourselves to the list
+            // Add ourselves to the list with timestamp
             if (peer && peer.id) {
                 addOnlineUser(peer.id, localUsername);
             }
@@ -433,9 +525,15 @@
             // If we're connected to a peer, send them our online users list
             if (isConnected && connection) {
                 try {
+                    // Convert the Map to an array for transmission
+                    const usersArray = Array.from(onlineUsers.entries()).map(([id, username]) => {
+                        return [id, username];
+                    });
+                    
                     connection.send({
                         type: 'heartbeat',
-                        users: Array.from(onlineUsers.entries())
+                        users: usersArray,
+                        timestamp: Date.now()
                     });
                 } catch (error) {
                     log(`Error sending heartbeat: ${error.message}`);
@@ -475,7 +573,26 @@
                         connection = conn;
                         setupConnection();
                     } else {
-                        conn.close();
+                        // If already connected, still accept the connection to exchange user lists
+                        conn.on('open', () => {
+                            conn.send({
+                                type: 'busy',
+                                message: 'Already in a chat session'
+                            });
+                            
+                            // Exchange user lists
+                            conn.send({
+                                type: 'heartbeat',
+                                users: Array.from(onlineUsers.entries()),
+                                timestamp: Date.now()
+                            });
+                            
+                            conn.on('data', (data) => {
+                                if (data.type === 'heartbeat') {
+                                    processHeartbeat(data);
+                                }
+                            });
+                        });
                     }
                 });
                 
@@ -516,6 +633,9 @@
             // Send heartbeats every 5 seconds
             userHeartbeatInterval = setInterval(sendHeartbeat, 5000);
             
+            // Clean up stale users every 10 seconds
+            trackOnlineUsersInterval = setInterval(cleanupStaleUsers, 10000);
+            
             // Send first heartbeat immediately
             sendHeartbeat();
         }
@@ -526,7 +646,9 @@
             
             // Update our online users list with the received data
             heartbeatData.users.forEach(([id, username]) => {
-                addOnlineUser(id, username);
+                if (id !== peer.id) { // Don't overwrite our own data
+                    addOnlineUser(id, username);
+                }
             });
         }
         
@@ -563,6 +685,9 @@
                 systemMessage.style.margin = '0.5rem 0';
                 systemMessage.style.color = 'var(--accent)';
                 messagesContainer.appendChild(systemMessage);
+                
+                // Update UI to reflect connected state
+                updateOnlineUsersList();
             });
             
             connection.on('data', (data) => {
@@ -578,15 +703,15 @@
                     addMessage(data.text, false);
                 } else if (data.type === 'heartbeat') {
                     processHeartbeat(data);
+                } else if (data.type === 'busy') {
+                    showError(data.message || 'User is busy');
+                    connection.close();
                 }
             });
             
             connection.on('close', () => {
                 log('Connection closed');
-                // Remove the remote user from the online users list
-                if (connection && connection.peer) {
-                    removeOnlineUser(connection.peer);
-                }
+                // Don't remove from online users list immediately - wait for heartbeat timeout
                 handleDisconnect('Chat partner disconnected');
             });
             
@@ -618,6 +743,9 @@
             setTimeout(() => {
                 setupScreen.style.display = 'flex';
                 chatScreen.style.display = 'none';
+                
+                // Update UI to reflect disconnected state
+                updateOnlineUsersList();
             }, 3000);
         }
         
@@ -724,6 +852,9 @@
             // Show setup screen
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
+            
+            // Update UI to reflect disconnected state
+            updateOnlineUsersList();
         }
         
         // Event Listeners
