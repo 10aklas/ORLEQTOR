@@ -380,8 +380,8 @@
         let remoteUsername;
         let isConnected = false;
         
-        // Online users tracking
-        const onlineUsers = new Map(); // Map to store online users (id -> username)
+        // Online users tracking - store as Map with user ID as key and username string as value
+        const onlineUsers = new Map();
         let userHeartbeatInterval;
         let trackOnlineUsersInterval;
         
@@ -502,17 +502,11 @@
             }
         }
         
-        // Clean up stale users
+        // Clean up stale users - simplified since we're using a simpler data structure
         function cleanupStaleUsers() {
-            const now = Date.now();
-            const staleTimeout = 15000; // 15 seconds
-            
-            onlineUsers.forEach((userData, id) => {
-                if (userData.lastSeen && now - userData.lastSeen > staleTimeout) {
-                    log(`Removing stale user: ${userData.username} (${id})`);
-                    removeOnlineUser(id);
-                }
-            });
+            // This could be expanded to track timestamps for each user if needed
+            // For now, we'll just refresh the list visually
+            updateOnlineUsersList();
         }
         
         // Send heartbeat to other connected peers
@@ -525,10 +519,8 @@
             // If we're connected to a peer, send them our online users list
             if (isConnected && connection) {
                 try {
-                    // Convert the Map to an array for transmission
-                    const usersArray = Array.from(onlineUsers.entries()).map(([id, username]) => {
-                        return [id, username];
-                    });
+                    // Convert the Map to an array for transmission - just simple [id, username] pairs
+                    const usersArray = Array.from(onlineUsers.entries());
                     
                     connection.send({
                         type: 'heartbeat',
@@ -640,16 +632,27 @@
             sendHeartbeat();
         }
         
-        // Process received heartbeat data
+        // Process received heartbeat data - fixed function to properly handle the users array
         function processHeartbeat(heartbeatData) {
-            if (!Array.isArray(heartbeatData.users)) return;
+            if (!heartbeatData.users || !Array.isArray(heartbeatData.users)) {
+                log('Invalid heartbeat data received - missing users array');
+                return;
+            }
             
             // Update our online users list with the received data
-            heartbeatData.users.forEach(([id, username]) => {
-                if (id !== peer.id) { // Don't overwrite our own data
-                    addOnlineUser(id, username);
+            heartbeatData.users.forEach(userEntry => {
+                // Make sure it's a valid entry with id and username
+                if (Array.isArray(userEntry) && userEntry.length === 2) {
+                    const [id, username] = userEntry;
+                    
+                    if (id !== peer.id) { // Don't overwrite our own data
+                        addOnlineUser(id, username);
+                    }
                 }
             });
+            
+            // Update UI after processing all users
+            updateOnlineUsersList();
         }
         
         // Set up connection event handlers
