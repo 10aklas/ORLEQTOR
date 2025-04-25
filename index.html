@@ -397,9 +397,14 @@
     let database;
     let userRef;
     let onlineUsersRef;
-    let offlineTimeout;
-
-    // Firebase Configuration - Replace with your actual Firebase project details if available
+    let discoveryServer = null;
+    let peerListInterval;
+    let knownPeers = {};
+    
+    // Discovery Server URL - for when Firebase isn't available
+    const DISCOVERY_SERVER_URL = 'https://peerjs-discovery.herokuapp.com';
+    
+    // Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAU7TnS9-YeWNlr42JvQv6m3D3rRUIlwLw",
         authDomain: "chatwithstrangers-4fc25.firebaseapp.com",
@@ -446,25 +451,205 @@
         }
         return result;
     }
-
-    // Fallback function for when Firebase is unavailable
-    function handleFirebaseUnavailable() {
-        log('Switching to peer-to-peer mode');
-        onlineUsersCount.textContent = 'Direct P2P mode active';
+    
+    // Function to register with discovery server
+    function registerWithDiscoveryServer() {
+        if (!peer || !peer.id || !localUsername) return;
         
-        // Just use the peer connections directly without fallback storage
-        // We'll rely on the PeerJS discovery system instead
-        setInterval(() => {
-            // Keep the UI updated with the peer's status
-            if (peer && peer.id) {
-                const simpleUsers = {};
-                simpleUsers[peer.id] = {
+        // Use a fallback method to discover peers when Firebase is unavailable
+        try {
+            // Register with discovery server
+            fetch(`${DISCOVERY_SERVER_URL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    peerId: peer.id,
+                    username: localUsername,
+                    timestamp: Date.now()
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to register with discovery server');
+                }
+                return response.json();
+            }).then(data => {
+                log(`Registered with discovery server: ${data.message}`);
+                
+                // Start getting peer list periodically
+                if (!peerListInterval) {
+                    getPeerList();
+                    peerListInterval = setInterval(getPeerList, 10000);
+                }
+            }).catch(error => {
+                log(`Error registering with discovery server: ${error.message}`);
+                // Try creating a simple local discovery network
+                createLocalDiscoveryNetwork();
+            });
+        } catch (error) {
+            log(`Cannot connect to discovery server: ${error.message}`);
+            // Fall back to local discovery network
+            createLocalDiscoveryNetwork();
+        }
+    }
+    
+    // Function to get peer list from discovery server
+    function getPeerList() {
+        if (!peer || !peer.id) return;
+        
+        fetch(`${DISCOVERY_SERVER_URL}/peers`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to get peer list');
+                }
+                return response.json();
+            })
+            .then(data => {
+                log(`Received ${Object.keys(data.peers).length} peers from discovery server`);
+                // Filter out stale peers (older than 2 minutes)
+                const now = Date.now();
+                const activePeers = {};
+                
+                Object.entries(data.peers).forEach(([id, userData]) => {
+                    if (now - userData.timestamp < 120000 && id !== peer.id) {
+                        activePeers[id] = {
+                            username: userData.username,
+                            lastSeen: userData.timestamp
+                        };
+                    }
+                });
+                
+                // Add current user
+                activePeers[peer.id] = {
                     username: localUsername,
                     lastSeen: Date.now()
                 };
-                updateOnlineUsersUI(simpleUsers);
+                
+                // Update UI
+                updateOnlineUsersUI(activePeers);
+            })
+            .catch(error => {
+                log(`Error getting peer list: ${error.message}`);
+                // Try with local discovery as fallback
+                refreshLocalDiscoveryNetwork();
+            });
+    }
+    
+    // Create a simple local discovery network using the PeerJS signaling server info
+    function createLocalDiscoveryNetwork() {
+        log('Creating local discovery network');
+        onlineUsersCount.textContent = 'Direct P2P mode active';
+        
+        // Use the signaling channel for discovery
+        if (!peer || !peer.socket) {
+            log('PeerJS not fully initialized yet');
+            setTimeout(createLocalDiscoveryNetwork, 1000);
+            return;
+        }
+        
+        // Add self to known peers
+        knownPeers[peer.id] = {
+            username: localUsername,
+            lastSeen: Date.now()
+        };
+        
+        // Use the peer connection to exchange peer info
+        peer.on('connection', conn => {
+            // When we get a new connection, exchange peer lists
+            conn.on('open', () => {
+                // Send discovery info
+                conn.send(JSON.stringify({
+                    type: 'discovery',
+                    peers: knownPeers,
+                    sender: peer.id
+                }));
+            });
+        });
+        
+        // Set up regular refreshes
+        setInterval(refreshLocalDiscoveryNetwork, 15000);
+        refreshLocalDiscoveryNetwork();
+    }
+    
+    // Refresh the local discovery network by connecting to known peers
+    function refreshLocalDiscoveryNetwork() {
+        if (!peer || !peer.id) return;
+        
+        // Update self
+        knownPeers[peer.id] = {
+            username: localUsername,
+            lastSeen: Date.now()
+        };
+        
+        // Remove stale peers
+        const now = Date.now();
+        Object.keys(knownPeers).forEach(id => {
+            if (now - knownPeers[id].lastSeen > 120000) {
+                delete knownPeers[id];
             }
-        }, 3000);
+        });
+        
+        // Connect to one or two random peers to exchange info
+        const peerIds = Object.keys(knownPeers).filter(id => id !== peer.id);
+        if (peerIds.length > 0) {
+            // Connect to a random peer
+            const randomIndex = Math.floor(Math.random() * peerIds.length);
+            const targetId = peerIds[randomIndex];
+            
+            try {
+                const discoveryConn = peer.connect(targetId, { reliable: true });
+                
+                discoveryConn.on('open', () => {
+                    // Send discovery info
+                    discoveryConn.send(JSON.stringify({
+                        type: 'discovery',
+                        peers: knownPeers,
+                        sender: peer.id
+                    }));
+                    
+                    // Close after a short delay
+                    setTimeout(() => {
+                        discoveryConn.close();
+                    }, 2000);
+                });
+                
+                discoveryConn.on('data', data => {
+                    try {
+                        const parsedData = JSON.parse(data);
+                        
+                        if (parsedData.type === 'discovery') {
+                            // Merge peer lists
+                            const receivedPeers = parsedData.peers;
+                            Object.keys(receivedPeers).forEach(id => {
+                                if (!knownPeers[id] || receivedPeers[id].lastSeen > knownPeers[id].lastSeen) {
+                                    knownPeers[id] = receivedPeers[id];
+                                }
+                            });
+                            
+                            log(`Merged peer list, now have ${Object.keys(knownPeers).length} known peers`);
+                            updateOnlineUsersUI(knownPeers);
+                        }
+                    } catch (error) {
+                        log(`Error processing discovery data: ${error.message}`);
+                    }
+                });
+            } catch (error) {
+                log(`Error connecting for discovery: ${error.message}`);
+            }
+        }
+        
+        // Always update UI with what we know
+        updateOnlineUsersUI(knownPeers);
+    }
+
+    // Fallback function for when Firebase is unavailable
+    function handleFirebaseUnavailable() {
+        log('Switching to P2P discovery mode');
+        onlineUsersCount.textContent = 'P2P discovery mode active';
+        
+        // Try to use discovery server first
+        registerWithDiscoveryServer();
     }
 
     // Update the online users UI
@@ -587,8 +772,8 @@
     // Register user as online
     function registerUserOnline(peerId, username) {
         if (!database || !onlineUsersRef) {
-            // Just log the status, no local storage
-            log('Firebase unavailable, using direct peer connections only');
+            // Fall back to discovery server
+            registerWithDiscoveryServer();
             return;
         }
         
@@ -616,6 +801,7 @@
             log(`Registered user online: ${username} (${peerId})`);
         } catch (error) {
             log(`Error registering user online: ${error.message}`);
+            registerWithDiscoveryServer();
         }
     }
 
@@ -664,25 +850,58 @@
                 if (database && onlineUsersRef) {
                     registerUserOnline(id, localUsername);
                 } else {
-                    // Update the UI with just this user in P2P mode
-                    const simpleUsers = {};
-                    simpleUsers[id] = {
-                        username: localUsername,
-                        lastSeen: Date.now()
-                    };
-                    updateOnlineUsersUI(simpleUsers);
+                    // Try discovery server
+                    registerWithDiscoveryServer();
                 }
+                
+                // Handle data connections for discovery
+                peer.on('connection', (conn) => {
+                    conn.on('data', (data) => {
+                        try {
+                            const parsedData = JSON.parse(data);
+                            
+                            // Handle discovery messages
+                            if (parsedData.type === 'discovery') {
+                                // Merge peer lists
+                                const receivedPeers = parsedData.peers;
+                                
+                                Object.keys(receivedPeers).forEach(id => {
+                                    if (!knownPeers[id] || receivedPeers[id].lastSeen > knownPeers[id].lastSeen) {
+                                        knownPeers[id] = receivedPeers[id];
+                                    }
+                                });
+                                
+                                log(`Received ${Object.keys(receivedPeers).length} peers from ${parsedData.sender}`);
+                                
+                                // Send back our list if this was a request
+                                if (parsedData.request) {
+                                    conn.send(JSON.stringify({
+                                        type: 'discovery',
+                                        peers: knownPeers,
+                                        sender: peer.id,
+                                        request: false
+                                    }));
+                                }
+                                
+                                // Update UI
+                                updateOnlineUsersUI(knownPeers);
+                            }
+                        } catch (error) {
+                            log(`Error processing data: ${error.message}`);
+                        }
+                    });
+                });
             });
             
             peer.on('connection', (conn) => {
                 log(`Incoming connection from: ${conn.peer}`);
                 
-                if (!isConnected) {
+                // Only accept for chat if not already connected
+                if (!isConnected && conn.metadata?.purpose === 'chat') {
                     connection = conn;
                     setupConnection();
-                } else {
-                    conn.close();
                 }
+                // Otherwise it might be a discovery connection which is handled above
             });
             
             peer.on('error', (err) => {
@@ -731,7 +950,8 @@
         
         try {
             connection = peer.connect(targetPeerId, {
-                reliable: true
+                reliable: true,
+                metadata: { purpose: 'chat' }
             });
             
             setupConnection();
@@ -840,6 +1060,25 @@
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
+    // Add to seed users (for demo/testing)
+    function addSeedUsers() {
+        // Add some seed users for testing
+        const seedUsers = [
+            { id: 'user1', username: 'TestUser1' },
+            { id: 'user2', username: 'TestUser2' },
+            { id: 'user3', username: 'TestUser3' }
+        ];
+        
+        seedUsers.forEach(user => {
+            knownPeers[user.id] = {
+                username: user.username,
+                lastSeen: Date.now()
+            };
+        });
+        
+        updateOnlineUsersUI(knownPeers);
+    }
+
     // Initialize the application
     function initializeApp() {
         // Start PeerJS first to get a connection ID
@@ -862,6 +1101,12 @@
             // Set periodic cleanup only if Firebase is working
             if (database && onlineUsersRef) {
                 setInterval(cleanupOfflineUsers, 60000);
+            }
+            
+            // Add some seed users for testing when in development
+            // Comment this out in production
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                setTimeout(addSeedUsers, 2000);
             }
         }, 1000);
     }
@@ -923,6 +1168,11 @@
         if (peer) {
             if (connection) connection.close();
             peer.destroy();
+        }
+        
+        // Clear discovery interval
+        if (peerListInterval) {
+            clearInterval(peerListInterval);
         }
     });
 
