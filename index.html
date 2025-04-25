@@ -449,23 +449,36 @@
         }
         
         // Initialize Firebase
-        function initializeFirebase() {
-            try {
-                firebase.initializeApp(firebaseConfig);
-                database = firebase.database();
-                onlineUsersRef = database.ref('online-users');
-                
-                // Listen for online users
-                onlineUsersRef.on('value', (snapshot) => {
-                    updateOnlineUsersUI(snapshot.val() || {});
-                });
-                
-                log('Firebase initialized successfully');
-            } catch (error) {
-                log(`Error initializing Firebase: ${error.message}`);
-                showError('Failed to connect to user database. Some features may be limited.');
+function initializeFirebase() {
+    try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        onlineUsersRef = database.ref('online-users');
+        
+        // Test connection with a simple write operation
+        database.ref('.info/connected').on('value', (snapshot) => {
+            log(`Firebase connection status: ${snapshot.val() ? 'connected' : 'disconnected'}`);
+            if (snapshot.val() === true) {
+                onlineUsersCount.textContent = 'Connected to database, waiting for users...';
             }
-        }
+        });
+        
+        // Listen for online users
+        onlineUsersRef.on('value', (snapshot) => {
+            log(`Received online users data: ${snapshot.exists() ? 'data exists' : 'no data'}`);
+            updateOnlineUsersUI(snapshot.val() || {});
+        }, (error) => {
+            log(`Error fetching online users: ${error.code} - ${error.message}`);
+            onlineUsersCount.textContent = 'Error loading users. Check console.';
+        });
+        
+        log('Firebase initialized successfully');
+    } catch (error) {
+        log(`Error initializing Firebase: ${error.message}`);
+        showError('Failed to connect to user database. Some features may be limited.');
+        onlineUsersCount.textContent = 'User database connection failed';
+    }
+}
         
         // Register user as online
         function registerUserOnline(peerId, username) {
