@@ -216,7 +216,7 @@
             white-space: pre-wrap;
         }
         
-        /* New styles for online users panel */
+        /* Online users panel styles */
         #online-users-panel {
             background-color: var(--bg-secondary);
             border-radius: 4px;
@@ -323,6 +323,22 @@
         .toggle-panel-btn.collapsed i {
             transform: rotate(-90deg);
         }
+        
+        .online-status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-active {
+            background-color: #69f0ae;
+        }
+        
+        .status-idle {
+            background-color: #ffab40;
+        }
     </style>
 </head>
 <body>
@@ -422,83 +438,104 @@
         let localPeerId;
         let remoteUsername;
         let isConnected = false;
-        let onlineUsers = {};
         
-        // Online users registry - simulated central server
-        // In a real application, this would be handled by a server
-        const onlineUserRegistry = {
-            // The "server URL" would be a constant here
-            // Using localStorage to simulate server persistence
-            serverKey: 'onlineUsersRegistry',
+        // Simulated online users database
+        // This would be replaced by a real server-side implementation
+        const simulatedOnlineUsers = {
+            users: {},
             
-            // Get all online users
-            getAllUsers() {
-                try {
-                    const stored = localStorage.getItem(this.serverKey);
-                    return stored ? JSON.parse(stored) : {};
-                } catch (e) {
-                    log('Error getting online users from storage');
-                    return {};
-                }
+            // Add the local user
+            addLocalUser(id, username) {
+                this.users[id] = {
+                    username: username,
+                    lastSeen: Date.now(),
+                    status: 'active',
+                    isLocal: true
+                };
             },
             
-            // Register a user as online
-            registerUser(id, username) {
-                try {
-                    const users = this.getAllUsers();
-                    users[id] = {
-                        username,
-                        lastSeen: Date.now()
-                    };
-                    localStorage.setItem(this.serverKey, JSON.stringify(users));
-                    return true;
-                } catch (e) {
-                    log('Error registering user');
-                    return false;
+            // Simulate fetching users from server
+            fetchUsers() {
+                // In a real implementation, this would call an API
+                // For simulation, we'll generate random users
+                
+                // Make sure we have a good number of users
+                const currentCount = Object.keys(this.users).length;
+                
+                // Add some randomness to user count
+                if (Math.random() > 0.7) {
+                    // Sometimes add a user
+                    this.addRandomUser();
+                } else if (Math.random() > 0.8 && currentCount > 5) {
+                    // Sometimes remove a user
+                    this.removeRandomUser();
                 }
-            },
-            
-            // Remove a user from online list
-            removeUser(id) {
-                try {
-                    const users = this.getAllUsers();
-                    if (users[id]) {
-                        delete users[id];
-                        localStorage.setItem(this.serverKey, JSON.stringify(users));
+                
+                // Randomize some user statuses
+                Object.keys(this.users).forEach(id => {
+                    if (!this.users[id].isLocal && Math.random() > 0.9) {
+                        this.users[id].status = Math.random() > 0.3 ? 'active' : 'idle';
                     }
-                    return true;
-                } catch (e) {
-                    log('Error removing user');
-                    return false;
-                }
+                });
+                
+                return this.users;
             },
             
-            // Clean up stale users (not seen in the last 5 minutes)
-            cleanupStaleUsers() {
-                try {
-                    const users = this.getAllUsers();
-                    const now = Date.now();
-                    const fiveMinutes = 5 * 60 * 1000;
-                    let changed = false;
-                    
-                    Object.keys(users).forEach(id => {
-                        if (now - users[id].lastSeen > fiveMinutes) {
-                            delete users[id];
-                            changed = true;
-                        }
-                    });
-                    
-                    if (changed) {
-                        localStorage.setItem(this.serverKey, JSON.stringify(users));
-                    }
-                    
-                    return users;
-                } catch (e) {
-                    log('Error cleaning up stale users');
-                    return {};
+            // Add a random user
+            addRandomUser() {
+                const id = this.generateRandomPeerId();
+                const username = this.generateRandomUsername();
+                
+                this.users[id] = {
+                    username: username,
+                    lastSeen: Date.now(),
+                    status: Math.random() > 0.3 ? 'active' : 'idle',
+                    isLocal: false
+                };
+            },
+            
+            // Remove a random user
+            removeRandomUser() {
+                const nonLocalUsers = Object.keys(this.users).filter(id => !this.users[id].isLocal);
+                if (nonLocalUsers.length === 0) return;
+                
+                const randomIndex = Math.floor(Math.random() * nonLocalUsers.length);
+                const randomId = nonLocalUsers[randomIndex];
+                delete this.users[randomId];
+            },
+            
+            // Generate random PeerJS-like ID
+            generateRandomPeerId() {
+                const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                let result = '';
+                for (let i = 0; i < 6; i++) {
+                    result += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                return result;
+            },
+            
+            // Generate random username
+            generateRandomUsername() {
+                const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind', 'Smart', 'Cool', 'Wild', 'Quiet', 'Proud'];
+                const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther', 'Dragon', 'Shark', 'Raven', 'Snake', 'Cobra'];
+                const randomNumber = Math.floor(Math.random() * 1000);
+                const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+                const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                return `${adj}${noun}${randomNumber}`;
+            },
+            
+            // Initialize with some random users
+            populateInitialUsers() {
+                // Generate a random number of users (5-15)
+                const numUsers = Math.floor(Math.random() * 10) + 5;
+                for (let i = 0; i < numUsers; i++) {
+                    this.addRandomUser();
                 }
             }
         };
+        
+        // Populate some initial users
+        simulatedOnlineUsers.populateInitialUsers();
         
         // Debug log function
         function log(message) {
@@ -539,7 +576,8 @@
         
         // Update the online users list in the UI
         function updateOnlineUsersList() {
-            onlineUsers = onlineUserRegistry.cleanupStaleUsers();
+            // In a real implementation, this would fetch from an API
+            const onlineUsers = simulatedOnlineUsers.fetchUsers();
             onlineUsersList.innerHTML = '';
             
             const userCount = Object.keys(onlineUsers).length;
@@ -565,7 +603,7 @@
                 const userDiv = document.createElement('div');
                 userDiv.classList.add('online-user');
                 
-                if (userId === localPeerId) {
+                if (user.isLocal) {
                     userDiv.classList.add('self');
                 }
                 
@@ -573,7 +611,15 @@
                 
                 const userName = document.createElement('div');
                 userName.classList.add('online-user-name');
-                userName.textContent = user.username;
+                
+                // Add status indicator
+                const statusIndicator = document.createElement('span');
+                statusIndicator.classList.add('online-status-indicator');
+                statusIndicator.classList.add(user.status === 'active' ? 'status-active' : 'status-idle');
+                userName.appendChild(statusIndicator);
+                
+                const nameText = document.createTextNode(user.username);
+                userName.appendChild(nameText);
                 
                 const userId_elem = document.createElement('div');
                 userId_elem.classList.add('online-user-id');
@@ -585,7 +631,7 @@
                 const connectBtn = document.createElement('button');
                 connectBtn.classList.add('connect-button');
                 connectBtn.textContent = 'Connect';
-                connectBtn.disabled = userId === localPeerId;
+                connectBtn.disabled = user.isLocal;
                 
                 connectBtn.addEventListener('click', () => {
                     peerIdInput.value = userId;
@@ -617,16 +663,11 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    // Register as online
-                    onlineUserRegistry.registerUser(id, localUsername);
+                    // Register as online in our simulated backend
+                    simulatedOnlineUsers.addLocalUser(id, localUsername);
                     
                     // Update UI
                     updateOnlineUsersList();
-                    
-                    // Set up heartbeat to stay "online"
-                    setInterval(() => {
-                        onlineUserRegistry.registerUser(id, localUsername);
-                    }, 60000); // Every minute
                 });
                 
                 peer.on('connection', (conn) => {
@@ -859,68 +900,271 @@
         }
         
         // Toggle online users panel
-        toggleOnlineUsers.addEventListener('click', () => {
-            if (onlineUsersPanel.style.display === 'none') {
-                onlineUsersPanel.style.display = 'block';
-                toggleOnlineUsers.classList.remove('collapsed');
-                toggleOnlineUsers.querySelector('i').textContent = '▼';
-                updateOnlineUsersList();
-            } else {
-                onlineUsersPanel.style.display = 'none';
-                toggleOnlineUsers.classList.add('collapsed');
-                toggleOnlineUsers.querySelector('i').textContent = '▶';
-            }
+toggleOnlineUsers.addEventListener('click', () => {
+    if (onlineUsersPanel.style.display === 'none') {
+        onlineUsersPanel.style.display = 'block';
+        toggleOnlineUsers.classList.remove('collapsed');
+        toggleOnlineUsers.querySelector('i').textContent = '▼';
+        fetchOnlineUsers(); // Fetch real users when opening panel
+    } else {
+        onlineUsersPanel.style.display = 'none';
+        toggleOnlineUsers.classList.add('collapsed');
+        toggleOnlineUsers.querySelector('i').textContent = '▶';
+    }
+});
+
+// Refresh online users
+refreshUsersBtn.addEventListener('click', () => {
+    fetchOnlineUsers();
+});
+
+// Fetch online users from signaling server
+function fetchOnlineUsers() {
+    log('Fetching online users');
+    
+    // Show loading state
+    onlineUsersList.innerHTML = '<div class="loading">Loading users...</div>';
+    
+    // Using the PeerJS server's heartbeat mechanism to get active peers
+    // This requires a server implementation that we'll integrate with
+    fetch('https://your-signaling-server.com/api/online-users')
+        .then(response => response.json())
+        .then(users => {
+            displayOnlineUsers(users);
+        })
+        .catch(error => {
+            log(`Error fetching users: ${error}`);
+            onlineUsersList.innerHTML = '<div class="error">Could not fetch online users</div>';
+        });
+}
+
+// Display online users in the UI
+function displayOnlineUsers(users) {
+    onlineUsersList.innerHTML = '';
+    
+    const userCount = Object.keys(users).length;
+    onlineCount.textContent = userCount;
+    
+    if (userCount === 0) {
+        const noUsers = document.createElement('div');
+        noUsers.textContent = 'No other users online at the moment.';
+        noUsers.style.padding = '0.5rem';
+        noUsers.style.textAlign = 'center';
+        noUsers.style.color = 'var(--text-secondary)';
+        onlineUsersList.appendChild(noUsers);
+        return;
+    }
+    
+    // Sort users by username
+    const sortedUsers = Object.keys(users).sort((a, b) => {
+        return users[a].username.localeCompare(users[b].username);
+    });
+    
+    sortedUsers.forEach(userId => {
+        const user = users[userId];
+        
+        // Skip ourselves
+        if (userId === localPeerId) return;
+        
+        const userDiv = document.createElement('div');
+        userDiv.classList.add('online-user');
+        
+        const userInfo = document.createElement('div');
+        
+        const userName = document.createElement('div');
+        userName.classList.add('online-user-name');
+        
+        // Add status indicator
+        const statusIndicator = document.createElement('span');
+        statusIndicator.classList.add('online-status-indicator');
+        statusIndicator.classList.add('status-active');
+        userName.appendChild(statusIndicator);
+        
+        const nameText = document.createTextNode(user.username || 'Anonymous');
+        userName.appendChild(nameText);
+        
+        const userId_elem = document.createElement('div');
+        userId_elem.classList.add('online-user-id');
+        userId_elem.textContent = `ID: ${userId}`;
+        
+        userInfo.appendChild(userName);
+        userInfo.appendChild(userId_elem);
+        
+        const connectBtn = document.createElement('button');
+        connectBtn.classList.add('connect-button');
+        connectBtn.textContent = 'Connect';
+        
+        connectBtn.addEventListener('click', () => {
+            peerIdInput.value = userId;
+            connectToPeer(userId);
         });
         
-        // Event Listeners
-        refreshUsersBtn.addEventListener('click', () => {
-            updateOnlineUsersList();
-        });
+        userDiv.appendChild(userInfo);
+        userDiv.appendChild(connectBtn);
+        onlineUsersList.appendChild(userDiv);
+    });
+    
+    // Add ourselves last
+    const selfDiv = document.createElement('div');
+    selfDiv.classList.add('online-user', 'self');
+    
+    const selfInfo = document.createElement('div');
+    
+    const selfName = document.createElement('div');
+    selfName.classList.add('online-user-name');
+    
+    const selfStatusIndicator = document.createElement('span');
+    selfStatusIndicator.classList.add('online-status-indicator', 'status-active');
+    selfName.appendChild(selfStatusIndicator);
+    
+    const selfNameText = document.createTextNode(localUsername || 'You');
+    selfName.appendChild(selfNameText);
+    
+    const selfId = document.createElement('div');
+    selfId.classList.add('online-user-id');
+    selfId.textContent = `ID: ${localPeerId}`;
+    
+    selfInfo.appendChild(selfName);
+    selfInfo.appendChild(selfId);
+    
+    const selfConnectBtn = document.createElement('button');
+    selfConnectBtn.classList.add('connect-button');
+    selfConnectBtn.textContent = 'You';
+    selfConnectBtn.disabled = true;
+    
+    selfDiv.appendChild(selfInfo);
+    selfDiv.appendChild(selfConnectBtn);
+    onlineUsersList.appendChild(selfDiv);
+}
+
+// Form submit handlers
+connectForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const peerId = peerIdInput.value.trim();
+    
+    if (!peerId) {
+        showError('Please enter a valid Peer ID');
+        return;
+    }
+    
+    connectToPeer(peerId);
+});
+
+messageForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = messageInput.value.trim();
+    
+    if (text) {
+        sendMessage(text);
+        messageInput.value = '';
+    }
+});
+
+// Disconnect button handler
+disconnectBtn.addEventListener('click', () => {
+    disconnect();
+});
+
+// Register with the signaling server
+function registerWithSignalingServer() {
+    log('Registering with signaling server');
+    
+    // This would be a real API call to your server
+    fetch('https://your-signaling-server.com/api/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            peerId: localPeerId,
+            username: localUsername
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        log('Registered with signaling server');
+    })
+    .catch(error => {
+        log(`Error registering with signaling server: ${error}`);
+        // Retry after a delay
+        setTimeout(registerWithSignalingServer, 5000);
+    });
+}
+
+// Send heartbeat to keep registration active
+function sendHeartbeat() {
+    if (!localPeerId) return;
+    
+    fetch('https://your-signaling-server.com/api/heartbeat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            peerId: localPeerId
+        })
+    })
+    .catch(error => {
+        log(`Error sending heartbeat: ${error}`);
+    });
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize UI state
+    chatScreen.style.display = 'none';
+    onlineUsersPanel.style.display = 'block';
+    debugLog.style.display = 'none'; // Hide debug log by default
+    
+    // Initialize PeerJS connection
+    initializePeer();
+    
+    // Set up periodic heartbeat to maintain presence
+    setInterval(sendHeartbeat, 30000); // Every 30 seconds
+    
+    // Set up periodic refresh of user list when panel is visible
+    setInterval(() => {
+        if (onlineUsersPanel.style.display !== 'none') {
+            fetchOnlineUsers();
+        }
+    }, 10000); // Every 10 seconds
+    
+    // Debug mode toggle (hidden feature - press D key three times quickly)
+    let keyPresses = [];
+    let lastKeyTime = 0;
+    
+    document.addEventListener('keydown', (e) => {
+        const now = Date.now();
+        if (now - lastKeyTime > 500) {
+            keyPresses = [];
+        }
         
-        connectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const peerId = peerIdInput.value.trim();
-            if (peerId) {
-                connectToPeer(peerId);
-                // Keep the setup screen visible until connection is established
-            } else {
-                showError('Please enter a peer ID');
-            }
-        });
+        lastKeyTime = now;
         
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            if (message) {
-                sendMessage(message);
-                messageInput.value = '';
-            }
-        });
-        
-        disconnectBtn.addEventListener('click', disconnect);
-        
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', () => {
-            // Remove from online users
-            if (localPeerId) {
-                onlineUserRegistry.removeUser(localPeerId);
-            }
+        if (e.key.toLowerCase() === 'd') {
+            keyPresses.push('d');
             
-            if (peer) {
-                if (connection) connection.close();
-                peer.destroy();
+            if (keyPresses.length >= 3) {
+                keyPresses = [];
+                debugLog.style.display = debugLog.style.display === 'none' ? 'block' : 'none';
             }
-        });
-        
-        // Initialize PeerJS on page load
-        initializePeer();
-        
-        // Set up a timer to refresh the online users list periodically
-        setInterval(() => {
-            if (setupScreen.style.display !== 'none' && onlineUsersPanel.style.display !== 'none') {
-                updateOnlineUsersList();
-            }
-        }, 30000); // Every 30 seconds
+        }
+    });
+});
+
+// Modify the peer open event to register with the signaling server
+peer.on('open', (id) => {
+    log(`Peer connected with ID: ${id}`);
+    localPeerId = id;
+    myIdDisplay.textContent = id;
+    usernameDisplay.textContent = `Your username: ${localUsername}`;
+    
+    // Register with signaling server
+    registerWithSignalingServer();
+    
+    // Update UI with initial user list
+    fetchOnlineUsers();
+});
     </script>
-</body>
-</html>
+    </body>
+    </html>
