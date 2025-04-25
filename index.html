@@ -6,6 +6,9 @@
     <title>Chat with Strangers</title>
     <!-- Include PeerJS from CDN with a specific version known to work -->
     <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+    <!-- Add Firebase for real user tracking across browsers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.17.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.17.2/firebase-database-compat.min.js"></script>
     <style>
         :root {
             --bg-primary: #121212;
@@ -392,9 +395,21 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        let onlineUsers = new Map(); // Store online users: Map<peerId, {username, lastSeen}>
-        let heartbeatInterval;
-        let trackingServer; // This would be a real server connection in production
+        let database;
+        let userRef;
+        let onlineUsersRef;
+        let offlineTimeout;
+        
+        // Firebase Configuration - You would replace these with your actual Firebase project details
+        const firebaseConfig = {
+            apiKey: "AIzaSyAU7TnS9-YeWNlr42JvQv6m3D3rRUIlwLw",
+            authDomain: "chatwithstrangers-4fc25.firebaseapp.com",
+            databaseURL: "https://chatwithstrangers-4fc25-default-rtdb.firebaseio.com",
+            projectId: "chatwithstrangers-4fc25",
+            storageBucket: "chatwithstrangers-4fc25.appspot.com",
+            messagingSenderId: "693352756796",
+            appId: "1:693352756796:web:45678923456789abcdef12"
+        };
         
         // Debug log function
         function log(message) {
@@ -433,6 +448,137 @@
             return result;
         }
         
+        // Initialize Firebase
+        function initializeFirebase() {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                onlineUsersRef = database.ref('online-users');
+                
+                // Listen for online users
+                onlineUsersRef.on('value', (snapshot) => {
+                    updateOnlineUsersUI(snapshot.val() || {});
+                });
+                
+                log('Firebase initialized successfully');
+            } catch (error) {
+                log(`Error initializing Firebase: ${error.message}`);
+                showError('Failed to connect to user database. Some features may be limited.');
+            }
+        }
+        
+        // Register user as online
+        function registerUserOnline(peerId, username) {
+            if (!database) return;
+            
+            userRef = database.ref(`online-users/${peerId}`);
+            
+            // Set user data
+            userRef.set({
+                username: username,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // Remove user when they disconnect
+            userRef.onDisconnect().remove();
+            
+            // Update last seen time every 30 seconds
+            setInterval(() => {
+                if (userRef) {
+                    userRef.update({
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            }, 30000);
+            
+            // Clean up old users every minute
+            setInterval(cleanupOfflineUsers, 60000);
+        }
+        
+        // Clean up offline users (users who haven't updated their timestamp in 2 minutes)
+        function cleanupOfflineUsers() {
+            if (!database) return;
+            
+            const twoMinutesAgo = Date.now() - 120000;
+            
+            // Query for users who haven't been seen in 2 minutes
+            onlineUsersRef.orderByChild('lastSeen').endAt(twoMinutesAgo).once('value', (snapshot) => {
+                const outdatedUsers = snapshot.val();
+                
+                if (outdatedUsers) {
+                    Object.keys(outdatedUsers).forEach((userId) => {
+                        database.ref(`online-users/${userId}`).remove();
+                        log(`Removed inactive user: ${outdatedUsers[userId].username}`);
+                    });
+                }
+            });
+        }
+        
+        // Update the online users UI
+        function updateOnlineUsersUI(users) {
+            const userCount = Object.keys(users).length;
+            
+            // Update count
+            onlineUsersCount.textContent = `${userCount} user${userCount !== 1 ? 's' : ''} online`;
+            
+            // Clear list
+            onlineUsersList.innerHTML = '';
+            
+            // Add each user
+            Object.entries(users).forEach(([peerId, userData]) => {
+                const userElement = document.createElement('div');
+                userElement.classList.add('online-user');
+                
+                if (peerId === peer?.id) {
+                    userElement.innerHTML = `
+                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span> (You)</div>
+                        <div class="user-id">${peerId}</div>
+                    `;
+                } else {
+                    userElement.innerHTML = `
+                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span></div>
+                        <div class="user-id">${peerId}</div>
+                        <div class="action-buttons">
+                            <button class="connect-btn" data-peer-id="${peerId}">Connect</button>
+                            <button class="copy-id-btn" data-peer-id="${peerId}">Copy ID</button>
+                        </div>
+                    `;
+                    
+                    // Add event listeners after the element is added to the DOM
+                    setTimeout(() => {
+                        const connectBtn = userElement.querySelector('.connect-btn');
+                        if (connectBtn) {
+                            connectBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const targetPeerId = e.target.getAttribute('data-peer-id');
+                                connectToPeer(targetPeerId);
+                            });
+                        }
+                        
+                        const copyBtn = userElement.querySelector('.copy-id-btn');
+                        if (copyBtn) {
+                            copyBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const targetPeerId = e.target.getAttribute('data-peer-id');
+                                navigator.clipboard.writeText(targetPeerId)
+                                    .then(() => {
+                                        e.target.textContent = 'Copied!';
+                                        setTimeout(() => {
+                                            e.target.textContent = 'Copy ID';
+                                        }, 2000);
+                                    })
+                                    .catch(err => {
+                                        showError('Failed to copy ID');
+                                    });
+                            });
+                        }
+                    }, 0);
+                }
+                
+                onlineUsersList.appendChild(userElement);
+            });
+        }
+        
         // Initialize PeerJS
         function initializePeer() {
             const peerId = generateSimpleId();
@@ -451,11 +597,8 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    // Register with the tracking server
-                    registerWithTrackingServer(id, localUsername);
-                    
-                    // Start heartbeat to stay in the online users list
-                    startHeartbeat(id, localUsername);
+                    // Register user as online in Firebase
+                    registerUserOnline(id, localUsername);
                 });
                 
                 peer.on('connection', (conn) => {
@@ -495,152 +638,6 @@
                 log(`Error initializing PeerJS: ${error.message}`);
                 showError(`Failed to initialize connection: ${error.message}`);
             }
-        }
-        
-        // Register with tracking server - in a real app, this would connect to a real server
-        function registerWithTrackingServer(peerId, username) {
-            log(`Registering with tracking server: ${peerId}, ${username}`);
-            
-            // Simulate server connection (in a real app, this would be a WebSocket or HTTP request)
-            simulateServerConnection();
-            
-            // Add ourselves to the online users
-            updateOnlineUser(peerId, username);
-        }
-        
-        // Start heartbeat to stay in the online users list
-        function startHeartbeat(peerId, username) {
-            // Clear any existing heartbeat
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            
-            // Send heartbeat every 30 seconds
-            heartbeatInterval = setInterval(() => {
-                log('Sending heartbeat to tracking server');
-                
-                // Update our last seen time
-                updateOnlineUser(peerId, username);
-                
-                // Remove users that haven't sent a heartbeat in 60 seconds
-                cleanupOfflineUsers();
-            }, 30000);
-            
-            // Immediately add some simulated users
-            simulateOnlineUsers();
-        }
-        
-        // Update online user
-        function updateOnlineUser(peerId, username) {
-            onlineUsers.set(peerId, {
-                username: username,
-                lastSeen: Date.now()
-            });
-            
-            // Update UI
-            updateOnlineUsersUI();
-        }
-        
-        // Clean up offline users
-        function cleanupOfflineUsers() {
-            const now = Date.now();
-            
-            // Remove users who haven't been seen in 60 seconds
-            for (const [peerId, userData] of onlineUsers.entries()) {
-                if (now - userData.lastSeen > 60000) {
-                    log(`Removing offline user: ${userData.username} (${peerId})`);
-                    onlineUsers.delete(peerId);
-                }
-            }
-            
-            // Update UI
-            updateOnlineUsersUI();
-        }
-        
-        // Update online users UI
-        function updateOnlineUsersUI() {
-            // Update count
-            onlineUsersCount.textContent = `${onlineUsers.size} user${onlineUsers.size !== 1 ? 's' : ''} online`;
-            
-            // Clear list
-            onlineUsersList.innerHTML = '';
-            
-            // Add each user
-            for (const [peerId, userData] of onlineUsers.entries()) {
-                const userElement = document.createElement('div');
-                userElement.classList.add('online-user');
-                
-                if (peerId === peer.id) {
-                    userElement.innerHTML = `
-                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span> (You)</div>
-                        <div class="user-id">${peerId}</div>
-                    `;
-                } else {
-                    userElement.innerHTML = `
-                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span></div>
-                        <div class="user-id">${peerId}</div>
-                        <div class="action-buttons">
-                            <button class="connect-btn" data-peer-id="${peerId}">Connect</button>
-                            <button class="copy-id-btn" data-peer-id="${peerId}">Copy ID</button>
-                        </div>
-                    `;
-                    
-                    // Add event listeners
-                    const connectBtn = userElement.querySelector('.connect-btn');
-                    connectBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const targetPeerId = e.target.getAttribute('data-peer-id');
-                        connectToPeer(targetPeerId);
-                    });
-                    
-                    const copyBtn = userElement.querySelector('.copy-id-btn');
-                    copyBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const targetPeerId = e.target.getAttribute('data-peer-id');
-                        navigator.clipboard.writeText(targetPeerId)
-                            .then(() => {
-                                e.target.textContent = 'Copied!';
-                                setTimeout(() => {
-                                    e.target.textContent = 'Copy ID';
-                                }, 2000);
-                            })
-                            .catch(err => {
-                                showError('Failed to copy ID');
-                            });
-                    });
-                }
-                
-                onlineUsersList.appendChild(userElement);
-            }
-        }
-        
-        // Simulate a connection to a real tracking server (in a real app, this would be a WebSocket)
-        function simulateServerConnection() {
-            log('Simulating connection to tracking server');
-            // In a real app, this would establish a real connection to a server
-        }
-        
-        // Simulate some online users for testing
-        function simulateOnlineUsers() {
-            // Add some fake users for demonstration
-            const fakeUsers = [
-                { id: 'user123', name: 'ActiveUser429' },
-                { id: 'xyz789', name: 'CalmElephant652' },
-                { id: 'abc456', name: 'BraveHawk281' },
-                { id: 'def987', name: 'GentleFox103' }
-            ];
-            
-            // Add users one by one with a delay to simulate them joining
-            let i = 0;
-            const addFakeUser = () => {
-                if (i < fakeUsers.length) {
-                    const user = fakeUsers[i];
-                    updateOnlineUser(user.id, user.name);
-                    i++;
-                    setTimeout(addFakeUser, 1500);
-                }
-            };
-            
-            // Start adding fake users
-            setTimeout(addFakeUser, 2000);
         }
         
         // Set up connection event handlers
@@ -852,16 +849,18 @@
         
         // Clean up when the page is closed
         window.addEventListener('beforeunload', () => {
+            if (userRef) {
+                userRef.remove();
+            }
+            
             if (peer) {
                 if (connection) connection.close();
                 peer.destroy();
             }
-            
-            // Clear heartbeat interval
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
         });
         
-        // Initialize PeerJS on page load
+        // Initialize Firebase first, then PeerJS
+        initializeFirebase();
         initializePeer();
     </script>
 </body>
