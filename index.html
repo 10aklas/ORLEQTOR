@@ -41,7 +41,7 @@
         
         .container {
             flex: 1;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 1rem;
             width: 100%;
@@ -88,6 +88,72 @@
             border-radius: 4px;
         }
         
+        .main-content {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        #chat-area {
+            flex: 1;
+        }
+        
+        #online-users-panel {
+            width: 250px;
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            padding: 1rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #online-users-panel h3 {
+            margin-bottom: 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--accent);
+            padding-bottom: 0.5rem;
+        }
+        
+        #online-users-count {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .online-user {
+            padding: 0.75rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .online-user:hover {
+            background-color: rgba(124, 77, 255, 0.2);
+        }
+        
+        .online-user .username {
+            font-weight: bold;
+        }
+        
+        .online-user .user-id {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .action-buttons button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+        
         #chat-screen {
             display: flex;
             flex-direction: column;
@@ -114,7 +180,6 @@
             margin-bottom: 1rem;
             min-height: 300px;
             max-height: 60vh;
-            position: relative;
         }
         
         .message {
@@ -122,8 +187,6 @@
             border-radius: 1rem;
             max-width: 80%;
             word-break: break-word;
-            position: relative;
-            z-index: 1;
         }
         
         .message.sent {
@@ -219,129 +282,24 @@
             white-space: pre-wrap;
         }
         
-        /* Virtual Shower System Styles */
-        #shower-controls {
-            background-color: var(--bg-secondary);
-            border-radius: 4px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+        .online-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #69f0ae;
+            border-radius: 50%;
+            margin-right: 5px;
         }
         
-        #shower-title {
-            text-align: center;
-            margin-bottom: 0.5rem;
-            color: var(--accent);
-        }
-        
-        #shower-buttons {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        
-        .shower-btn {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            border: 1px solid var(--accent);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .shower-btn:hover {
-            background-color: var(--accent);
-        }
-        
-        .shower-btn .icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .shower-item {
-            position: absolute;
-            z-index: 2;
-            user-select: none;
-            pointer-events: none;
-            animation: fall 3s linear forwards;
-            opacity: 1;
-        }
-        
-        @keyframes fall {
-            0% {
-                transform: translateY(-20px) rotate(0deg);
-                opacity: 1;
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
             }
-            70% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(200px) rotate(360deg);
-                opacity: 0;
-            }
-        }
-        
-        .shower-stats {
-            display: flex;
-            justify-content: space-around;
-            background-color: var(--bg-primary);
-            border-radius: 4px;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        
-        .shower-stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .shower-stat-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-        
-        .shower-stat-value {
-            font-weight: bold;
-            color: var(--accent);
-        }
-        
-        .shower-notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            padding: 0.75rem 1rem;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-            animation: showNotification 3s ease-in-out forwards;
-            z-index: 100;
-        }
-        
-        @keyframes showNotification {
-            0% {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            15% {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            85% {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(100%);
-                opacity: 0;
+            
+            #online-users-panel {
+                width: 100%;
+                max-height: 200px;
+                margin-bottom: 1rem;
             }
         }
     </style>
@@ -370,61 +328,32 @@
             <div id="error-display"></div>
         </div>
         
-        <div id="chat-screen">
-            <div id="connection-status">
-                <p id="status-text" class="status-disconnected">Disconnected</p>
-                <p id="username-display"></p>
-            </div>
-            
-            <!-- Virtual Shower Controls -->
-            <div id="shower-controls">
-                <h3 id="shower-title">Virtual Shower System</h3>
-                <div id="shower-buttons">
-                    <button class="shower-btn" data-type="hearts">
-                        <span class="icon">❤️</span>
-                        <span>Hearts</span>
-                    </button>
-                    <button class="shower-btn" data-type="stars">
-                        <span class="icon">⭐</span>
-                        <span>Stars</span>
-                    </button>
-                    <button class="shower-btn" data-type="claps">
-                        <span class="icon">👏</span>
-                        <span>Claps</span>
-                    </button>
-                    <button class="shower-btn" data-type="flowers">
-                        <span class="icon">🌸</span>
-                        <span>Flowers</span>
-                    </button>
-                </div>
-                <div class="shower-stats">
-                    <div class="shower-stat">
-                        <span class="shower-stat-label">Hearts Received</span>
-                        <span class="shower-stat-value" id="hearts-count">0</span>
+        <div class="main-content">
+            <div id="chat-area">
+                <div id="chat-screen">
+                    <div id="connection-status">
+                        <p id="status-text" class="status-disconnected">Disconnected</p>
+                        <p id="username-display"></p>
                     </div>
-                    <div class="shower-stat">
-                        <span class="shower-stat-label">Stars Received</span>
-                        <span class="shower-stat-value" id="stars-count">0</span>
-                    </div>
-                    <div class="shower-stat">
-                        <span class="shower-stat-label">Claps Received</span>
-                        <span class="shower-stat-value" id="claps-count">0</span>
-                    </div>
-                    <div class="shower-stat">
-                        <span class="shower-stat-label">Flowers Received</span>
-                        <span class="shower-stat-value" id="flowers-count">0</span>
-                    </div>
+                    
+                    <div id="messages"></div>
+                    
+                    <form id="message-form">
+                        <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                        <button type="submit" id="send-btn" disabled>Send</button>
+                    </form>
+                    
+                    <button id="disconnect-btn">Disconnect</button>
                 </div>
             </div>
             
-            <div id="messages"></div>
-            
-            <form id="message-form">
-                <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
-                <button type="submit" id="send-btn" disabled>Send</button>
-            </form>
-            
-            <button id="disconnect-btn">Disconnect</button>
+            <div id="online-users-panel">
+                <h3>Online Users</h3>
+                <div id="online-users-count">Loading users...</div>
+                <div id="online-users-list">
+                    <!-- Online users will be listed here -->
+                </div>
+            </div>
         </div>
         
         <div id="debug-log"></div>
@@ -451,6 +380,8 @@
         const sendBtn = document.getElementById('send-btn');
         const errorDisplay = document.getElementById('error-display');
         const debugLog = document.getElementById('debug-log');
+        const onlineUsersCount = document.getElementById('online-users-count');
+        const onlineUsersList = document.getElementById('online-users-list');
         
         // Initially hide chat screen
         chatScreen.style.display = 'none';
@@ -461,15 +392,9 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        
-        // Shower system variables
-        const showerButtons = document.querySelectorAll('.shower-btn');
-        const showerStats = {
-            hearts: 0,
-            stars: 0,
-            claps: 0,
-            flowers: 0
-        };
+        let onlineUsers = new Map(); // Store online users: Map<peerId, {username, lastSeen}>
+        let heartbeatInterval;
+        let trackingServer; // This would be a real server connection in production
         
         // Debug log function
         function log(message) {
@@ -525,6 +450,12 @@
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
+                    
+                    // Register with the tracking server
+                    registerWithTrackingServer(id, localUsername);
+                    
+                    // Start heartbeat to stay in the online users list
+                    startHeartbeat(id, localUsername);
                 });
                 
                 peer.on('connection', (conn) => {
@@ -566,6 +497,152 @@
             }
         }
         
+        // Register with tracking server - in a real app, this would connect to a real server
+        function registerWithTrackingServer(peerId, username) {
+            log(`Registering with tracking server: ${peerId}, ${username}`);
+            
+            // Simulate server connection (in a real app, this would be a WebSocket or HTTP request)
+            simulateServerConnection();
+            
+            // Add ourselves to the online users
+            updateOnlineUser(peerId, username);
+        }
+        
+        // Start heartbeat to stay in the online users list
+        function startHeartbeat(peerId, username) {
+            // Clear any existing heartbeat
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            
+            // Send heartbeat every 30 seconds
+            heartbeatInterval = setInterval(() => {
+                log('Sending heartbeat to tracking server');
+                
+                // Update our last seen time
+                updateOnlineUser(peerId, username);
+                
+                // Remove users that haven't sent a heartbeat in 60 seconds
+                cleanupOfflineUsers();
+            }, 30000);
+            
+            // Immediately add some simulated users
+            simulateOnlineUsers();
+        }
+        
+        // Update online user
+        function updateOnlineUser(peerId, username) {
+            onlineUsers.set(peerId, {
+                username: username,
+                lastSeen: Date.now()
+            });
+            
+            // Update UI
+            updateOnlineUsersUI();
+        }
+        
+        // Clean up offline users
+        function cleanupOfflineUsers() {
+            const now = Date.now();
+            
+            // Remove users who haven't been seen in 60 seconds
+            for (const [peerId, userData] of onlineUsers.entries()) {
+                if (now - userData.lastSeen > 60000) {
+                    log(`Removing offline user: ${userData.username} (${peerId})`);
+                    onlineUsers.delete(peerId);
+                }
+            }
+            
+            // Update UI
+            updateOnlineUsersUI();
+        }
+        
+        // Update online users UI
+        function updateOnlineUsersUI() {
+            // Update count
+            onlineUsersCount.textContent = `${onlineUsers.size} user${onlineUsers.size !== 1 ? 's' : ''} online`;
+            
+            // Clear list
+            onlineUsersList.innerHTML = '';
+            
+            // Add each user
+            for (const [peerId, userData] of onlineUsers.entries()) {
+                const userElement = document.createElement('div');
+                userElement.classList.add('online-user');
+                
+                if (peerId === peer.id) {
+                    userElement.innerHTML = `
+                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span> (You)</div>
+                        <div class="user-id">${peerId}</div>
+                    `;
+                } else {
+                    userElement.innerHTML = `
+                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span></div>
+                        <div class="user-id">${peerId}</div>
+                        <div class="action-buttons">
+                            <button class="connect-btn" data-peer-id="${peerId}">Connect</button>
+                            <button class="copy-id-btn" data-peer-id="${peerId}">Copy ID</button>
+                        </div>
+                    `;
+                    
+                    // Add event listeners
+                    const connectBtn = userElement.querySelector('.connect-btn');
+                    connectBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetPeerId = e.target.getAttribute('data-peer-id');
+                        connectToPeer(targetPeerId);
+                    });
+                    
+                    const copyBtn = userElement.querySelector('.copy-id-btn');
+                    copyBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetPeerId = e.target.getAttribute('data-peer-id');
+                        navigator.clipboard.writeText(targetPeerId)
+                            .then(() => {
+                                e.target.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    e.target.textContent = 'Copy ID';
+                                }, 2000);
+                            })
+                            .catch(err => {
+                                showError('Failed to copy ID');
+                            });
+                    });
+                }
+                
+                onlineUsersList.appendChild(userElement);
+            }
+        }
+        
+        // Simulate a connection to a real tracking server (in a real app, this would be a WebSocket)
+        function simulateServerConnection() {
+            log('Simulating connection to tracking server');
+            // In a real app, this would establish a real connection to a server
+        }
+        
+        // Simulate some online users for testing
+        function simulateOnlineUsers() {
+            // Add some fake users for demonstration
+            const fakeUsers = [
+                { id: 'user123', name: 'ActiveUser429' },
+                { id: 'xyz789', name: 'CalmElephant652' },
+                { id: 'abc456', name: 'BraveHawk281' },
+                { id: 'def987', name: 'GentleFox103' }
+            ];
+            
+            // Add users one by one with a delay to simulate them joining
+            let i = 0;
+            const addFakeUser = () => {
+                if (i < fakeUsers.length) {
+                    const user = fakeUsers[i];
+                    updateOnlineUser(user.id, user.name);
+                    i++;
+                    setTimeout(addFakeUser, 1500);
+                }
+            };
+            
+            // Start adding fake users
+            setTimeout(addFakeUser, 2000);
+        }
+        
         // Set up connection event handlers
         function setupConnection() {
             log('Setting up connection handlers');
@@ -596,9 +673,6 @@
                 systemMessage.style.margin = '0.5rem 0';
                 systemMessage.style.color = 'var(--accent)';
                 messagesContainer.appendChild(systemMessage);
-                
-                // Reset shower stats display
-                resetShowerStats();
             });
             
             connection.on('data', (data) => {
@@ -609,9 +683,6 @@
                     usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
                 } else if (data.type === 'message') {
                     addMessage(data.text, false);
-                } else if (data.type === 'shower') {
-                    // Handle shower event
-                    handleIncomingShower(data.showerType);
                 }
             });
             
@@ -756,116 +827,6 @@
             chatScreen.style.display = 'none';
         }
         
-        /* Virtual Shower System Functions */
-        
-        // Send shower event
-        function sendShower(showerType) {
-            if (!isConnected || !connection) {
-                showError('Not connected to a chat partner!');
-                return;
-            }
-            
-            log(`Sending shower event: ${showerType}`);
-            
-            try {
-                connection.send({
-                    type: 'shower',
-                    showerType: showerType
-                });
-                
-                // Show shower effects locally
-                createShowerEffect(showerType, true);
-                
-                // Show a notification
-                showNotification(`You sent ${showerType} to ${remoteUsername || 'your partner'}!`);
-            } catch (error) {
-                log(`Error sending shower: ${error.message}`);
-                showError('Failed to send shower. Connection may be lost.');
-            }
-        }
-        
-        // Handle incoming shower event
-        function handleIncomingShower(showerType) {
-            log(`Received shower event: ${showerType}`);
-            
-            // Update stats
-            showerStats[showerType]++;
-            updateShowerStats();
-            
-            // Show shower effect
-            createShowerEffect(showerType, false);
-            
-            // Show notification
-            showNotification(`${remoteUsername || 'Your partner'} sent you ${showerType}!`);
-        }
-        
-        // Create shower visual effect
-        function createShowerEffect(showerType, isSent) {
-            // Map shower types to emojis
-            const emojiMap = {
-                'hearts': '❤️',
-                'stars': '⭐',
-                'claps': '👏',
-                'flowers': '🌸'
-            };
-            
-            const emoji = emojiMap[showerType] || '✨';
-            
-            // Create 10-15 falling items
-            const itemCount = Math.floor(Math.random() * 6) + 10;
-            
-            for (let i = 0; i < itemCount; i++) {
-                setTimeout(() => {
-                    const item = document.createElement('div');
-                    item.className = 'shower-item';
-                    item.textContent = emoji;
-                    item.style.fontSize = `${Math.random() * 1 + 1}rem`;
-                    
-                    // Position horizontally across the messages container
-                    const xPos = Math.random() * messagesContainer.offsetWidth;
-                    item.style.left = `${xPos}px`;
-                    
-                    // Add to DOM
-                    messagesContainer.appendChild(item);
-                    
-                    // Remove after animation ends
-                    setTimeout(() => {
-                        messagesContainer.removeChild(item);
-                    }, 3000);
-                }, i * 100); // Stagger the creation of items
-            }
-        }
-        
-        // Update shower stats display
-        function updateShowerStats() {
-            document.getElementById('hearts-count').textContent = showerStats.hearts;
-            document.getElementById('stars-count').textContent = showerStats.stars;
-            document.getElementById('claps-count').textContent = showerStats.claps;
-            document.getElementById('flowers-count').textContent = showerStats.flowers;
-        }
-        
-        // Reset shower stats
-        function resetShowerStats() {
-            showerStats.hearts = 0;
-            showerStats.stars = 0;
-            showerStats.claps = 0;
-            showerStats.flowers = 0;
-            updateShowerStats();
-        }
-        
-        // Show notification
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'shower-notification';
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            // Remove after animation ends
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 3000);
-        }
-        
         // Event Listeners
         connectForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -889,22 +850,15 @@
         
         disconnectBtn.addEventListener('click', disconnect);
         
-        // Setup shower button event listeners
-        showerButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const showerType = button.dataset.type;
-                if (showerType) {
-                    sendShower(showerType);
-                }
-            });
-        });
-        
         // Clean up when the page is closed
         window.addEventListener('beforeunload', () => {
             if (peer) {
                 if (connection) connection.close();
                 peer.destroy();
             }
+            
+            // Clear heartbeat interval
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
         });
         
         // Initialize PeerJS on page load
