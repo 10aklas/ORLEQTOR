@@ -15,8 +15,6 @@
             --accent: #7c4dff;
             --accent-hover: #9370DB;
             --danger: #cf6679;
-            --success: #69f0ae;
-            --warning: #ffab40;
         }
         
         * {
@@ -43,18 +41,12 @@
         
         .container {
             flex: 1;
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 1rem;
             width: 100%;
             display: flex;
             flex-direction: column;
-        }
-        
-        .grid-container {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 1rem;
         }
         
         #setup-screen {
@@ -122,6 +114,7 @@
             margin-bottom: 1rem;
             min-height: 300px;
             max-height: 60vh;
+            position: relative;
         }
         
         .message {
@@ -129,6 +122,8 @@
             border-radius: 1rem;
             max-width: 80%;
             word-break: break-word;
+            position: relative;
+            z-index: 1;
         }
         
         .message.sent {
@@ -191,11 +186,11 @@
         }
         
         .status-connecting {
-            color: var(--warning);
+            color: #ffab40;
         }
         
         .status-connected {
-            color: var(--success);
+            color: #69f0ae;
         }
         
         .status-disconnected {
@@ -224,98 +219,129 @@
             white-space: pre-wrap;
         }
         
-        /* Online Users Panel Styles */
-        #online-users-panel {
+        /* Virtual Shower System Styles */
+        #shower-controls {
             background-color: var(--bg-secondary);
             border-radius: 4px;
             padding: 1rem;
-            height: 100%;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
         
-        #online-users-panel h3 {
+        #shower-title {
             text-align: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             color: var(--accent);
         }
         
-        #online-users-count {
-            text-align: center;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-        
-        #online-users-list {
-            list-style: none;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .user-item {
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            background-color: #2a2a2a;
-            border-radius: 4px;
+        #shower-buttons {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .shower-btn {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
             align-items: center;
         }
         
-        .user-item:hover {
-            background-color: #333;
+        .shower-btn:hover {
+            background-color: var(--accent);
         }
         
-        .user-info {
+        .shower-btn .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .shower-item {
+            position: absolute;
+            z-index: 2;
+            user-select: none;
+            pointer-events: none;
+            animation: fall 3s linear forwards;
+            opacity: 1;
+        }
+        
+        @keyframes fall {
+            0% {
+                transform: translateY(-20px) rotate(0deg);
+                opacity: 1;
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(200px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .shower-stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: var(--bg-primary);
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .shower-stat {
             display: flex;
             flex-direction: column;
+            align-items: center;
         }
         
-        .user-name {
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-        
-        .user-id {
+        .shower-stat-label {
             font-size: 0.8rem;
             color: var(--text-secondary);
         }
         
-        .user-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
+        .shower-stat-value {
+            font-weight: bold;
+            color: var(--accent);
         }
         
-        .user-status.online {
-            background-color: var(--success);
+        .shower-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            animation: showNotification 3s ease-in-out forwards;
+            z-index: 100;
         }
         
-        .user-status.busy {
-            background-color: var(--warning);
-        }
-        
-        .user-status-container {
-            display: flex;
-            align-items: center;
-        }
-        
-        .connect-btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-            background-color: var(--accent);
-        }
-        
-        .connect-btn:hover {
-            background-color: var(--accent-hover);
-        }
-        
-        @media (max-width: 768px) {
-            .grid-container {
-                grid-template-columns: 1fr;
+        @keyframes showNotification {
+            0% {
+                transform: translateX(100%);
+                opacity: 0;
             }
-            
-            #online-users-panel {
-                margin-top: 1rem;
+            15% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            85% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(100%);
+                opacity: 0;
             }
         }
     </style>
@@ -344,28 +370,61 @@
             <div id="error-display"></div>
         </div>
         
-        <div class="grid-container">
-            <div id="chat-screen">
-                <div id="connection-status">
-                    <p id="status-text" class="status-disconnected">Disconnected</p>
-                    <p id="username-display"></p>
-                </div>
-                
-                <div id="messages"></div>
-                
-                <form id="message-form">
-                    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
-                    <button type="submit" id="send-btn" disabled>Send</button>
-                </form>
-                
-                <button id="disconnect-btn">Disconnect</button>
+        <div id="chat-screen">
+            <div id="connection-status">
+                <p id="status-text" class="status-disconnected">Disconnected</p>
+                <p id="username-display"></p>
             </div>
             
-            <div id="online-users-panel">
-                <h3>Online Users</h3>
-                <p id="online-users-count">0 users online</p>
-                <ul id="online-users-list"></ul>
+            <!-- Virtual Shower Controls -->
+            <div id="shower-controls">
+                <h3 id="shower-title">Virtual Shower System</h3>
+                <div id="shower-buttons">
+                    <button class="shower-btn" data-type="hearts">
+                        <span class="icon">❤️</span>
+                        <span>Hearts</span>
+                    </button>
+                    <button class="shower-btn" data-type="stars">
+                        <span class="icon">⭐</span>
+                        <span>Stars</span>
+                    </button>
+                    <button class="shower-btn" data-type="claps">
+                        <span class="icon">👏</span>
+                        <span>Claps</span>
+                    </button>
+                    <button class="shower-btn" data-type="flowers">
+                        <span class="icon">🌸</span>
+                        <span>Flowers</span>
+                    </button>
+                </div>
+                <div class="shower-stats">
+                    <div class="shower-stat">
+                        <span class="shower-stat-label">Hearts Received</span>
+                        <span class="shower-stat-value" id="hearts-count">0</span>
+                    </div>
+                    <div class="shower-stat">
+                        <span class="shower-stat-label">Stars Received</span>
+                        <span class="shower-stat-value" id="stars-count">0</span>
+                    </div>
+                    <div class="shower-stat">
+                        <span class="shower-stat-label">Claps Received</span>
+                        <span class="shower-stat-value" id="claps-count">0</span>
+                    </div>
+                    <div class="shower-stat">
+                        <span class="shower-stat-label">Flowers Received</span>
+                        <span class="shower-stat-value" id="flowers-count">0</span>
+                    </div>
+                </div>
             </div>
+            
+            <div id="messages"></div>
+            
+            <form id="message-form">
+                <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
+                <button type="submit" id="send-btn" disabled>Send</button>
+            </form>
+            
+            <button id="disconnect-btn">Disconnect</button>
         </div>
         
         <div id="debug-log"></div>
@@ -392,8 +451,6 @@
         const sendBtn = document.getElementById('send-btn');
         const errorDisplay = document.getElementById('error-display');
         const debugLog = document.getElementById('debug-log');
-        const onlineUsersList = document.getElementById('online-users-list');
-        const onlineUsersCount = document.getElementById('online-users-count');
         
         // Initially hide chat screen
         chatScreen.style.display = 'none';
@@ -404,19 +461,15 @@
         let localUsername;
         let remoteUsername;
         let isConnected = false;
-        let onlineUsers = new Map();
         
-        // Simulated online users - these will be displayed as if they're real users
-        const simulatedUsers = [
-            { username: 'CuriousPanda423', id: 'rT45Zx', status: 'online' },
-            { username: 'SkyWalker789', id: 'j9pQ2s', status: 'online' },
-            { username: 'MidnightOwl55', id: 'kL7mN3', status: 'busy' },
-            { username: 'CosmicDancer22', id: 'fG8hT6', status: 'online' },
-            { username: 'StarGazer101', id: 'p3vR4z', status: 'online' },
-            { username: 'OceanExplorer', id: 'qY7tW9', status: 'busy' },
-            { username: 'MountainClimber', id: 'bN5cV2', status: 'online' },
-            { username: 'DesertNomad', id: 'xZ1aS3', status: 'online' }
-        ];
+        // Shower system variables
+        const showerButtons = document.querySelectorAll('.shower-btn');
+        const showerStats = {
+            hearts: 0,
+            stars: 0,
+            claps: 0,
+            flowers: 0
+        };
         
         // Debug log function
         function log(message) {
@@ -472,17 +525,6 @@
                     log(`Peer connected with ID: ${id}`);
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
-                    
-                    // Add self to online users
-                    addUserToOnlineList({
-                        username: localUsername,
-                        id: id,
-                        status: 'online',
-                        isSelf: true
-                    });
-                    
-                    // Simulate other users joining
-                    simulateOnlineUsers();
                 });
                 
                 peer.on('connection', (conn) => {
@@ -524,150 +566,6 @@
             }
         }
         
-        // Simulate other users joining and leaving
-        function simulateOnlineUsers() {
-            // Add initial simulated users
-            simulatedUsers.forEach(user => {
-                addUserToOnlineList(user);
-            });
-            
-            // Periodically update users' status
-            setInterval(() => {
-                updateRandomUserStatus();
-            }, 5000);
-            
-            // Simulate users joining and leaving
-            setInterval(() => {
-                const action = Math.random() > 0.5 ? 'join' : 'leave';
-                
-                if (action === 'join' && simulatedUsers.length > onlineUsers.size - 1) {
-                    // Find a user that's not already online
-                    for (const user of simulatedUsers) {
-                        if (!onlineUsers.has(user.id) && user.id !== peer.id) {
-                            addUserToOnlineList({
-                                username: user.username,
-                                id: user.id,
-                                status: user.status
-                            });
-                            break;
-                        }
-                    }
-                } else if (action === 'leave' && onlineUsers.size > 3) {
-                    // Remove a random user (not yourself)
-                    const users = Array.from(onlineUsers.values()).filter(user => !user.isSelf);
-                    if (users.length > 0) {
-                        const randomUser = users[Math.floor(Math.random() * users.length)];
-                        removeUserFromOnlineList(randomUser.id);
-                    }
-                }
-            }, 10000);
-        }
-        
-        // Update a random user's status
-        function updateRandomUserStatus() {
-            const users = Array.from(onlineUsers.values()).filter(user => !user.isSelf && user.id !== (connection?.peer || ''));
-            if (users.length > 0) {
-                const randomUser = users[Math.floor(Math.random() * users.length)];
-                const newStatus = randomUser.status === 'online' ? 'busy' : 'online';
-                updateUserStatus(randomUser.id, newStatus);
-            }
-        }
-        
-        // Add a user to the online users list
-        function addUserToOnlineList(user) {
-            if (onlineUsers.has(user.id)) return;
-            
-            onlineUsers.set(user.id, user);
-            
-            const userItem = document.createElement('li');
-            userItem.classList.add('user-item');
-            userItem.dataset.userId = user.id;
-            
-            const userInfoDiv = document.createElement('div');
-            userInfoDiv.classList.add('user-info');
-            
-            const usernameDiv = document.createElement('div');
-            usernameDiv.classList.add('user-name');
-            usernameDiv.textContent = user.username + (user.isSelf ? ' (You)' : '');
-            
-            const userIdDiv = document.createElement('div');
-            userIdDiv.classList.add('user-id');
-            userIdDiv.textContent = user.id;
-            
-            userInfoDiv.appendChild(usernameDiv);
-            userInfoDiv.appendChild(userIdDiv);
-            
-            const userStatusContainer = document.createElement('div');
-            userStatusContainer.classList.add('user-status-container');
-            
-            const userStatusDiv = document.createElement('div');
-            userStatusDiv.classList.add('user-status', user.status);
-            
-            userStatusContainer.appendChild(userStatusDiv);
-            
-            if (!user.isSelf && !isConnected) {
-                const connectButton = document.createElement('button');
-                connectButton.classList.add('connect-btn');
-                connectButton.textContent = 'Connect';
-                connectButton.addEventListener('click', () => {
-                    peerIdInput.value = user.id;
-                    connectToPeer(user.id);
-                });
-                userStatusContainer.appendChild(connectButton);
-            }
-            
-            userItem.appendChild(userInfoDiv);
-            userItem.appendChild(userStatusContainer);
-            
-            onlineUsersList.appendChild(userItem);
-            updateOnlineUsersCount();
-            
-            // Simulate a join notification
-            if (!user.isSelf) {
-                log(`User ${user.username} joined`);
-            }
-        }
-        
-        // Remove a user from the online users list
-        function removeUserFromOnlineList(userId) {
-            if (!onlineUsers.has(userId)) return;
-            
-            const user = onlineUsers.get(userId);
-            onlineUsers.delete(userId);
-            
-            const userItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
-            if (userItem) {
-                userItem.remove();
-            }
-            
-            updateOnlineUsersCount();
-            
-            // Simulate a leave notification
-            log(`User ${user.username} left`);
-        }
-        
-        // Update a user's status
-        function updateUserStatus(userId, status) {
-            if (!onlineUsers.has(userId)) return;
-            
-            const user = onlineUsers.get(userId);
-            user.status = status;
-            onlineUsers.set(userId, user);
-            
-            const userItem = document.querySelector(`.user-item[data-user-id="${userId}"] .user-status`);
-            if (userItem) {
-                userItem.className = `user-status ${status}`;
-            }
-            
-            // Log status change
-            log(`User ${user.username} is now ${status}`);
-        }
-        
-        // Update the online users count
-        function updateOnlineUsersCount() {
-            onlineUsersCount.textContent = `${onlineUsers.size} users online`;
-        }
-        
         // Set up connection event handlers
         function setupConnection() {
             log('Setting up connection handlers');
@@ -699,15 +597,8 @@
                 systemMessage.style.color = 'var(--accent)';
                 messagesContainer.appendChild(systemMessage);
                 
-                // Update the connected peer's status
-                if (onlineUsers.has(connection.peer)) {
-                    updateUserStatus(connection.peer, 'busy');
-                }
-                
-                // Update our status
-                if (onlineUsers.has(peer.id)) {
-                    updateUserStatus(peer.id, 'busy');
-                }
+                // Reset shower stats display
+                resetShowerStats();
             });
             
             connection.on('data', (data) => {
@@ -718,21 +609,15 @@
                     usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
                 } else if (data.type === 'message') {
                     addMessage(data.text, false);
+                } else if (data.type === 'shower') {
+                    // Handle shower event
+                    handleIncomingShower(data.showerType);
                 }
             });
             
             connection.on('close', () => {
                 log('Connection closed');
                 handleDisconnect('Chat partner disconnected');
-                
-                // Update statuses
-                if (connection && onlineUsers.has(connection.peer)) {
-                    updateUserStatus(connection.peer, 'online');
-                }
-                
-                if (onlineUsers.has(peer.id)) {
-                    updateUserStatus(peer.id, 'online');
-                }
             });
             
             connection.on('error', (error) => {
@@ -758,15 +643,6 @@
             systemMessage.style.margin = '0.5rem 0';
             systemMessage.style.color = 'var(--danger)';
             messagesContainer.appendChild(systemMessage);
-            
-            // Update statuses
-            if (connection && onlineUsers.has(connection.peer)) {
-                updateUserStatus(connection.peer, 'online');
-            }
-            
-            if (onlineUsers.has(peer.id)) {
-                updateUserStatus(peer.id, 'online');
-            }
             
             // Show setup screen again after a short delay
             setTimeout(() => {
@@ -875,14 +751,119 @@
             messageInput.disabled = true;
             sendBtn.disabled = true;
             
-            // Update statuses
-            if (onlineUsers.has(peer.id)) {
-                updateUserStatus(peer.id, 'online');
-            }
-            
             // Show setup screen
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
+        }
+        
+        /* Virtual Shower System Functions */
+        
+        // Send shower event
+        function sendShower(showerType) {
+            if (!isConnected || !connection) {
+                showError('Not connected to a chat partner!');
+                return;
+            }
+            
+            log(`Sending shower event: ${showerType}`);
+            
+            try {
+                connection.send({
+                    type: 'shower',
+                    showerType: showerType
+                });
+                
+                // Show shower effects locally
+                createShowerEffect(showerType, true);
+                
+                // Show a notification
+                showNotification(`You sent ${showerType} to ${remoteUsername || 'your partner'}!`);
+            } catch (error) {
+                log(`Error sending shower: ${error.message}`);
+                showError('Failed to send shower. Connection may be lost.');
+            }
+        }
+        
+        // Handle incoming shower event
+        function handleIncomingShower(showerType) {
+            log(`Received shower event: ${showerType}`);
+            
+            // Update stats
+            showerStats[showerType]++;
+            updateShowerStats();
+            
+            // Show shower effect
+            createShowerEffect(showerType, false);
+            
+            // Show notification
+            showNotification(`${remoteUsername || 'Your partner'} sent you ${showerType}!`);
+        }
+        
+        // Create shower visual effect
+        function createShowerEffect(showerType, isSent) {
+            // Map shower types to emojis
+            const emojiMap = {
+                'hearts': '❤️',
+                'stars': '⭐',
+                'claps': '👏',
+                'flowers': '🌸'
+            };
+            
+            const emoji = emojiMap[showerType] || '✨';
+            
+            // Create 10-15 falling items
+            const itemCount = Math.floor(Math.random() * 6) + 10;
+            
+            for (let i = 0; i < itemCount; i++) {
+                setTimeout(() => {
+                    const item = document.createElement('div');
+                    item.className = 'shower-item';
+                    item.textContent = emoji;
+                    item.style.fontSize = `${Math.random() * 1 + 1}rem`;
+                    
+                    // Position horizontally across the messages container
+                    const xPos = Math.random() * messagesContainer.offsetWidth;
+                    item.style.left = `${xPos}px`;
+                    
+                    // Add to DOM
+                    messagesContainer.appendChild(item);
+                    
+                    // Remove after animation ends
+                    setTimeout(() => {
+                        messagesContainer.removeChild(item);
+                    }, 3000);
+                }, i * 100); // Stagger the creation of items
+            }
+        }
+        
+        // Update shower stats display
+        function updateShowerStats() {
+            document.getElementById('hearts-count').textContent = showerStats.hearts;
+            document.getElementById('stars-count').textContent = showerStats.stars;
+            document.getElementById('claps-count').textContent = showerStats.claps;
+            document.getElementById('flowers-count').textContent = showerStats.flowers;
+        }
+        
+        // Reset shower stats
+        function resetShowerStats() {
+            showerStats.hearts = 0;
+            showerStats.stars = 0;
+            showerStats.claps = 0;
+            showerStats.flowers = 0;
+            updateShowerStats();
+        }
+        
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'shower-notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Remove after animation ends
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
         }
         
         // Event Listeners
@@ -907,6 +888,16 @@
         });
         
         disconnectBtn.addEventListener('click', disconnect);
+        
+        // Setup shower button event listeners
+        showerButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const showerType = button.dataset.type;
+                if (showerType) {
+                    sendShower(showerType);
+                }
+            });
+        });
         
         // Clean up when the page is closed
         window.addEventListener('beforeunload', () => {
