@@ -367,514 +367,420 @@
     </footer>
     
     <script>
-        // DOM Elements
-        const setupScreen = document.getElementById('setup-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const myIdDisplay = document.getElementById('my-id');
-        const peerIdInput = document.getElementById('peer-id-input');
-        const connectForm = document.getElementById('connect-form');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        const statusText = document.getElementById('status-text');
-        const usernameDisplay = document.getElementById('username-display');
-        const messagesContainer = document.getElementById('messages');
-        const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-        const errorDisplay = document.getElementById('error-display');
-        const debugLog = document.getElementById('debug-log');
-        const onlineUsersCount = document.getElementById('online-users-count');
-        const onlineUsersList = document.getElementById('online-users-list');
-        
-        // Initially hide chat screen
-        chatScreen.style.display = 'none';
-        
-        // Variables
-        let peer;
-        let connection;
-        let localUsername;
-        let remoteUsername;
-        let isConnected = false;
-        let database;
-        let userRef;
-        let onlineUsersRef;
-        let offlineTimeout;
-        
-        // Firebase Configuration - You would replace these with your actual Firebase project details
-        const firebaseConfig = {
-            apiKey: "AIzaSyAU7TnS9-YeWNlr42JvQv6m3D3rRUIlwLw",
-            authDomain: "chatwithstrangers-4fc25.firebaseapp.com",
-            databaseURL: "https://chatwithstrangers-4fc25-default-rtdb.firebaseio.com",
-            projectId: "chatwithstrangers-4fc25",
-            storageBucket: "chatwithstrangers-4fc25.appspot.com",
-            messagingSenderId: "693352756796",
-            appId: "1:693352756796:web:45678923456789abcdef12"
+        // Replace the Firebase initialization and online users system with this code
+// Add this at the beginning of your script section
+
+// DOM Elements
+const setupScreen = document.getElementById('setup-screen');
+const chatScreen = document.getElementById('chat-screen');
+const myIdDisplay = document.getElementById('my-id');
+const peerIdInput = document.getElementById('peer-id-input');
+const connectForm = document.getElementById('connect-form');
+const connectBtn = document.getElementById('connect-btn');
+const disconnectBtn = document.getElementById('disconnect-btn');
+const statusText = document.getElementById('status-text');
+const usernameDisplay = document.getElementById('username-display');
+const messagesContainer = document.getElementById('messages');
+const messageForm = document.getElementById('message-form');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const errorDisplay = document.getElementById('error-display');
+const debugLog = document.getElementById('debug-log');
+const onlineUsersCount = document.getElementById('online-users-count');
+const onlineUsersList = document.getElementById('online-users-list');
+
+// Initially hide chat screen
+chatScreen.style.display = 'none';
+
+// Variables
+let peer;
+let connection;
+let localUsername;
+let remoteUsername;
+let isConnected = false;
+let database;
+let userRef;
+let onlineUsersRef;
+let offlineTimeout;
+let localUsers = {}; // Fallback local storage for users when Firebase isn't working
+
+// Firebase Configuration - Replace with your actual Firebase project details if available
+const firebaseConfig = {
+    apiKey: "AIzaSyAU7TnS9-YeWNlr42JvQv6m3D3rRUIlwLw",
+    authDomain: "chatwithstrangers-4fc25.firebaseapp.com",
+    databaseURL: "https://chatwithstrangers-4fc25-default-rtdb.firebaseio.com",
+    projectId: "chatwithstrangers-4fc25",
+    storageBucket: "chatwithstrangers-4fc25.appspot.com",
+    messagingSenderId: "693352756796",
+    appId: "1:693352756796:web:45678923456789abcdef12"
+};
+
+// Debug log function
+function log(message) {
+    console.log(message);
+    const now = new Date().toLocaleTimeString();
+    debugLog.innerHTML += `[${now}] ${message}\n`;
+    debugLog.scrollTop = debugLog.scrollHeight;
+}
+
+// Show error
+function showError(message) {
+    errorDisplay.textContent = message;
+    errorDisplay.style.display = 'block';
+    setTimeout(() => {
+        errorDisplay.style.display = 'none';
+    }, 5000);
+}
+
+// Generate a random username
+function generateUsername() {
+    const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
+    const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
+    const randomNumber = Math.floor(Math.random() * 1000);
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj}${noun}${randomNumber}`;
+}
+
+// Generate a simple ID
+function generateSimpleId() {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
+// Fallback function for when Firebase is unavailable
+function handleFirebaseUnavailable() {
+    log('Switching to local user tracking mode');
+    onlineUsersCount.textContent = 'Local mode active';
+    
+    // Set up local mode periodic updates
+    setInterval(() => {
+        updateLocalUsersUI();
+    }, 3000);
+}
+
+// Update UI with local users
+function updateLocalUsersUI() {
+    // Clean up old users
+    const now = Date.now();
+    Object.keys(localUsers).forEach(id => {
+        if (now - localUsers[id].lastSeen > 120000) { // 2 minutes
+            delete localUsers[id];
+        }
+    });
+    
+    // Add current user if not already there
+    if (peer && peer.id && !localUsers[peer.id]) {
+        localUsers[peer.id] = {
+            username: localUsername,
+            lastSeen: Date.now()
         };
-        
-        // Debug log function
-        function log(message) {
-            console.log(message);
-            const now = new Date().toLocaleTimeString();
-            debugLog.innerHTML += `[${now}] ${message}\n`;
-            debugLog.scrollTop = debugLog.scrollHeight;
-        }
-        
-        // Show error
-        function showError(message) {
-            errorDisplay.textContent = message;
-            errorDisplay.style.display = 'block';
-            setTimeout(() => {
-                errorDisplay.style.display = 'none';
-            }, 5000);
-        }
-        
-        // Generate a random username
-        function generateUsername() {
-            const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
-            const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
-            const randomNumber = Math.floor(Math.random() * 1000);
-            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-            const noun = nouns[Math.floor(Math.random() * nouns.length)];
-            return `${adj}${noun}${randomNumber}`;
-        }
-        
-        // Generate a simple ID
-        function generateSimpleId() {
-            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < 6; i++) {
-                result += characters.charAt(Math.floor(Math.random() * characters.length));
-            }
-            return result;
-        }
-        
-        // Initialize Firebase
+    }
+    
+    // Update UI
+    updateOnlineUsersUI(localUsers);
+}
+
+// Initialize Firebase
 function initializeFirebase() {
     try {
+        // Check if Firebase SDK is loaded properly
+        if (typeof firebase === 'undefined' || !firebase.database) {
+            log('Firebase SDK not loaded properly');
+            handleFirebaseUnavailable();
+            return;
+        }
+        
+        // Initialize Firebase with config
         firebase.initializeApp(firebaseConfig);
         database = firebase.database();
-        onlineUsersRef = database.ref('online-users');
         
-        // Test connection with a simple write operation
-        database.ref('.info/connected').on('value', (snapshot) => {
-            log(`Firebase connection status: ${snapshot.val() ? 'connected' : 'disconnected'}`);
-            if (snapshot.val() === true) {
-                onlineUsersCount.textContent = 'Connected to database, waiting for users...';
+        // Test connection
+        const connectedRef = database.ref('.info/connected');
+        connectedRef.on('value', (snap) => {
+            if (snap.val() === true) {
+                log('Connected to Firebase');
+                
+                // Now that we're connected, set up the online users tracking
+                onlineUsersRef = database.ref('online-users');
+                
+                // Listen for online users
+                onlineUsersRef.on('value', (snapshot) => {
+                    const users = snapshot.val() || {};
+                    log(`Received online users data: ${Object.keys(users).length} users`);
+                    updateOnlineUsersUI(users);
+                }, (error) => {
+                    log(`Error fetching online users: ${error.code} - ${error.message}`);
+                    handleFirebaseUnavailable();
+                });
+                
+                // If we have a peer ID already, register as online
+                if (peer && peer.id && localUsername) {
+                    registerUserOnline(peer.id, localUsername);
+                }
+            } else {
+                log('Disconnected from Firebase');
+                handleFirebaseUnavailable();
             }
-        });
-        
-        // Listen for online users
-        onlineUsersRef.on('value', (snapshot) => {
-            log(`Received online users data: ${snapshot.exists() ? 'data exists' : 'no data'}`);
-            updateOnlineUsersUI(snapshot.val() || {});
         }, (error) => {
-            log(`Error fetching online users: ${error.code} - ${error.message}`);
-            onlineUsersCount.textContent = 'Error loading users. Check console.';
+            log(`Firebase connection error: ${error.message}`);
+            handleFirebaseUnavailable();
         });
-        
-        log('Firebase initialized successfully');
     } catch (error) {
         log(`Error initializing Firebase: ${error.message}`);
-        showError('Failed to connect to user database. Some features may be limited.');
-        onlineUsersCount.textContent = 'User database connection failed';
+        handleFirebaseUnavailable();
     }
 }
+
+// Register user as online
+function registerUserOnline(peerId, username) {
+    if (!database || !onlineUsersRef) {
+        // Fall back to local mode
+        localUsers[peerId] = { username, lastSeen: Date.now() };
+        return;
+    }
+    
+    try {
+        userRef = onlineUsersRef.child(peerId);
         
-        // Register user as online
-        function registerUserOnline(peerId, username) {
-            if (!database) return;
-            
-            userRef = database.ref(`online-users/${peerId}`);
-            
-            // Set user data
-            userRef.set({
-                username: username,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
-            });
-            
-            // Remove user when they disconnect
-            userRef.onDisconnect().remove();
-            
-            // Update last seen time every 30 seconds
-            setInterval(() => {
-                if (userRef) {
-                    userRef.update({
-                        lastSeen: firebase.database.ServerValue.TIMESTAMP
-                    });
-                }
-            }, 30000);
-            
-            // Clean up old users every minute
-            setInterval(cleanupOfflineUsers, 60000);
-        }
-        
-        // Clean up offline users (users who haven't updated their timestamp in 2 minutes)
-        function cleanupOfflineUsers() {
-            if (!database) return;
-            
-            const twoMinutesAgo = Date.now() - 120000;
-            
-            // Query for users who haven't been seen in 2 minutes
-            onlineUsersRef.orderByChild('lastSeen').endAt(twoMinutesAgo).once('value', (snapshot) => {
-                const outdatedUsers = snapshot.val();
-                
-                if (outdatedUsers) {
-                    Object.keys(outdatedUsers).forEach((userId) => {
-                        database.ref(`online-users/${userId}`).remove();
-                        log(`Removed inactive user: ${outdatedUsers[userId].username}`);
-                    });
-                }
-            });
-        }
-        
-        // Update the online users UI
-        function updateOnlineUsersUI(users) {
-            const userCount = Object.keys(users).length;
-            
-            // Update count
-            onlineUsersCount.textContent = `${userCount} user${userCount !== 1 ? 's' : ''} online`;
-            
-            // Clear list
-            onlineUsersList.innerHTML = '';
-            
-            // Add each user
-            Object.entries(users).forEach(([peerId, userData]) => {
-                const userElement = document.createElement('div');
-                userElement.classList.add('online-user');
-                
-                if (peerId === peer?.id) {
-                    userElement.innerHTML = `
-                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span> (You)</div>
-                        <div class="user-id">${peerId}</div>
-                    `;
-                } else {
-                    userElement.innerHTML = `
-                        <div><span class="online-indicator"></span> <span class="username">${userData.username}</span></div>
-                        <div class="user-id">${peerId}</div>
-                        <div class="action-buttons">
-                            <button class="connect-btn" data-peer-id="${peerId}">Connect</button>
-                            <button class="copy-id-btn" data-peer-id="${peerId}">Copy ID</button>
-                        </div>
-                    `;
-                    
-                    // Add event listeners after the element is added to the DOM
-                    setTimeout(() => {
-                        const connectBtn = userElement.querySelector('.connect-btn');
-                        if (connectBtn) {
-                            connectBtn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const targetPeerId = e.target.getAttribute('data-peer-id');
-                                connectToPeer(targetPeerId);
-                            });
-                        }
-                        
-                        const copyBtn = userElement.querySelector('.copy-id-btn');
-                        if (copyBtn) {
-                            copyBtn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const targetPeerId = e.target.getAttribute('data-peer-id');
-                                navigator.clipboard.writeText(targetPeerId)
-                                    .then(() => {
-                                        e.target.textContent = 'Copied!';
-                                        setTimeout(() => {
-                                            e.target.textContent = 'Copy ID';
-                                        }, 2000);
-                                    })
-                                    .catch(err => {
-                                        showError('Failed to copy ID');
-                                    });
-                            });
-                        }
-                    }, 0);
-                }
-                
-                onlineUsersList.appendChild(userElement);
-            });
-        }
-        
-        // Initialize PeerJS
-        function initializePeer() {
-            const peerId = generateSimpleId();
-            localUsername = generateUsername();
-            
-            log(`Initializing PeerJS with ID: ${peerId}`);
-            
-            try {
-                // Initialize with minimal options to avoid errors
-                peer = new Peer(peerId, {
-                    debug: 2
-                });
-                
-                peer.on('open', (id) => {
-                    log(`Peer connected with ID: ${id}`);
-                    myIdDisplay.textContent = id;
-                    usernameDisplay.textContent = `Your username: ${localUsername}`;
-                    
-                    // Register user as online in Firebase
-                    registerUserOnline(id, localUsername);
-                });
-                
-                peer.on('connection', (conn) => {
-                    log(`Incoming connection from: ${conn.peer}`);
-                    
-                    if (!isConnected) {
-                        connection = conn;
-                        setupConnection();
-                    } else {
-                        conn.close();
-                    }
-                });
-                
-                peer.on('error', (err) => {
-                    log(`Peer error: ${err.type}`);
-                    showError(`Connection error: ${err.type}`);
-                    
-                    if (err.type === 'peer-unavailable') {
-                        showError('Peer ID not found. Check the ID and try again.');
-                    } else if (err.type === 'network') {
-                        showError('Network error. Check your internet connection.');
-                    } else if (err.type === 'disconnected') {
-                        showError('Disconnected from server. Try refreshing the page.');
-                    }
-                });
-                
-                peer.on('disconnected', () => {
-                    log('Peer disconnected from server');
-                    showError('Disconnected from server. Click to reconnect.');
-                    
-                    // Try to reconnect
-                    setTimeout(() => {
-                        if (peer) peer.reconnect();
-                    }, 3000);
-                });
-            } catch (error) {
-                log(`Error initializing PeerJS: ${error.message}`);
-                showError(`Failed to initialize connection: ${error.message}`);
-            }
-        }
-        
-        // Set up connection event handlers
-        function setupConnection() {
-            log('Setting up connection handlers');
-            
-            connection.on('open', () => {
-                log('Connection opened');
-                isConnected = true;
-                
-                // Show chat UI
-                setupScreen.style.display = 'none';
-                chatScreen.style.display = 'flex';
-                
-                updateStatus('Connected');
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
-                
-                // Send our username
-                connection.send({
-                    type: 'username',
-                    username: localUsername
-                });
-                
-                // Add system message
-                const systemMessage = document.createElement('div');
-                systemMessage.textContent = 'Connected to chat!';
-                systemMessage.style.textAlign = 'center';
-                systemMessage.style.padding = '0.5rem';
-                systemMessage.style.margin = '0.5rem 0';
-                systemMessage.style.color = 'var(--accent)';
-                messagesContainer.appendChild(systemMessage);
-            });
-            
-            connection.on('data', (data) => {
-                log(`Received data: ${JSON.stringify(data)}`);
-                
-                if (data.type === 'username') {
-                    remoteUsername = data.username;
-                    usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
-                } else if (data.type === 'message') {
-                    addMessage(data.text, false);
-                }
-            });
-            
-            connection.on('close', () => {
-                log('Connection closed');
-                handleDisconnect('Chat partner disconnected');
-            });
-            
-            connection.on('error', (error) => {
-                log(`Connection error: ${error}`);
-                handleDisconnect('Connection error');
-            });
-        }
-        
-        // Handle disconnection
-        function handleDisconnect(message) {
-            log(`Disconnected: ${message}`);
-            
-            isConnected = false;
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            updateStatus('Disconnected');
-            
-            // Add system message
-            const systemMessage = document.createElement('div');
-            systemMessage.textContent = message || 'Disconnected';
-            systemMessage.style.textAlign = 'center';
-            systemMessage.style.padding = '0.5rem';
-            systemMessage.style.margin = '0.5rem 0';
-            systemMessage.style.color = 'var(--danger)';
-            messagesContainer.appendChild(systemMessage);
-            
-            // Show setup screen again after a short delay
-            setTimeout(() => {
-                setupScreen.style.display = 'flex';
-                chatScreen.style.display = 'none';
-            }, 3000);
-        }
-        
-        // Connect to a peer
-        function connectToPeer(peerId) {
-            if (!peer) {
-                showError('Connection not initialized. Please refresh the page.');
-                return false;
-            }
-            
-            log(`Attempting to connect to: ${peerId}`);
-            updateStatus('Connecting...');
-            
-            try {
-                connection = peer.connect(peerId, {
-                    reliable: true
-                });
-                
-                setupConnection();
-                return true;
-            } catch (error) {
-                log(`Error connecting to peer: ${error.message}`);
-                showError(`Failed to connect: ${error.message}`);
-                return false;
-            }
-        }
-        
-        // Update the connection status UI
-        function updateStatus(status) {
-            statusText.textContent = status;
-            
-            if (status === 'Connecting...') {
-                statusText.className = 'status-connecting';
-            } else if (status === 'Connected') {
-                statusText.className = 'status-connected';
-            } else {
-                statusText.className = 'status-disconnected';
-            }
-        }
-        
-        // Add a message to the chat
-        function addMessage(text, isSent) {
-            if (!text.trim()) return;
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
-            
-            const usernameSpan = document.createElement('div');
-            usernameSpan.classList.add('username');
-            usernameSpan.textContent = isSent ? localUsername : remoteUsername || 'Stranger';
-            
-            const textSpan = document.createElement('div');
-            textSpan.textContent = text;
-            
-            messageDiv.appendChild(usernameSpan);
-            messageDiv.appendChild(textSpan);
-            
-            messagesContainer.appendChild(messageDiv);
-            
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        // Send a message
-        function sendMessage(text) {
-            if (!isConnected || !connection) {
-                showError('Not connected to a chat partner!');
-                return;
-            }
-            
-            log(`Sending message: ${text}`);
-            
-            try {
-                connection.send({
-                    type: 'message',
-                    text: text
-                });
-                
-                addMessage(text, true);
-            } catch (error) {
-                log(`Error sending message: ${error.message}`);
-                showError('Failed to send message. Connection may be lost.');
-            }
-        }
-        
-        // Disconnect from current peer
-        function disconnect() {
-            log('Disconnecting from current peer');
-            
-            if (connection) {
-                connection.close();
-                connection = null;
-            }
-            
-            isConnected = false;
-            remoteUsername = null;
-            messagesContainer.innerHTML = '';
-            
-            // Reset UI
-            updateStatus('Disconnected');
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            
-            // Show setup screen
-            setupScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-        }
-        
-        // Event Listeners
-        connectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const peerId = peerIdInput.value.trim();
-            if (peerId) {
-                connectToPeer(peerId);
-                // Keep the setup screen visible until connection is established
-            } else {
-                showError('Please enter a peer ID');
-            }
+        // Set user data
+        userRef.set({
+            username: username,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
         
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            if (message) {
-                sendMessage(message);
-                messageInput.value = '';
-            }
-        });
+        // Remove user when they disconnect
+        userRef.onDisconnect().remove();
         
-        disconnectBtn.addEventListener('click', disconnect);
-        
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', () => {
+        // Update last seen time every 30 seconds
+        setInterval(() => {
             if (userRef) {
-                userRef.remove();
+                userRef.update({
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // Also update local cache as fallback
+                localUsers[peerId] = { username, lastSeen: Date.now() };
             }
+        }, 30000);
+        
+        log(`Registered user online: ${username} (${peerId})`);
+    } catch (error) {
+        log(`Error registering user online: ${error.message}`);
+        // Fall back to local mode
+        localUsers[peerId] = { username, lastSeen: Date.now() };
+    }
+}
+
+// Clean up offline users (users who haven't updated their timestamp in 2 minutes)
+function cleanupOfflineUsers() {
+    // Clean local users first
+    const twoMinutesAgo = Date.now() - 120000;
+    Object.keys(localUsers).forEach(userId => {
+        if (localUsers[userId].lastSeen < twoMinutesAgo) {
+            delete localUsers[userId];
+        }
+    });
+    
+    // Only proceed with Firebase if available
+    if (!database || !onlineUsersRef) return;
+    
+    try {
+        // Query for users who haven't been seen in 2 minutes
+        onlineUsersRef.orderByChild('lastSeen').endAt(twoMinutesAgo).once('value', (snapshot) => {
+            const outdatedUsers = snapshot.val();
             
-            if (peer) {
-                if (connection) connection.close();
-                peer.destroy();
+            if (outdatedUsers) {
+                Object.keys(outdatedUsers).forEach((userId) => {
+                    onlineUsersRef.child(userId).remove();
+                    log(`Removed inactive user: ${outdatedUsers[userId].username}`);
+                });
+            }
+        });
+    } catch (error) {
+        log(`Error cleaning up offline users: ${error.message}`);
+    }
+}
+
+// Update the online users UI
+function updateOnlineUsersUI(users) {
+    const userCount = Object.keys(users).length;
+    
+    // Update count
+    onlineUsersCount.textContent = `${userCount} user${userCount !== 1 ? 's' : ''} online`;
+    
+    // Clear list
+    onlineUsersList.innerHTML = '';
+    
+    // Add each user
+    Object.entries(users).forEach(([peerId, userData]) => {
+        const userElement = document.createElement('div');
+        userElement.classList.add('online-user');
+        
+        // Format differently if it's the current user
+        if (peerId === peer?.id) {
+            userElement.innerHTML = `
+                <div><span class="online-indicator"></span> <span class="username">${userData.username}</span> (You)</div>
+                <div class="user-id">${peerId}</div>
+            `;
+        } else {
+            userElement.innerHTML = `
+                <div><span class="online-indicator"></span> <span class="username">${userData.username}</span></div>
+                <div class="user-id">${peerId}</div>
+                <div class="action-buttons">
+                    <button class="connect-btn" data-peer-id="${peerId}">Connect</button>
+                    <button class="copy-id-btn" data-peer-id="${peerId}">Copy ID</button>
+                </div>
+            `;
+            
+            // Add event listeners
+            setTimeout(() => {
+                const connectBtn = userElement.querySelector('.connect-btn');
+                if (connectBtn) {
+                    connectBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetPeerId = e.target.getAttribute('data-peer-id');
+                        connectToPeer(targetPeerId);
+                    });
+                }
+                
+                const copyBtn = userElement.querySelector('.copy-id-btn');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetPeerId = e.target.getAttribute('data-peer-id');
+                        navigator.clipboard.writeText(targetPeerId)
+                            .then(() => {
+                                e.target.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    e.target.textContent = 'Copy ID';
+                                }, 2000);
+                            })
+                            .catch(err => {
+                                showError('Failed to copy ID');
+                            });
+                    });
+                }
+            }, 0);
+        }
+        
+        onlineUsersList.appendChild(userElement);
+    });
+}
+
+// Initialize PeerJS
+function initializePeer() {
+    const peerId = generateSimpleId();
+    localUsername = generateUsername();
+    
+    log(`Initializing PeerJS with ID: ${peerId}`);
+    
+    try {
+        // Initialize with minimal options to avoid errors
+        peer = new Peer(peerId, {
+            debug: 2
+        });
+        
+        peer.on('open', (id) => {
+            log(`Peer connected with ID: ${id}`);
+            myIdDisplay.textContent = id;
+            usernameDisplay.textContent = `Your username: ${localUsername}`;
+            
+            // Register user as online - in Firebase if available, locally if not
+            if (database && onlineUsersRef) {
+                registerUserOnline(id, localUsername);
+            } else {
+                localUsers[id] = {
+                    username: localUsername,
+                    lastSeen: Date.now()
+                };
+                updateLocalUsersUI();
             }
         });
         
-        // Initialize Firebase first, then PeerJS
+        peer.on('connection', (conn) => {
+            log(`Incoming connection from: ${conn.peer}`);
+            
+            if (!isConnected) {
+                connection = conn;
+                setupConnection();
+            } else {
+                conn.close();
+            }
+        });
+        
+        peer.on('error', (err) => {
+            log(`Peer error: ${err.type}`);
+            showError(`Connection error: ${err.type}`);
+            
+            if (err.type === 'peer-unavailable') {
+                showError('Peer ID not found. Check the ID and try again.');
+            } else if (err.type === 'network') {
+                showError('Network error. Check your internet connection.');
+            } else if (err.type === 'disconnected') {
+                showError('Disconnected from server. Try refreshing the page.');
+            }
+        });
+        
+        peer.on('disconnected', () => {
+            log('Peer disconnected from server');
+            showError('Disconnected from server. Click to reconnect.');
+            
+            // Try to reconnect
+            setTimeout(() => {
+                if (peer) peer.reconnect();
+            }, 3000);
+        });
+    } catch (error) {
+        log(`Error initializing PeerJS: ${error.message}`);
+        showError(`Failed to initialize connection: ${error.message}`);
+    }
+}
+
+// Call this in your main initialization
+function initializeApp() {
+    // Start PeerJS first to get a connection ID
+    initializePeer();
+    
+    // Then try Firebase, with fallback mechanism
+    setTimeout(() => {
         initializeFirebase();
-        initializePeer();
+        
+        // Set periodic cleanup regardless of Firebase status
+        setInterval(cleanupOfflineUsers, 60000);
+        
+        // Ensure at least local mode is working by scheduling updates
+        setInterval(() => {
+            // If Firebase failed, this will ensure local updates
+            if (!database || !onlineUsersRef) {
+                updateLocalUsersUI();
+            }
+        }, 5000);
+    }, 1000);
+}
+
+// Clean up when the page is closed
+window.addEventListener('beforeunload', () => {
+    if (userRef) {
+        try {
+            userRef.remove();
+        } catch (e) {
+            console.log('Error removing user reference:', e);
+        }
+    }
+    
+    if (peer) {
+        if (connection) connection.close();
+        peer.destroy();
+    }
+});
+
+// Initialize the application
+initializeApp();
     </script>
 </body>
 </html>
