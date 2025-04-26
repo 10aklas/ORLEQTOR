@@ -198,6 +198,131 @@
             gap: 0.5rem;
         }
         
+                /* Chat Request Popup Styles */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .overlay-content {
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--accent);
+        }
+
+        .overlay-content h3 {
+            margin-bottom: 1rem;
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+
+        .overlay-content p {
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .accept-btn {
+            background-color: var(--success);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .decline-btn {
+            background-color: var(--danger);
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Spinner for pending request */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 3px solid rgba(0, 255, 157, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-info {
+            background-color: #2196F3;
+        }
+
+        .notification-success {
+            background-color: var(--success);
+            color: #000;
+        }
+
+        .notification-warning {
+            background-color: var(--warning);
+            color: #000;
+        }
+
+        .notification-error {
+            background-color: var(--danger);
+        }
+
+        .notification-close {
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         input, button {
             padding: 0.8rem 1rem;
             border: none;
@@ -384,146 +509,145 @@
             margin-left: 0.5rem;
         }
         
-        /* Connection request modal styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        .modal {
-            background-color: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 1.5rem;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            border: 1px solid #333;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        .modal-header {
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        
-        .modal-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--accent);
-        }
-        
-        .modal-body {
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .modal-footer {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-        }
-        
-        .modal-btn {
-            padding: 0.7rem 1.5rem;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-        }
-        
-        .modal-btn.accept {
-            background-color: var(--success);
-            color: #000;
-        }
-        
-        .modal-btn.accept:hover {
-            background-color: var(--accent-dark);
-        }
-        
-        .modal-btn.decline {
-            background-color: var(--danger);
-            color: white;
-        }
-        
-        .modal-btn.decline:hover {
-            background-color: #e6293a;
-        }
-        
-        .pending-request {
-            padding: 0.8rem;
-            background-color: rgba(255, 187, 0, 0.1);
-            border: 1px solid rgba(255, 187, 0, 0.3);
-            border-radius: 4px;
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .pending-request p {
-            color: var(--warning);
-        }
-        
-        .pending-request button {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-        }
-        
-        /* Notifications */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem;
-            border-radius: 4px;
-            background-color: var(--bg-secondary);
-            border-left: 4px solid var(--accent);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            animation: slideInRight 0.3s ease-out;
-            max-width: 300px;
-        }
-        
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--accent);
-        }
-        
-        .notification-body {
-            font-size: 0.9rem;
-            color: var(--text-primary);
-        }
-        
         /* Simple animations */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
         
-        @keyframes slideIn {
-            from { transform: translateY(-20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        #setup-screen, #chat-screen {
+            animation: fadeIn 0.5s ease-out;
         }
         
-        @keyframes slideInRight {
-            from { transform: translateX(50px); opacity: 0; }
+        /* Popup styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .popup {
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            border: 1px solid #222;
+            text-align: center;
+        }
+        
+        .popup h3 {
+            margin-bottom: 1rem;
+            color: var(--accent);
+            font-size: 1.2rem;
+        }
+        
+        .popup p {
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+        
+        .popup .username {
+            font-size: 1.1rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: block;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .popup-buttons button {
+            min-width: 100px;
+        }
+        
+        .popup-buttons .decline-btn {
+            background-color: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+        
+        .popup-buttons .decline-btn:hover {
+            background-color: rgba(255, 58, 76, 0.1);
+        }
+        
+        .popup-timer {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 1rem;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: var(--accent-dark);
+            color: #000;
+            padding: 0.8rem 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 900;
+            animation: slideIn 0.3s ease-out;
+            max-width: 300px;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
         
-        #setup-screen, #chat-screen {
-            animation: fadeIn 0.5s ease-out;
+        .waiting-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        
+        .waiting-popup {
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid #222;
+        }
+        
+        .waiting-popup h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .spinner {
+            margin: 1rem auto;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 255, 157, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -564,12 +688,6 @@
             </form>
             
             <div id="error-display"></div>
-            
-            <!-- Pending request indicator -->
-            <div id="pending-request" class="pending-request" style="display: none;">
-                <p>Waiting for response to chat request...</p>
-                <button id="cancel-request-btn">Cancel</button>
-            </div>
         </div>
         
         <div id="chat-screen">
@@ -595,1215 +713,746 @@
         <p>Chat with Strangers &copy; 2025</p>
     </footer>
 
-    <!-- Connection request modal template -->
-    <div id="connection-request-modal" class="modal-overlay" style="display: none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Chat Request</h3>
-            </div>
-            <div class="modal-body">
-                <p><span id="requester-name">Someone</span> wants to chat with you!</p>
-            </div>
-            <div class="modal-footer">
-                <button id="accept-request-btn" class="modal-btn accept">Accept</button>
-                <button id="decline-request-btn" class="modal-btn decline">Decline</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
-    const setupScreen = document.getElementById('setup-screen');
-    const chatScreen = document.getElementById('chat-screen');
-    const myIdDisplay = document.getElementById('my-id');
-    const peerIdInput = document.getElementById('peer-id-input');
-    const connectForm = document.getElementById('connect-form');
-    const disconnectBtn = document.getElementById('disconnect-btn');
-    const statusText = document.getElementById('status-text');
-    const usernameDisplay = document.getElementById('username-display');
-    const messagesContainer = document.getElementById('messages');
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
-    const sendBtn = document.getElementById('send-btn');
-    const errorDisplay = document.getElementById('error-display');
-    const debugLog = document.getElementById('debug-log');
-    const onlineCount = document.getElementById('online-count');
-    const usersList = document.getElementById('users-list');
-    
-    // Connection request elements
-    const connectionRequestModal = document.getElementById('connection-request-modal');
-    const requesterNameDisplay = document.getElementById('requester-name');
-    const acceptRequestBtn = document.getElementById('accept-request-btn');
-    const declineRequestBtn = document.getElementById('decline-request-btn');
-    const pendingRequestDiv = document.getElementById('pending-request');
-    const cancelRequestBtn = document.getElementById('cancel-request-btn');
-    
-    // Initially hide chat screen
-    chatScreen.style.display = 'none';
-    
-    // Variables
-    let peer;
-    let connection;
-    let localUsername;
-    let remoteUsername;
-    let isConnected = false;
-    let myPeerId;
-    let pendingOutgoingRequest = null;
-    let pendingIncomingRequest = null;
-    
-    // User tracker variables
-    let trackerConnection;
-    const TRACKER_SERVER_ID = 'user-tracker-server';
-    let onlineUsers = new Map(); // Map of peerId -> username
-    let heartbeatInterval;
-    let activeRequestPopup = null;
-    
-    // Debug log function
-    function log(message) {
-        console.log(message);
-        const now = new Date().toLocaleTimeString();
-        debugLog.innerHTML += `[${now}] ${message}\n`;
-        debugLog.scrollTop = debugLog.scrollHeight;
-    }
-    
-    // Show error
-    function showError(message) {
-        errorDisplay.textContent = message;
-        errorDisplay.style.display = 'block';
-        setTimeout(() => {
-            errorDisplay.style.display = 'none';
-        }, 5000);
-    }
-    
-    // Show notification
-    function showNotification(title, message, duration = 5000) {
-        const notification = document.createElement('div');
-        notification.classList.add('notification');
+        // DOM Elements
+        const setupScreen = document.getElementById('setup-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const myIdDisplay = document.getElementById('my-id');
+        const peerIdInput = document.getElementById('peer-id-input');
+        const connectForm = document.getElementById('connect-form');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const statusText = document.getElementById('status-text');
+        const usernameDisplay = document.getElementById('username-display');
+        const messagesContainer = document.getElementById('messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const errorDisplay = document.getElementById('error-display');
+        const debugLog = document.getElementById('debug-log');
+        const onlineCount = document.getElementById('online-count');
+        const usersList = document.getElementById('users-list');
         
-        const notificationTitle = document.createElement('div');
-        notificationTitle.classList.add('notification-title');
-        notificationTitle.textContent = title;
+        // Initially hide chat screen
+        chatScreen.style.display = 'none';
         
-        const notificationBody = document.createElement('div');
-        notificationBody.classList.add('notification-body');
-        notificationBody.textContent = message;
+        // Variables
+        let peer;
+        let connection;
+        let localUsername;
+        let remoteUsername;
+        let isConnected = false;
+        let myPeerId;
+        let pendingRequests = new Map(); // Track pending chat requests we sent
+        let incomingRequests = new Map(); // Track incoming chat requests
         
-        notification.appendChild(notificationTitle);
-        notification.appendChild(notificationBody);
+        // User tracker variables
+        let trackerConnection;
+        const TRACKER_SERVER_ID = 'user-tracker-server';
+        let onlineUsers = new Map(); // Map of peerId -> username
+        let heartbeatInterval;
         
-        document.body.appendChild(notification);
+        // Debug log function
+        function log(message) {
+            console.log(message);
+            const now = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${now}] ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
         
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transition = 'opacity 0.3s';
+        // Show error
+        function showError(message) {
+            errorDisplay.textContent = message;
+            errorDisplay.style.display = 'block';
             setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, duration);
-    }
-    
-    // Generate a random username
-    function generateUsername() {
-        const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
-        const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
-        const randomNumber = Math.floor(Math.random() * 1000);
-        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        return `${adj}${noun}${randomNumber}`;
-    }
-    
-    // Generate a simple ID
-    function generateSimpleId() {
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let result = '';
-        for (let i = 0; i < 6; i++) {
-            result += characters.charAt(Math.floor(Math.random() * characters.length));
-        }
-        return result;
-    }
-    
-    // Update online users UI
-    function updateOnlineUsersUI() {
-        // Update the count
-        onlineCount.textContent = onlineUsers.size;
-        
-        // Clear the list
-        usersList.innerHTML = '';
-        
-        // Add each user
-        onlineUsers.forEach((username, peerId) => {
-            const userItem = document.createElement('div');
-            userItem.classList.add('user-item');
-            
-            // Highlight current user
-            if (peerId === myPeerId) {
-                userItem.classList.add('current-user');
-            }
-            
-            const userInfo = document.createElement('div');
-            
-            const userName = document.createElement('span');
-            userName.classList.add('user-name');
-            userName.textContent = username;
-            
-            const userId = document.createElement('span');
-            userId.classList.add('user-id');
-            userId.textContent = ` (${peerId})`;
-            
-            userInfo.appendChild(userName);
-            userInfo.appendChild(userId);
-            userItem.appendChild(userInfo);
-            
-            // Add connect button for other users
-            if (peerId !== myPeerId && !isConnected && !pendingOutgoingRequest) {
-                const connectIcon = document.createElement('span');
-                connectIcon.classList.add('connect-icon');
-                connectIcon.textContent = '→ Request Chat';
-                connectIcon.onclick = () => {
-                    peerIdInput.value = peerId;
-                    sendChatRequest(peerId, username);
-                };
-                userItem.appendChild(connectIcon);
-            }
-            
-            usersList.appendChild(userItem);
-        });
-    }
-    
-    // Initialize PeerJS
-    function initializePeer() {
-        const peerId = generateSimpleId();
-        localUsername = generateUsername();
-        
-        log(`Initializing PeerJS with ID: ${peerId}`);
-        
-        try {
-            // Initialize with minimal options to avoid errors
-            peer = new Peer(peerId, {
-                debug: 2
-            });
-            
-            peer.on('open', (id) => {
-                log(`Peer connected with ID: ${id}`);
-                myPeerId = id;
-                myIdDisplay.textContent = id;
-                usernameDisplay.textContent = `Your username: ${localUsername}`;
-                
-                // Add ourselves to the online users
-                onlineUsers.set(id, localUsername);
-                updateOnlineUsersUI();
-                
-                // Connect to the tracker server (first try)
-                connectToTracker();
-            });
-            
-            peer.on('connection', handleIncomingConnection);
-            
-            peer.on('error', (err) => {
-                log(`Peer error: ${err.type}`);
-                
-                // If tracker server doesn't exist, become the tracker server
-                if (err.type === 'peer-unavailable' && err.message.includes(TRACKER_SERVER_ID)) {
-                    log('Tracker server not found, becoming tracker server');
-                    becomeTrackerServer();
-                    return;
-                }
-                
-                showError(`Connection error: ${err.type}`);
-                
-                if (err.type === 'peer-unavailable') {
-                    showError('Peer ID not found. Check the ID and try again.');
-                } else if (err.type === 'network') {
-                    showError('Network error. Check your internet connection.');
-                } else if (err.type === 'disconnected') {
-                    showError('Disconnected from server. Try refreshing the page.');
-                }
-            });
-            
-            peer.on('disconnected', () => {
-                log('Peer disconnected from server');
-                showError('Disconnected from server. Click to reconnect.');
-                
-                // Try to reconnect
-                setTimeout(() => {
-                    if (peer) peer.reconnect();
-                }, 3000);
-            });
-        } catch (error) {
-            log(`Error initializing PeerJS: ${error.message}`);
-            showError(`Failed to initialize connection: ${error.message}`);
-        }
-    }
-    
-    // Handle incoming connection
-    function handleIncomingConnection(conn) {
-        log(`Incoming connection from: ${conn.peer}`);
-        
-        // If it's the tracker server
-        if (conn.peer === TRACKER_SERVER_ID) {
-            log('Tracker server initiated connection');
-            trackerConnection = conn;
-            setupTrackerConnection();
-            return;
+                errorDisplay.style.display = 'none';
+            }, 5000);
         }
         
-        // Setup connection handlers for all incoming connections
-        conn.on('open', () => {
-            // Wait for the first message to determine if this is a chat request
-            conn.on('data', (data) => {
-                log(`Received data from ${conn.peer}: ${JSON.stringify(data)}`);
-                
-                if (data.type === 'chat_request') {
-                    // Show a connection request modal
-                    handleIncomingChatRequest(conn, data.username);
-                } 
-                else if (data.type === 'chat_request_accepted') {
-                    // The other person accepted our request
-                    if (pendingOutgoingRequest && pendingOutgoingRequest.peerId === conn.peer) {
-                        log('Chat request accepted');
-                        pendingRequestDiv.style.display = 'none';
-                        pendingOutgoingRequest = null;
-                        
-                        // Now establish the main chat connection
-                        connection = conn;
-                        remoteUsername = data.username;
-                        setupChatConnection();
-                    }
-                }
-                else if (data.type === 'chat_request_declined') {
-                    // The other person declined our request
-                    if (pendingOutgoingRequest && pendingOutgoingRequest.peerId === conn.peer) {
-                        log('Chat request declined');
-                        pendingRequestDiv.style.display = 'none';
-                        pendingOutgoingRequest = null;
-                        
-                        showNotification('Request Declined', `${data.username} declined your chat request.`);
-                        
-                        // Close the connection since it was declined
-                        conn.close();
-                    }
-                } 
-                else if (data.type === 'chat_request_canceled') {
-                    // The other person canceled their request
-                    if (pendingIncomingRequest && pendingIncomingRequest.connection === conn) {
-                        log('Chat request canceled');
-                        connectionRequestModal.style.display = 'none';
-                        pendingIncomingRequest = null;
-                        
-                        showNotification('Request Canceled', `${data.username} canceled their chat request.`);
-                        
-                        // Close the connection since it was canceled
-                        conn.close();
-                    }
-                }
-                else if (data.type === 'message') {
-                    // Handle regular chat messages - fixed to ensure messages are always displayed
-                    if (connection && conn.peer === connection.peer) {
-                        addMessage(data.text, false);
-                    }
-                }
-                else if (data.type === 'username') {
-                    // Handle username data
-                    remoteUsername = data.username;
-                    usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
-                }
-            });
-        });
-        
-        conn.on('close', () => {
-            log(`Connection closed from: ${conn.peer}`);
+        // Show notification
+        function showNotification(message, duration = 5000) {
+            // Remove any existing notifications
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => notification.remove());
             
-            // If this was our active chat connection
-            if (connection === conn) {
-                handleDisconnect('Chat partner disconnected');
-            }
-            // If this was a pending request
-            else if (pendingIncomingRequest && pendingIncomingRequest.connection === conn) {
-                connectionRequestModal.style.display = 'none';
-                pendingIncomingRequest = null;
-            }
-        });
-        
-        conn.on('error', (error) => {
-            log(`Connection error from ${conn.peer}: ${error}`);
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.classList.add('notification');
+            notification.textContent = message;
+            document.body.appendChild(notification);
             
-            // Handle connection errors
-            if (connection === conn) {
-                handleDisconnect('Connection error');
-            }
-        });
-    }
-    
-    // Handle incoming chat request
-    function handleIncomingChatRequest(conn, username) {
-        log(`Received chat request from ${username} (${conn.peer})`);
-        
-        // Display the connection request modal
-        connectionRequestModal.style.display = 'flex';
-        requesterNameDisplay.textContent = username;
-        
-        // Store the pending request
-        pendingIncomingRequest = {
-            connection: conn,
-            username: username,
-            peerId: conn.peer
-        };
-        
-        // Setup accept and decline handlers
-        acceptRequestBtn.onclick = () => {
-            if (!pendingIncomingRequest) return;
-            
-            connectionRequestModal.style.display = 'none';
-            
-            // Accept the request
-            conn.send({
-                type: 'chat_request_accepted',
-                username: localUsername
-            });
-            
-            // Setup the chat connection
-            connection = conn;
-            remoteUsername = username;
-            setupChatConnection();
-            
-            pendingIncomingRequest = null;
-        };
-        
-        declineRequestBtn.onclick = () => {
-            if (!pendingIncomingRequest) return;
-            
-            connectionRequestModal.style.display = 'none';
-            
-            // Decline the request
-            conn.send({
-                type: 'chat_request_declined',
-                username: localUsername
-            });
-            
-            pendingIncomingRequest = null;
-        };
-    }
-    
-    // Send a chat request
-    function sendChatRequest(peerId) {
-        if (!peer) {
-            showError('Connection not initialized. Please refresh the page.');
-            return;
+            // Auto-remove after duration
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
         }
         
-        log(`Sending chat request to: ${peerId}`);
-        
-        try {
-            // Create a connection to the peer
-            const conn = peer.connect(peerId, {
-                reliable: true
-            });
+        // Create chat request popup
+        function createChatRequestPopup(peerId, username) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.classList.add('popup-overlay');
+            overlay.id = `request-${peerId}`;
             
-            // Show pending request
-            pendingRequestDiv.style.display = 'flex';
+            // Create popup
+            const popup = document.createElement('div');
+            popup.classList.add('popup');
             
-            // Store the pending request
-            pendingOutgoingRequest = {
-                connection: conn,
-                peerId: peerId
-            };
+            // Add content
+            const title = document.createElement('h3');
+            title.textContent = 'Chat Request';
             
-            // Handle cancel request
-            cancelRequestBtn.onclick = () => {
-                if (!pendingOutgoingRequest) return;
+            const usernameDisplay = document.createElement('span');
+            usernameDisplay.classList.add('username');
+            usernameDisplay.textContent = username;
+            
+            const message = document.createElement('p');
+            message.textContent = 'wants to chat with you. Do you accept?';
+            
+            // Create buttons
+            const buttons = document.createElement('div');
+            buttons.classList.add('popup-buttons');
+            
+            const acceptBtn = document.createElement('button');
+            acceptBtn.textContent = 'Accept';
+            acceptBtn.classList.add('accept-btn');
+            
+            const declineBtn = document.createElement('button');
+            declineBtn.textContent = 'Decline';
+            declineBtn.classList.add('decline-btn');
+            
+            // Add timer
+            const timer = document.createElement('div');
+            timer.classList.add('popup-timer');
+            timer.textContent = 'Request expires in 30 seconds';
+            
+            // Put it all together
+            buttons.appendChild(declineBtn);
+            buttons.appendChild(acceptBtn);
+            popup.appendChild(title);
+            popup.appendChild(usernameDisplay);
+            popup.appendChild(message);
+            popup.appendChild(buttons);
+            popup.appendChild(timer);
+            overlay.appendChild(popup);
+            document.body.appendChild(overlay);
+            
+            // Set up countdown timer
+            let secondsLeft = 30;
+            const countdown = setInterval(() => {
+                secondsLeft--;
+                timer.textContent = `Request expires in ${secondsLeft} seconds`;
                 
-                pendingRequestDiv.style.display = 'none';
+                if (secondsLeft <= 0) {
+                    clearInterval(countdown);
+                    overlay.remove();
+                    
+                    // Send decline response after timeout
+                    const requestConnection = incomingRequests.get(peerId);
+                    if (requestConnection) {
+                        requestConnection.send({
+                            type: 'chat-response',
+                            accepted: false,
+                            message: 'Request expired'
+                        });
+                        incomingRequests.delete(peerId);
+                    }
+                }
+            }, 1000);
+            
+            // Handle accept button
+            acceptBtn.addEventListener('click', () => {
+                clearInterval(countdown);
+                overlay.remove();
                 
-                // Send cancel request if connection is open
-                if (conn.open) {
-                    conn.send({
-                        type: 'chat_request_canceled',
+                const requestConnection = incomingRequests.get(peerId);
+                if (requestConnection) {
+                    // Send accept response
+                    requestConnection.send({
+                        type: 'chat-response',
+                        accepted: true,
                         username: localUsername
                     });
-                }
-                
-                // Close the connection
-                conn.close();
-                pendingOutgoingRequest = null;
-            };
-            
-            // Setup connection opened handler
-            conn.on('open', () => {
-                log(`Connection opened to send chat request to: ${peerId}`);
-                
-                // Send the chat request
-                conn.send({
-                    type: 'chat_request',
-                    username: localUsername
-                });
-            });
-            
-            // Setup data handler for the connection
-            conn.on('data', (data) => {
-                log(`Received response from ${peerId}: ${JSON.stringify(data)}`);
-                
-                if (data.type === 'chat_request_accepted') {
-                    // Request was accepted
-                    pendingRequestDiv.style.display = 'none';
-                    pendingOutgoingRequest = null;
                     
-                    // Setup the chat connection
-                    connection = conn;
-                    remoteUsername = data.username;
-                    setupChatConnection();
-                }
-                else if (data.type === 'chat_request_declined') {
-                    // Request was declined
-                    pendingRequestDiv.style.display = 'none';
-                    pendingOutgoingRequest = null;
+                    // Set up the chat with this connection
+                    connection = requestConnection;
+                    remoteUsername = username;
+                    setupChatUI();
                     
-                    showNotification('Request Declined', `${data.username || 'User'} declined your chat request.`);
-                    
-                    // Close the connection
-                    conn.close();
+                    // Remove from incoming requests
+                    incomingRequests.delete(peerId);
                 }
             });
             
-            // Handle connection error
-            conn.on('error', (error) => {
-                log(`Error sending chat request: ${error}`);
-                pendingRequestDiv.style.display = 'none';
-                pendingOutgoingRequest = null;
-                showError('Error sending chat request. Please try again.');
+            // Handle decline button
+            declineBtn.addEventListener('click', () => {
+                clearInterval(countdown);
+                overlay.remove();
+                
+                const requestConnection = incomingRequests.get(peerId);
+                if (requestConnection) {
+                    // Send decline response
+                    requestConnection.send({
+                        type: 'chat-response',
+                        accepted: false,
+                        message: 'Request declined'
+                    });
+                    
+                    // Close connection and remove from incoming requests
+                    requestConnection.close();
+                    incomingRequests.delete(peerId);
+                }
             });
             
-        } catch (error) {
-            log(`Error sending chat request: ${error.message}`);
-            showError(`Failed to send chat request: ${error.message}`);
+            // Make a sound to alert the user
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRp4BAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YYoBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+                audio.play();
+            } catch (e) {
+                // Audio might fail in some browsers, that's ok
+                console.log("Notification sound failed to play:", e);
+            }
         }
-    }
+        
+        // Create waiting popup
+        function createWaitingPopup(peerId) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.classList.add('waiting-overlay');
+            overlay.id = `waiting-${peerId}`;
+            
+            // Create popup
+            const popup = document.createElement('div');
+            popup.classList.add('waiting-popup');
+            
+            // Add content
+            const title = document.createElement('h3');
+            title.textContent = 'Waiting for Response';
+            
+            const message = document.createElement('p');
+            message.textContent = 'Your chat request has been sent. Waiting for response...';
+            
+            // Add spinner
+            const spinner = document.createElement('div');
+            spinner.classList.add('spinner');
+            
+            // Add timer
+            const timer = document.createElement('div');
+            timer.classList.add('popup-timer');
+            timer.textContent = 'Request expires in 30 seconds';
+            
+            // Create cancel button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.classList.add('decline-btn');
+            
+            // Put it all together
+            popup.appendChild(title);
+            popup.appendChild(message);
+            popup.appendChild(spinner);
+            popup.appendChild(timer);
+            popup.appendChild(cancelBtn);
+            overlay.appendChild(popup);
+            document.body.appendChild(overlay);
+            
+            // Set up countdown timer
+            let secondsLeft = 30;
+            const countdown = setInterval(() => {
+                secondsLeft--;
+                timer.textContent = `Request expires in ${secondsLeft} seconds`;
+                
+                if (secondsLeft <= 0) {
+                    clearInterval(countdown);
+                    overlay.remove();
+                    
+                    // Clean up pending request
+                    const requestConnection = pendingRequests.get(peerId);
+                    if (requestConnection) {
+                        requestConnection.close();
+                        pendingRequests.delete(peerId);
+                    }
+                    
+                    showNotification('Chat request expired', 3000);
+                }
+            }, 1000);
+            
+            // Handle cancel button
+            cancelBtn.addEventListener('click', () => {
+                clearInterval(countdown);
+                overlay.remove();
+                
+                // Clean up pending request
+                const requestConnection = pendingRequests.get(peerId);
+                if (requestConnection) {
+                    requestConnection.send({
+                        type: 'chat-cancel'
+                    });
+                    requestConnection.close();
+                    pendingRequests.delete(peerId);
+                }
+                
+                showNotification('Chat request canceled', 3000);
+            });
+            
+            // Return the countdown timer to clear it if needed
+            return countdown;
+        }
+        
+        // Generate a random username
+        function generateUsername() {
+            const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
+            const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
+            const randomNumber = Math.floor(Math.random() * 1000);
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            return `${adj}${noun}${randomNumber}`;
+        }
+        
+        // Generate a simple ID
+        function generateSimpleId() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return result;
+        }
+        
+        // Update online users UI
+function updateOnlineUsersUI() {
+    // Update the count
+    onlineCount.textContent = onlineUsers.size;
     
-    function setupChatConnection() {
-    if (!connection) {
-        showError('No connection to setup');
+    // Clear the list
+    usersList.innerHTML = '';
+    
+    // Add each user
+    onlineUsers.forEach((username, peerId) => {
+        const userItem = document.createElement('div');
+        userItem.classList.add('user-item');
+        
+        // Highlight current user
+        if (peerId === myPeerId) {
+            userItem.classList.add('current-user');
+        }
+        
+        const userInfo = document.createElement('div');
+        
+        const userName = document.createElement('span');
+        userName.classList.add('user-name');
+        userName.textContent = username;
+        
+        const userId = document.createElement('span');
+        userId.classList.add('user-id');
+        userId.textContent = ` (${peerId})`;
+        
+        userInfo.appendChild(userName);
+        userInfo.appendChild(userId);
+        userItem.appendChild(userInfo);
+        
+        // Add connect button for other users
+        if (peerId !== myPeerId && !isConnected) {
+            const connectIcon = document.createElement('span');
+            connectIcon.classList.add('connect-icon');
+            connectIcon.textContent = '→ Request Chat';
+            connectIcon.onclick = () => {
+                peerIdInput.value = peerId;
+                sendChatRequest(peerId, username);
+            };
+            userItem.appendChild(connectIcon);
+        }
+        
+        usersList.appendChild(userItem);
+    });
+}
+
+// Send a chat request to a peer
+function sendChatRequest(peerId, username) {
+    log(`Sending chat request to: ${peerId} (${username})`);
+    
+    try {
+        // Create a temporary connection for the request
+        const requestConn = peer.connect(peerId, {
+            reliable: true,
+            metadata: { type: 'chatRequest' }
+        });
+        
+        requestConn.on('open', () => {
+            // Send the request
+            requestConn.send({
+                type: 'chatRequest',
+                fromId: myPeerId,
+                fromUsername: localUsername
+            });
+            
+            // Show pending request UI
+            showPendingRequestUI(username);
+            
+            // Set up response handler
+            requestConn.on('data', (data) => {
+                log(`Received request response: ${JSON.stringify(data)}`);
+                
+                if (data.type === 'chatResponse') {
+                    hidePendingRequestUI();
+                    
+                    if (data.accepted) {
+                        log('Chat request accepted');
+                        // Close the temporary connection
+                        requestConn.close();
+                        // Establish the real chat connection
+                        connectToPeer(peerId);
+                    } else {
+                        log('Chat request declined');
+                        showNotification(`${username} declined your chat request.`, 'warning');
+                        // Close the temporary connection
+                        requestConn.close();
+                    }
+                }
+            });
+            
+            // Handle timeout
+            setTimeout(() => {
+                if (requestConn.open) {
+                    log('Chat request timed out');
+                    hidePendingRequestUI();
+                    showNotification(`No response from ${username}.`, 'warning');
+                    requestConn.close();
+                }
+            }, 30000); // 30 second timeout
+        });
+        
+        requestConn.on('error', (err) => {
+            log(`Request connection error: ${err}`);
+            hidePendingRequestUI();
+            showError(`Failed to send request: ${err.type}`);
+        });
+        
+    } catch (error) {
+        log(`Error sending chat request: ${error.message}`);
+        showError(`Failed to send request: ${error.message}`);
+    }
+}
+
+// Create a notification popup
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.classList.add('notification', `notification-${type}`);
+    notification.textContent = message;
+    
+    // Add close button
+    const closeBtn = document.createElement('span');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.classList.add('notification-close');
+    closeBtn.onclick = () => document.body.removeChild(notification);
+    notification.appendChild(closeBtn);
+    
+    document.body.appendChild(notification);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Show pending request UI
+function showPendingRequestUI(username) {
+    // Create a pending request overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'pending-request-overlay';
+    overlay.classList.add('overlay');
+    
+    const content = document.createElement('div');
+    content.classList.add('overlay-content');
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Chat Request Pending';
+    
+    const message = document.createElement('p');
+    message.textContent = `Waiting for ${username} to accept your chat request...`;
+    
+    const spinner = document.createElement('div');
+    spinner.classList.add('spinner');
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel Request';
+    cancelBtn.onclick = () => {
+        hidePendingRequestUI();
+    };
+    
+    content.appendChild(title);
+    content.appendChild(message);
+    content.appendChild(spinner);
+    content.appendChild(cancelBtn);
+    overlay.appendChild(content);
+    
+    document.body.appendChild(overlay);
+}
+
+// Hide pending request UI
+function hidePendingRequestUI() {
+    const overlay = document.getElementById('pending-request-overlay');
+    if (overlay) {
+        document.body.removeChild(overlay);
+    }
+}
+
+// Handle incoming chat requests
+function handleIncomingChatRequest(conn, requestData) {
+    log(`Received chat request from: ${requestData.fromUsername} (${requestData.fromId})`);
+    
+    // Don't show request if already in a chat
+    if (isConnected) {
+        conn.send({
+            type: 'chatResponse',
+            accepted: false,
+            reason: 'userBusy'
+        });
+        conn.close();
         return;
     }
     
-    log('Setting up chat connection');
-    isConnected = true;
+    // Create and show the request popup
+    const overlay = document.createElement('div');
+    overlay.id = 'chat-request-overlay';
+    overlay.classList.add('overlay');
     
-    // Show chat UI
-    setupScreen.style.display = 'none';
-    chatScreen.style.display = 'flex';
+    const content = document.createElement('div');
+    content.classList.add('overlay-content');
     
-    updateStatus('Connected');
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
+    const title = document.createElement('h3');
+    title.textContent = 'Chat Request';
     
-    // Clear previous messages
-    messagesContainer.innerHTML = '';
+    const message = document.createElement('p');
+    message.textContent = `${requestData.fromUsername} would like to chat with you.`;
     
-    // Add system message
-    const systemMessage = document.createElement('div');
-    systemMessage.textContent = 'Connected to chat!';
-    systemMessage.style.textAlign = 'center';
-    systemMessage.style.padding = '0.5rem';
-    systemMessage.style.margin = '0.5rem 0';
-    systemMessage.style.color = 'var(--accent)';
-    messagesContainer.appendChild(systemMessage);
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('button-container');
     
-    // Update username display
-    usernameDisplay.textContent = `Connected to: ${remoteUsername || 'Unknown'}`;
-    
-    // Send our username to the peer
-    if (connection.open) {
-        connection.send({
-            type: 'username',
-            username: localUsername
+    const acceptBtn = document.createElement('button');
+    acceptBtn.textContent = 'Accept';
+    acceptBtn.classList.add('accept-btn');
+    acceptBtn.onclick = () => {
+        // Send acceptance response
+        conn.send({
+            type: 'chatResponse',
+            accepted: true
         });
+        
+        // Remove the popup
+        document.body.removeChild(overlay);
+        
+        // Wait for the regular connection
+        showNotification('Chat request accepted. Establishing connection...', 'success');
+    };
+    
+    const declineBtn = document.createElement('button');
+    declineBtn.textContent = 'Decline';
+    declineBtn.classList.add('decline-btn');
+    declineBtn.onclick = () => {
+        // Send decline response
+        conn.send({
+            type: 'chatResponse',
+            accepted: false,
+            reason: 'userDeclined'
+        });
+        
+        // Close the request connection
+        conn.close();
+        
+        // Remove the popup
+        document.body.removeChild(overlay);
+    };
+    
+    buttonContainer.appendChild(acceptBtn);
+    buttonContainer.appendChild(declineBtn);
+    
+    content.appendChild(title);
+    content.appendChild(message);
+    content.appendChild(buttonContainer);
+    overlay.appendChild(content);
+    
+    document.body.appendChild(overlay);
+    
+    // Play notification sound if available
+    try {
+        const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAABPAASUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZn///////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAYEAAAAAAAA8NOSxdEAAAAAAAD/+8DEAAAIwAGP4AAAIagBsfwBACJGkSJJkytJkSJEiMQwDJMhWXlw/Ln5c/gGCYJnMDAMEz+XJkCZwGAgIBAIHCY4DDnAYCA58DBAQCDn8fz4QEBAMDn8ICAQOf//gQDAQDggIHAYf//Cgs/4IHB0ez2TCE0TEP86dOrZbQYujRdKg2s8Y3+U6jQmcwn/JNJi6T/9Wi2WjRa1ctGC+s/LaLxbUTsvct+0CvLZdNGO60W9aJbtlz0JNSLFj+WT0wRs4q+ZN+3Z1v+////+iIiIiMiIyMiIjIyIiIiIyIiIiRERGREREiIiIiIiI7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7v/7UMTUg86ADY/gAAAlSAGv/AAAu7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7uA=');
+        audio.play().catch(e => log('Audio play error: ' + e));
+    } catch (e) {
+        log('Audio not supported: ' + e);
     }
     
-    // Connect to the tracker server
-    function connectToTracker() {
-        log('Attempting to connect to tracker server');
-        
-        try {
-            trackerConnection = peer.connect(TRACKER_SERVER_ID, {
-                reliable: true
+    // Auto-decline after 60 seconds
+    setTimeout(() => {
+        if (document.body.contains(overlay)) {
+            // Send decline response for timeout
+            conn.send({
+                type: 'chatResponse',
+                accepted: false,
+                reason: 'timeout'
             });
-            
-            setupTrackerConnection();
-        } catch (error) {
-            log(`Error connecting to tracker: ${error.message}`);
-            // Will try to become tracker server in the error handler
-        }
-    }
-    
-    // Setup tracker connection
-    function setupTrackerConnection() {
-        if (!trackerConnection) {
-            log('No tracker connection to setup');
-            return;
-        }
-        
-        log('Setting up tracker connection');
-        
-        trackerConnection.on('open', () => {
-            log('Connected to tracker server');
-            
-            // Register with the tracker
-            trackerConnection.send({
-                type: 'register',
-                peerId: myPeerId,
-                username: localUsername
-            });
-            
-            // Set up heartbeat to keep the connection alive
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => {
-                if (trackerConnection && trackerConnection.open) {
-                    trackerConnection.send({
-                        type: 'heartbeat',
-                        peerId: myPeerId,
-                        username: localUsername
-                    });
-                }
-            }, 30000); // Send heartbeat every 30 seconds
-        });
-        
-        trackerConnection.on('data', (data) => {
-            log(`Received tracker data: ${JSON.stringify(data)}`);
-            
-            if (data.type === 'userList') {
-                // Update our online users list
-                onlineUsers = new Map(Object.entries(data.users));
-                updateOnlineUsersUI();
-            }
-        });
-        
-        trackerConnection.on('close', () => {
-            log('Tracker connection closed');
-            
-            // Clear the heartbeat interval
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-                heartbeatInterval = null;
-            }
-            
-            // Try to reconnect to tracker or become tracker
-            setTimeout(() => {
-                connectToTracker();
-            }, 5000);
-        });
-        
-        trackerConnection.on('error', (error) => {
-            log(`Tracker connection error: ${error}`);
-            
-            // Try to reconnect to tracker or become tracker
-            setTimeout(() => {
-                connectToTracker();
-            }, 5000);
-        });
-    }
-    
-    // Become the tracker server
-    function becomeTrackerServer() {
-        log('Becoming tracker server');
-        
-        try {
-            // Create a new peer with the tracker server ID
-            const trackerServer = new Peer(TRACKER_SERVER_ID, {
-                debug: 2
-            });
-            
-            // Track all connected users
-            const connectedUsers = new Map();
-            connectedUsers.set(myPeerId, localUsername); // Add ourselves
-            
-            // Track connections to each user
-            const userConnections = new Map();
-            
-            trackerServer.on('open', (id) => {
-                log(`Tracker server started with ID: ${id}`);
-                
-                // Update UI to show we're the tracker
-                const trackerStatus = document.createElement('div');
-                trackerStatus.textContent = '🔄 Tracking server active';
-                trackerStatus.style.color = 'var(--accent)';
-                trackerStatus.style.marginTop = '0.5rem';
-                document.querySelector('#my-id-display').appendChild(trackerStatus);
-                
-                // Update our online users list
-                onlineUsers = new Map(connectedUsers);
-                updateOnlineUsersUI();
-            });
-            
-            trackerServer.on('connection', (conn) => {
-                log(`Tracker: New connection from ${conn.peer}`);
-                
-                // Keep track of this connection
-                userConnections.set(conn.peer, conn);
-                
-                conn.on('open', () => {
-                    log(`Tracker: Connection to ${conn.peer} opened`);
-                    
-                    // Send the current user list
-                    conn.send({
-                        type: 'userList',
-                        users: Object.fromEntries(connectedUsers)
-                    });
-                });
-                
-                conn.on('data', (data) => {
-                    log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
-                    
-                    if (data.type === 'register' || data.type === 'heartbeat') {
-                        // Register or update this user
-                        connectedUsers.set(data.peerId, data.username);
-                        
-                        // Broadcast the updated user list to all connected users
-                        broadcastUserList();
-                    }
-                    else if (data.type === 'leave') {
-                        // Remove the user from our list
-                        connectedUsers.delete(data.peerId);
-                        
-                        // Broadcast the updated user list
-                        broadcastUserList();
-                    }
-                });
-                
-                conn.on('close', () => {
-                    log(`Tracker: Connection to ${conn.peer} closed`);
-                    
-                    // Remove the user from our list if it's not us
-                    if (conn.peer !== myPeerId) {
-                        connectedUsers.delete(conn.peer);
-                        userConnections.delete(conn.peer);
-                        
-                        // Broadcast the updated user list
-                        broadcastUserList();
-                    }
-                });
-                
-                conn.on('error', (error) => {
-                    log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
-                    
-                    // Remove the user if it's not us
-                    if (conn.peer !== myPeerId) {
-                        connectedUsers.delete(conn.peer);
-                        userConnections.delete(conn.peer);
-                        
-                        // Broadcast the updated user list
-                        broadcastUserList();
-                    }
-                });
-            });
-            
-            // Function to broadcast user list to all connected peers
-            function broadcastUserList() {
-                const userListMessage = {
-                    type: 'userList',
-                    users: Object.fromEntries(connectedUsers)
-                };
-                
-                // Update our own UI first
-                onlineUsers = new Map(connectedUsers);
-                updateOnlineUsersUI();
-                
-                // Then broadcast to others
-                userConnections.forEach((conn, peerId) => {
-                    if (conn.open) {
-                        conn.send(userListMessage);
-                    } else {
-                        // Clean up closed connections
-                        userConnections.delete(peerId);
-                        connectedUsers.delete(peerId);
-                    }
-                });
-            }
-            
-            // Handle errors
-            trackerServer.on('error', (error) => {
-                log(`Tracker server error: ${error}`);
-                
-                // If we can't be the tracker, try to connect as a regular peer
-                if (error.type === 'unavailable-id') {
-                    log('Tracker server ID is taken, reconnecting as regular peer');
-                    connectToTracker();
-                }
-            });
-            
-            // Clean up disconnected users periodically
-            const cleanupInterval = setInterval(() => {
-                let changed = false;
-                
-                userConnections.forEach((conn, peerId) => {
-                    if (!conn.open) {
-                        userConnections.delete(peerId);
-                        if (peerId !== myPeerId) {
-                            connectedUsers.delete(peerId);
-                            changed = true;
-                        }
-                    }
-                });
-                
-                if (changed) {
-                    broadcastUserList();
-                }
-            }, 60000); // Check every minute
-            
-            // Clean up on unload
-            window.addEventListener('beforeunload', () => {
-                clearInterval(cleanupInterval);
-                trackerServer.destroy();
-            });
-            
-        } catch (error) {
-            log(`Error becoming tracker server: ${error.message}`);
-            
-            // Try again as a regular peer
-            setTimeout(() => {
-                connectToTracker();
-            }, 5000);
-        }
-    }
-    
-    // Handle disconnection
-    function handleDisconnect(message) {
-        log(`Disconnected: ${message}`);
-        
-        isConnected = false;
-        messageInput.disabled = true;
-        sendBtn.disabled = true;
-        updateStatus('Disconnected');
-        
-        // Add system message
-        const systemMessage = document.createElement('div');
-        systemMessage.textContent = message || 'Disconnected';
-        systemMessage.style.textAlign = 'center';
-        systemMessage.style.padding = '0.5rem';
-        systemMessage.style.margin = '0.5rem 0';
-        systemMessage.style.color = 'var(--danger)';
-        messagesContainer.appendChild(systemMessage);
-        
-        // Show setup screen again after a short delay
-        setTimeout(() => {
-            setupScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-            
-            // Clear remote username
-            remoteUsername = null;
             
             // Close the connection
-            if (connection) {
-                connection.close();
-                connection = null;
-            }
-        }, 3000);
-    }
-    
-    // Update the connection status UI
-    function updateStatus(status) {
-        statusText.textContent = status;
-        
-        if (status === 'Connecting...') {
-            statusText.className = 'status-connecting';
-        } else if (status === 'Connected') {
-            statusText.className = 'status-connected';
-        } else {
-            statusText.className = 'status-disconnected';
-        }
-    }
-    
-    // Add a message to the chat - FIXED to always render properly
-    function addMessage(text, isSent) {
-        if (!text || !text.trim()) return;
-        
-        // Create message container
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', isSent ? 'sent' : 'received');
-        
-        // Create username element
-        const usernameSpan = document.createElement('div');
-        usernameSpan.classList.add('username');
-        usernameSpan.textContent = isSent ? localUsername : (remoteUsername || 'Stranger');
-        
-        // Create text element
-        const textSpan = document.createElement('div');
-        textSpan.textContent = text;
-        
-        // Assemble message
-        messageDiv.appendChild(usernameSpan);
-        messageDiv.appendChild(textSpan);
-        
-        // Append to messages container
-        messagesContainer.appendChild(messageDiv);
-        
-        // Force DOM update and scroll to bottom
-        requestAnimationFrame(() => {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
-        
-        // Log the message for debugging
-        log(`Message ${isSent ? 'sent' : 'received'}: ${text}`);
-    }
-    
-    // Send a message - FIXED to guarantee message sending and display
-    function sendMessage(text) {
-        if (!text || !text.trim()) return;
-        
-        if (!isConnected || !connection) {
-            showError('Not connected to a chat partner!');
-            return;
-        }
-        
-        // Add message to our UI first to ensure it displays
-        addMessage(text, true);
-        
-        log(`Sending message: ${text}`);
-        
-        try {
-            // Then send to peer
-            connection.send({
-                type: 'message',
-                text: text
-            });
-        } catch (error) {
-            log(`Error sending message: ${error.message}`);
-            showError('Failed to send message. Connection may be lost.');
+            conn.close();
             
-            // Add error notice to chat
-            const errorMsg = document.createElement('div');
-            errorMsg.textContent = '⚠️ Message may not have been delivered';
-            errorMsg.style.color = 'var(--danger)';
-            errorMsg.style.fontSize = '0.8rem';
-            errorMsg.style.textAlign = 'right';
-            errorMsg.style.marginTop = '0.2rem';
-            messagesContainer.appendChild(errorMsg);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Remove the popup
+            document.body.removeChild(overlay);
         }
-    }
-    
-    // Disconnect from current peer
-    function disconnect() {
-        log('Disconnecting from current peer');
-        
-        if (connection) {
-            connection.close();
-            connection = null;
-        }
-        
-        isConnected = false;
-        remoteUsername = null;
-        messagesContainer.innerHTML = '';
-        
-        // Reset UI
-        updateStatus('Disconnected');
-        messageInput.disabled = true;
-        sendBtn.disabled = true;
-        
-        // Show setup screen
-        setupScreen.style.display = 'flex';
-        chatScreen.style.display = 'none';
-    }
-    
-    // Event Listeners
-    connectForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const peerId = peerIdInput.value.trim();
-        if (peerId) {
-            sendChatRequest(peerId);
-        } else {
-            showError('Please enter a peer ID');
-        }
-    });
-    
-    messageForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const message = messageInput.value.trim();
-        if (message) {
-            sendMessage(message);
-            messageInput.value = '';
-            messageInput.focus(); // Keep focus on input for better UX
-        }
-    });
-    
-    // Add a keypress event listener for message input (ADDED)
-    messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            messageForm.dispatchEvent(new Event('submit'));
-        }
-    });
-    
-    disconnectBtn.addEventListener('click', disconnect);
-    
-    // Handle user leaving the page - update online status
-window.addEventListener('beforeunload', () => {
-    // Notify tracker server that we're leaving
-    if (trackerConnection && trackerConnection.open) {
-        trackerConnection.send({
-            type: 'leave',
-            peerId: myPeerId
-        });
-    }
-    
-    // Close connections
-    if (connection) {
-        connection.close();
-    }
-    
-    if (trackerConnection) {
-        trackerConnection.close();
-    }
-    
-    // Destroy peer connection
-    if (peer) {
-        peer.destroy();
-    }
-});
-
-// Initialize on load
-initializePeer();
-
-// Dark mode toggle functionality (optional)
-const darkModeToggle = document.getElementById('dark-mode-toggle');
-if (darkModeToggle) {
-    // Check for saved theme preference or use preferred color scheme
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.body.classList.add('dark-theme');
-    }
-    
-    darkModeToggle.addEventListener('click', () => {
-        // Toggle dark mode class
-        document.body.classList.toggle('dark-theme');
-        
-        // Save preference
-        const isDark = document.body.classList.contains('dark-theme');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    });
+    }, 60000);
 }
 
-// Add a typing indicator (optional enhancement)
-let typingTimeout;
-messageInput.addEventListener('input', () => {
-    if (!isConnected || !connection) return;
+// Initialize PeerJS
+function initializePeer() {
+    const peerId = generateSimpleId();
+    localUsername = generateUsername();
     
-    // Clear previous timeout
-    clearTimeout(typingTimeout);
+    log(`Initializing PeerJS with ID: ${peerId}`);
     
-    // Send typing indicator (only if not already sent)
-    if (!messageInput.dataset.typing) {
-        messageInput.dataset.typing = 'true';
-        if (connection.open) {
-            connection.send({
-                type: 'typing',
-                isTyping: true
-            });
-        }
-    }
-    
-    // Set timeout to clear typing indicator
-    typingTimeout = setTimeout(() => {
-        delete messageInput.dataset.typing;
-        if (connection && connection.open) {
-            connection.send({
-                type: 'typing',
-                isTyping: false
-            });
-        }
-    }, 1000);
-});
-
-// Handle typing indicator from peer
-if (connection) {
-    connection.on('data', (data) => {
-        if (data.type === 'typing') {
-            const typingIndicator = document.getElementById('typing-indicator');
-            if (typingIndicator) {
-                typingIndicator.style.display = data.isTyping ? 'block' : 'none';
-            }
-        }
-    });
-}
-
-// Add mobile responsiveness enhancement
-function adjustForMobile() {
-    const isMobile = window.innerWidth < 768;
-    
-    if (isMobile) {
-        // Adjust UI for mobile
-        document.body.classList.add('mobile');
-    } else {
-        document.body.classList.remove('mobile');
-    }
-}
-
-// Run once on load and on resize
-adjustForMobile();
-window.addEventListener('resize', adjustForMobile);
-
-// Notification permission request
-function requestNotificationPermission() {
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission();
-    }
-}
-
-// Show notifications for new messages when page is not focused
-function showMessageNotification(username, message) {
-    if ('Notification' in window && Notification.permission === 'granted' && !document.hasFocus()) {
-        const notification = new Notification('New message from ' + username, {
-            body: message,
-            icon: '/favicon.ico' // Add a favicon path
+    try {
+        // Initialize with minimal options to avoid errors
+        peer = new Peer(peerId, {
+            debug: 2
         });
         
-        // Close notification automatically after 5 seconds
-        setTimeout(() => {
-            notification.close();
-        }, 5000);
+        peer.on('open', (id) => {
+            log(`Peer connected with ID: ${id}`);
+            myPeerId = id;
+            myIdDisplay.textContent = id;
+            usernameDisplay.textContent = `Your username: ${localUsername}`;
+            
+            // Add ourselves to the online users
+            onlineUsers.set(id, localUsername);
+            updateOnlineUsersUI();
+            
+            // Connect to the tracker server (first try)
+            connectToTracker();
+        });
         
-        // Focus the window when notification is clicked
-        notification.onclick = () => {
-            window.focus();
-            notification.close();
-        };
-    }
-}
-
-// Call the function to request notification permission
-requestNotificationPermission();
-
-// Add event listener for visibility change
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        // Reset window title when returning to the page
-        document.title = 'P2P Chat';
-    }
-});
-
-// Handle new messages for notifications
-const originalAddMessage = addMessage;
-addMessage = function(text, isSent) {
-    originalAddMessage(text, isSent);
-    
-    // Show notification if message is received and page is not focused
-    if (!isSent && document.visibilityState !== 'visible') {
-        showMessageNotification(remoteUsername || 'Chat Partner', text);
-        
-        // Update title to show new message notification
-        document.title = '(New message) P2P Chat';
-    }
-};
-
-// Add file sharing functionality
-const fileInput = document.getElementById('file-input');
-const fileButton = document.getElementById('file-button');
-
-if (fileInput && fileButton) {
-    fileButton.addEventListener('click', () => {
-        if (!isConnected) {
-            showError('Connect to a peer first to share files');
-            return;
-        }
-        fileInput.click();
-    });
-    
-    fileInput.addEventListener('change', (e) => {
-        if (!e.target.files.length) return;
-        
-        const file = e.target.files[0];
-        
-        // Check file size (limit to 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showError('File too large (max 10MB)');
-            return;
-        }
-        
-        // Read the file
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            if (!connection || !connection.open) {
-                showError('Connection lost while reading file');
+        peer.on('connection', (conn) => {
+            log(`Incoming connection from: ${conn.peer}`);
+            
+            // If it's the tracker server
+            if (conn.peer === TRACKER_SERVER_ID) {
+                log('Tracker server initiated connection');
+                trackerConnection = conn;
+                setupTrackerConnection();
                 return;
             }
             
-            // Show sending notification
-            showNotification('Sending File', `Sending ${file.name}...`);
-            
-            // Send file metadata first
-            connection.send({
-                type: 'file_metadata',
-                name: file.name,
-                size: file.size,
-                fileType: file.type
-            });
-            
-            // Then send the file data
-            connection.send({
-                type: 'file_data',
-                data: event.target.result
-            });
-            
-            // Add system message about the file
-            const systemMessage = document.createElement('div');
-            systemMessage.classList.add('message', 'sent', 'file-message');
-            systemMessage.innerHTML = `File sent: <b>${file.name}</b> (${(file.size / 1024).toFixed(1)} KB)`;
-            messagesContainer.appendChild(systemMessage);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        };
-        
-        reader.onerror = () => {
-            showError('Error reading file');
-        };
-        
-        // Read file as data URL
-        reader.readAsDataURL(file);
-    });
-    
-    // Handle receiving files
-    if (connection) {
-        let incomingFile = null;
-        
-        connection.on('data', (data) => {
-            if (data.type === 'file_metadata') {
-                // Store metadata about incoming file
-                incomingFile = {
-                    name: data.name,
-                    size: data.size,
-                    type: data.fileType
-                };
+            // Check if this is a chat request
+            if (conn.metadata && conn.metadata.type === 'chatRequest') {
+                log('Received a chat request connection');
                 
-                showNotification('Receiving File', `Receiving ${data.name}...`);
+                conn.on('open', () => {
+                    conn.on('data', (data) => {
+                        if (data.type === 'chatRequest') {
+                            handleIncomingChatRequest(conn, data);
+                        }
+                    });
+                });
+                
+                return;
             }
-            else if (data.type === 'file_data' && incomingFile) {
-                // Create download link
-                const downloadLink = document.createElement('a');
-                downloadLink.href = data.data;
-                downloadLink.download = incomingFile.name;
-                downloadLink.textContent = `Download ${incomingFile.name} (${(incomingFile.size / 1024).toFixed(1)} KB)`;
-                downloadLink.className = 'file-download-link';
-                
-                // Add system message with download link
-                const systemMessage = document.createElement('div');
-                systemMessage.classList.add('message', 'received', 'file-message');
-                systemMessage.innerHTML = `File received: <b>${incomingFile.name}</b> `;
-                systemMessage.appendChild(downloadLink);
-                messagesContainer.appendChild(systemMessage);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                
-                // Show notification
-                showNotification('File Received', `${incomingFile.name} is ready to download`);
-                
-                // Reset incoming file
-                incomingFile = null;
+            
+            // For regular peer connections
+            if (!isConnected) {
+                connection = conn;
+                setupConnection();
+            } else {
+                // Already in a chat, reject new connections
+                conn.on('open', () => {
+                    conn.send({
+                        type: 'error',
+                        message: 'User is already in a chat'
+                    });
+                    conn.close();
+                });
             }
         });
+        
+        peer.on('error', (err) => {
+            log(`Peer error: ${err.type}`);
+            
+            // If tracker server doesn't exist, become the tracker server
+            if (err.type === 'peer-unavailable' && err.message.includes(TRACKER_SERVER_ID)) {
+                log('Tracker server not found, becoming tracker server');
+                becomeTrackerServer();
+                return;
+            }
+            
+            showError(`Connection error: ${err.type}`);
+            
+            if (err.type === 'peer-unavailable') {
+                showError('Peer ID not found. Check the ID and try again.');
+            } else if (err.type === 'network') {
+                showError('Network error. Check your internet connection.');
+            } else if (err.type === 'disconnected') {
+                showError('Disconnected from server. Try refreshing the page.');
+            }
+        });
+        
+        peer.on('disconnected', () => {
+            log('Peer disconnected from server');
+            showError('Disconnected from server. Click to reconnect.');
+            
+            // Try to reconnect
+            setTimeout(() => {
+                if (peer) peer.reconnect();
+            }, 3000);
+        });
+    } catch (error) {
+        log(`Error initializing PeerJS: ${error.message}`);
+        showError(`Failed to initialize connection: ${error.message}`);
     }
 }
 
-// End of script
-}});
+// Connect to a peer
+function connectToPeer(peerId) {
+    if (!peer) {
+        showError('Connection not initialized. Please refresh the page.');
+        return false;
+    }
+    
+    log(`Attempting to connect to: ${peerId}`);
+    updateStatus('Connecting...');
+    
+    try {
+        connection = peer.connect(peerId, {
+            reliable: true
+        });
+        
+        setupConnection();
+        return true;
+    } catch (error) {
+        log(`Error connecting to peer: ${error.message}`);
+        showError(`Failed to connect: ${error.message}`);
+        return false;
+    }
+}
 
-</script>
-
-</body>
-</html>
+// Event Listeners
+connectForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const peerId = peerIdInput.value.trim();
+    if (peerId) {
+        // Find the username for this peer ID
+        let username = "Unknown User";
+        for (const [id, name] of onlineUsers.entries()) {
+            if (id === peerId) {
+                username = name;
+                break;
+            }
+        }
+        
+        // Send a chat request instead of connecting directly
+        sendChatRequest(peerId, username);
+    } else {
+        showError('Please enter a peer ID');
+    }
+});
+    </script>
+    </body>
+    </html>
