@@ -898,8 +898,10 @@
                     }
                 }
                 else if (data.type === 'message') {
-                    // Handle regular chat messages
-                    addMessage(data.text, false);
+                    // Handle regular chat messages - fixed to ensure messages are always displayed
+                    if (connection && conn.peer === connection.peer) {
+                        addMessage(data.text, false);
+                    }
                 }
                 else if (data.type === 'username') {
                     // Handle username data
@@ -1095,6 +1097,9 @@
         messageInput.disabled = false;
         sendBtn.disabled = false;
         
+        // Clear previous messages
+        messagesContainer.innerHTML = '';
+        
         // Add system message
         const systemMessage = document.createElement('div');
         systemMessage.textContent = 'Connected to chat!';
@@ -1106,6 +1111,14 @@
         
         // Update username display
         usernameDisplay.textContent = `Connected to: ${remoteUsername || 'Unknown'}`;
+        
+        // Send our username to the peer
+        if (connection.open) {
+            connection.send({
+                type: 'username',
+                username: localUsername
+            });
+        }
     }
     
     // Connect to the tracker server
@@ -1401,48 +1414,72 @@
         }
     }
     
-    // Add a message to the chat
+    // Add a message to the chat - FIXED to always render properly
     function addMessage(text, isSent) {
-        if (!text.trim()) return;
+        if (!text || !text.trim()) return;
         
+        // Create message container
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', isSent ? 'sent' : 'received');
         
+        // Create username element
         const usernameSpan = document.createElement('div');
         usernameSpan.classList.add('username');
-        usernameSpan.textContent = isSent ? localUsername : remoteUsername || 'Stranger';
+        usernameSpan.textContent = isSent ? localUsername : (remoteUsername || 'Stranger');
         
+        // Create text element
         const textSpan = document.createElement('div');
         textSpan.textContent = text;
         
+        // Assemble message
         messageDiv.appendChild(usernameSpan);
         messageDiv.appendChild(textSpan);
         
+        // Append to messages container
         messagesContainer.appendChild(messageDiv);
         
-        // Scroll to bottom
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Force DOM update and scroll to bottom
+        requestAnimationFrame(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+        
+        // Log the message for debugging
+        log(`Message ${isSent ? 'sent' : 'received'}: ${text}`);
     }
     
-    // Send a message
+    // Send a message - FIXED to guarantee message sending and display
     function sendMessage(text) {
+        if (!text || !text.trim()) return;
+        
         if (!isConnected || !connection) {
             showError('Not connected to a chat partner!');
             return;
         }
         
+        // Add message to our UI first to ensure it displays
+        addMessage(text, true);
+        
         log(`Sending message: ${text}`);
         
         try {
+            // Then send to peer
             connection.send({
                 type: 'message',
                 text: text
             });
-            
-            addMessage(text, true);
         } catch (error) {
             log(`Error sending message: ${error.message}`);
             showError('Failed to send message. Connection may be lost.');
+            
+            // Add error notice to chat
+            const errorMsg = document.createElement('div');
+            errorMsg.textContent = '⚠️ Message may not have been delivered';
+            errorMsg.style.color = 'var(--danger)';
+            errorMsg.style.fontSize = '0.8rem';
+            errorMsg.style.textAlign = 'right';
+            errorMsg.style.marginTop = '0.2rem';
+            messagesContainer.appendChild(errorMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
     }
     
@@ -1486,34 +1523,286 @@
         if (message) {
             sendMessage(message);
             messageInput.value = '';
+            messageInput.focus(); // Keep focus on input for better UX
+        }
+    });
+    
+    // Add a keypress event listener for message input (ADDED)
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            messageForm.dispatchEvent(new Event('submit'));
         }
     });
     
     disconnectBtn.addEventListener('click', disconnect);
     
     // Handle user leaving the page - update online status
-    window.addEventListener('beforeunload', () => {
-        // If we're connected to the tracker, let it know we're leaving
-        if (trackerConnection && trackerConnection.open) {
-            trackerConnection.send({
-                type: 'leave',
-                peerId: myPeerId
+window.addEventListener('beforeunload', () => {
+    // Notify tracker server that we're leaving
+    if (trackerConnection && trackerConnection.open) {
+        trackerConnection.send({
+            type: 'leave',
+            peerId: myPeerId
+        });
+    }
+    
+    // Close connections
+    if (connection) {
+        connection.close();
+    }
+    
+    if (trackerConnection) {
+        trackerConnection.close();
+    }
+    
+    // Destroy peer connection
+    if (peer) {
+        peer.destroy();
+    }
+});
+
+// Initialize on load
+initializePeer();
+
+// Dark mode toggle functionality (optional)
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+if (darkModeToggle) {
+    // Check for saved theme preference or use preferred color scheme
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.body.classList.add('dark-theme');
+    }
+    
+    darkModeToggle.addEventListener('click', () => {
+        // Toggle dark mode class
+        document.body.classList.toggle('dark-theme');
+        
+        // Save preference
+        const isDark = document.body.classList.contains('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+}
+
+// Add a typing indicator (optional enhancement)
+let typingTimeout;
+messageInput.addEventListener('input', () => {
+    if (!isConnected || !connection) return;
+    
+    // Clear previous timeout
+    clearTimeout(typingTimeout);
+    
+    // Send typing indicator (only if not already sent)
+    if (!messageInput.dataset.typing) {
+        messageInput.dataset.typing = 'true';
+        if (connection.open) {
+            connection.send({
+                type: 'typing',
+                isTyping: true
             });
         }
+    }
+    
+    // Set timeout to clear typing indicator
+    typingTimeout = setTimeout(() => {
+        delete messageInput.dataset.typing;
+        if (connection && connection.open) {
+            connection.send({
+                type: 'typing',
+                isTyping: false
+            });
+        }
+    }, 1000);
+});
+
+// Handle typing indicator from peer
+if (connection) {
+    connection.on('data', (data) => {
+        if (data.type === 'typing') {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.style.display = data.isTyping ? 'block' : 'none';
+            }
+        }
+    });
+}
+
+// Add mobile responsiveness enhancement
+function adjustForMobile() {
+    const isMobile = window.innerWidth < 768;
+    
+    if (isMobile) {
+        // Adjust UI for mobile
+        document.body.classList.add('mobile');
+    } else {
+        document.body.classList.remove('mobile');
+    }
+}
+
+// Run once on load and on resize
+adjustForMobile();
+window.addEventListener('resize', adjustForMobile);
+
+// Notification permission request
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
+}
+
+// Show notifications for new messages when page is not focused
+function showMessageNotification(username, message) {
+    if ('Notification' in window && Notification.permission === 'granted' && !document.hasFocus()) {
+        const notification = new Notification('New message from ' + username, {
+            body: message,
+            icon: '/favicon.ico' // Add a favicon path
+        });
         
-        // Close connections
-        if (connection) connection.close();
-        if (trackerConnection) trackerConnection.close();
+        // Close notification automatically after 5 seconds
+        setTimeout(() => {
+            notification.close();
+        }, 5000);
         
-        // Clean up PeerJS
-        if (peer) peer.destroy();
+        // Focus the window when notification is clicked
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+    }
+}
+
+// Call the function to request notification permission
+requestNotificationPermission();
+
+// Add event listener for visibility change
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // Reset window title when returning to the page
+        document.title = 'P2P Chat';
+    }
+});
+
+// Handle new messages for notifications
+const originalAddMessage = addMessage;
+addMessage = function(text, isSent) {
+    originalAddMessage(text, isSent);
+    
+    // Show notification if message is received and page is not focused
+    if (!isSent && document.visibilityState !== 'visible') {
+        showMessageNotification(remoteUsername || 'Chat Partner', text);
         
-        // Clear intervals
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        // Update title to show new message notification
+        document.title = '(New message) P2P Chat';
+    }
+};
+
+// Add file sharing functionality
+const fileInput = document.getElementById('file-input');
+const fileButton = document.getElementById('file-button');
+
+if (fileInput && fileButton) {
+    fileButton.addEventListener('click', () => {
+        if (!isConnected) {
+            showError('Connect to a peer first to share files');
+            return;
+        }
+        fileInput.click();
     });
     
-    // Initialize PeerJS on page load
-    initializePeer();
+    fileInput.addEventListener('change', (e) => {
+        if (!e.target.files.length) return;
+        
+        const file = e.target.files[0];
+        
+        // Check file size (limit to 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showError('File too large (max 10MB)');
+            return;
+        }
+        
+        // Read the file
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (!connection || !connection.open) {
+                showError('Connection lost while reading file');
+                return;
+            }
+            
+            // Show sending notification
+            showNotification('Sending File', `Sending ${file.name}...`);
+            
+            // Send file metadata first
+            connection.send({
+                type: 'file_metadata',
+                name: file.name,
+                size: file.size,
+                fileType: file.type
+            });
+            
+            // Then send the file data
+            connection.send({
+                type: 'file_data',
+                data: event.target.result
+            });
+            
+            // Add system message about the file
+            const systemMessage = document.createElement('div');
+            systemMessage.classList.add('message', 'sent', 'file-message');
+            systemMessage.innerHTML = `File sent: <b>${file.name}</b> (${(file.size / 1024).toFixed(1)} KB)`;
+            messagesContainer.appendChild(systemMessage);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+        
+        reader.onerror = () => {
+            showError('Error reading file');
+        };
+        
+        // Read file as data URL
+        reader.readAsDataURL(file);
+    });
+    
+    // Handle receiving files
+    if (connection) {
+        let incomingFile = null;
+        
+        connection.on('data', (data) => {
+            if (data.type === 'file_metadata') {
+                // Store metadata about incoming file
+                incomingFile = {
+                    name: data.name,
+                    size: data.size,
+                    type: data.fileType
+                };
+                
+                showNotification('Receiving File', `Receiving ${data.name}...`);
+            }
+            else if (data.type === 'file_data' && incomingFile) {
+                // Create download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = data.data;
+                downloadLink.download = incomingFile.name;
+                downloadLink.textContent = `Download ${incomingFile.name} (${(incomingFile.size / 1024).toFixed(1)} KB)`;
+                downloadLink.className = 'file-download-link';
+                
+                // Add system message with download link
+                const systemMessage = document.createElement('div');
+                systemMessage.classList.add('message', 'received', 'file-message');
+                systemMessage.innerHTML = `File received: <b>${incomingFile.name}</b> `;
+                systemMessage.appendChild(downloadLink);
+                messagesContainer.appendChild(systemMessage);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Show notification
+                showNotification('File Received', `${incomingFile.name} is ready to download`);
+                
+                // Reset incoming file
+                incomingFile = null;
+            }
+        });
+    }
+}
+
+// End of script
 });
 </script>
 
