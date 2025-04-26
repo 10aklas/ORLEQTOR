@@ -1079,46 +1079,44 @@
         }
     }
     
-    // Setup chat connection
     function setupChatConnection() {
-        if (!connection) {
-            showError('No connection to setup');
-            return;
-        }
-        
-        log('Setting up chat connection');
-        isConnected = true;
-        
-        // Show chat UI
-        setupScreen.style.display = 'none';
-        chatScreen.style.display = 'flex';
-        
-        updateStatus('Connected');
-        messageInput.disabled = false;
-        sendBtn.disabled = false;
-        
-        // Clear previous messages
-        messagesContainer.innerHTML = '';
-        
-        // Add system message
-        const systemMessage = document.createElement('div');
-        systemMessage.textContent = 'Connected to chat!';
-        systemMessage.style.textAlign = 'center';
-        systemMessage.style.padding = '0.5rem';
-        systemMessage.style.margin = '0.5rem 0';
-        systemMessage.style.color = 'var(--accent)';
-        messagesContainer.appendChild(systemMessage);
-        
-        // Update username display
-        usernameDisplay.textContent = `Connected to: ${remoteUsername || 'Unknown'}`;
-        
-        // Send our username to the peer
-        if (connection.open) {
-            connection.send({
-                type: 'username',
-                username: localUsername
-            });
-        }
+    if (!connection) {
+        showError('No connection to setup');
+        return;
+    }
+    
+    log('Setting up chat connection');
+    isConnected = true;
+    
+    // Show chat UI
+    setupScreen.style.display = 'none';
+    chatScreen.style.display = 'flex';
+    
+    updateStatus('Connected');
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    
+    // Clear previous messages
+    messagesContainer.innerHTML = '';
+    
+    // Add system message
+    const systemMessage = document.createElement('div');
+    systemMessage.textContent = 'Connected to chat!';
+    systemMessage.style.textAlign = 'center';
+    systemMessage.style.padding = '0.5rem';
+    systemMessage.style.margin = '0.5rem 0';
+    systemMessage.style.color = 'var(--accent)';
+    messagesContainer.appendChild(systemMessage);
+    
+    // Update username display
+    usernameDisplay.textContent = `Connected to: ${remoteUsername || 'Unknown'}`;
+    
+    // Send our username to the peer
+    if (connection.open) {
+        connection.send({
+            type: 'username',
+            username: localUsername
+        });
     }
     
     // Connect to the tracker server
@@ -1803,7 +1801,8 @@ if (fileInput && fileButton) {
 }
 
 // End of script
-});
+}});
+
 </script>
 
 </body>
