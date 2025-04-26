@@ -393,39 +393,6 @@
         #setup-screen, #chat-screen {
             animation: fadeIn 0.5s ease-out;
         }
-
-        /* Username section styles */
-        #username-section {
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #222;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        #username-form {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        #username-input {
-            flex: 1;
-            padding: 0.8rem 1rem;
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid #222;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        #username-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent-glow);
-        }
     </style>
 </head>
 <body>
@@ -437,16 +404,6 @@
         <div id="setup-screen">
             <h2>Manual Connection Mode</h2>
             <p>For privacy and security reasons, automatic matching is disabled.</p>
-            
-            <!-- Username section -->
-            <div id="username-section">
-                <h3>Your Profile</h3>
-                <p id="current-username-display">Username: Loading...</p>
-                <form id="username-form">
-                    <input type="text" id="username-input" placeholder="Change username...">
-                    <button type="submit" id="username-btn">Update</button>
-                </form>
-            </div>
             
             <!-- Online users panel -->
             <div id="online-users-panel">
@@ -519,9 +476,6 @@
         const debugLog = document.getElementById('debug-log');
         const onlineCount = document.getElementById('online-count');
         const usersList = document.getElementById('users-list');
-        const usernameForm = document.getElementById('username-form');
-        const usernameInput = document.getElementById('username-input');
-        const currentUsernameDisplay = document.getElementById('current-username-display');
         
         // Initially hide chat screen
         chatScreen.style.display = 'none';
@@ -534,17 +488,11 @@
         let isConnected = false;
         let myPeerId;
         
-        // Session ID to identify unique browsers/tabs
-        const sessionId = generateSessionId();
-        
         // User tracker variables
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
-        let onlineUsers = new Map(); // Map of peerId -> {username, sessionId}
+        let onlineUsers = new Map(); // Map of peerId -> username
         let heartbeatInterval;
-        
-        // Persistence for username
-        const savedUsername = localStorage.getItem('chat-username');
         
         // Debug log function
         function log(message) {
@@ -552,19 +500,6 @@
             const now = new Date().toLocaleTimeString();
             debugLog.innerHTML += `[${now}] ${message}\n`;
             debugLog.scrollTop = debugLog.scrollHeight;
-        }
-        
-        // Generate a session ID to identify this browser instance
-        function generateSessionId() {
-            // Try to get from sessionStorage first
-            let id = sessionStorage.getItem('chat-session-id');
-            if (!id) {
-                // Generate a new session ID
-                id = Math.random().toString(36).substring(2, 15) + 
-                     Math.random().toString(36).substring(2, 15);
-                sessionStorage.setItem('chat-session-id', id);
-            }
-            return id;
         }
         
         // Show error
@@ -598,37 +533,19 @@
         
         // Update online users UI
         function updateOnlineUsersUI() {
-            // Update the count - only count unique session IDs
-            const uniqueSessions = new Set();
-            onlineUsers.forEach(userData => {
-                uniqueSessions.add(userData.sessionId);
-            });
-            onlineCount.textContent = uniqueSessions.size;
+            // Update the count
+            onlineCount.textContent = onlineUsers.size;
             
             // Clear the list
             usersList.innerHTML = '';
             
-            // Create a map of unique users (by sessionId)
-            const uniqueUsers = new Map();
-            onlineUsers.forEach((userData, peerId) => {
-                // Only keep the most recent peer ID for each session
-                const existingUser = uniqueUsers.get(userData.sessionId);
-                if (!existingUser || userData.timestamp > existingUser.timestamp) {
-                    uniqueUsers.set(userData.sessionId, {
-                        peerId: peerId,
-                        username: userData.username,
-                        timestamp: userData.timestamp
-                    });
-                }
-            });
-            
-            // Add each unique user
-            uniqueUsers.forEach((userData, sessionId) => {
+            // Add each user
+            onlineUsers.forEach((username, peerId) => {
                 const userItem = document.createElement('div');
                 userItem.classList.add('user-item');
                 
                 // Highlight current user
-                if (sessionId === sessionId) {
+                if (peerId === myPeerId) {
                     userItem.classList.add('current-user');
                 }
                 
@@ -636,24 +553,24 @@
                 
                 const userName = document.createElement('span');
                 userName.classList.add('user-name');
-                userName.textContent = userData.username;
+                userName.textContent = username;
                 
                 const userId = document.createElement('span');
                 userId.classList.add('user-id');
-                userId.textContent = ` (${userData.peerId})`;
+                userId.textContent = ` (${peerId})`;
                 
                 userInfo.appendChild(userName);
                 userInfo.appendChild(userId);
                 userItem.appendChild(userInfo);
                 
                 // Add connect button for other users
-                if (sessionId !== sessionId && !isConnected) {
+                if (peerId !== myPeerId && !isConnected) {
                     const connectIcon = document.createElement('span');
                     connectIcon.classList.add('connect-icon');
                     connectIcon.textContent = '→ Connect';
                     connectIcon.onclick = () => {
-                        peerIdInput.value = userData.peerId;
-                        connectToPeer(userData.peerId);
+                        peerIdInput.value = peerId;
+                        connectToPeer(peerId);
                     };
                     userItem.appendChild(connectIcon);
                 }
@@ -664,18 +581,8 @@
         
         // Initialize PeerJS
         function initializePeer() {
-            // Use saved username or generate a new one
-            localUsername = savedUsername || generateUsername();
-            
-            // Update username display
-            currentUsernameDisplay.textContent = `Username: ${localUsername}`;
-            
-            // Save to localStorage
-            if (!savedUsername) {
-                localStorage.setItem('chat-username', localUsername);
-            }
-            
             const peerId = generateSimpleId();
+            localUsername = generateUsername();
             
             log(`Initializing PeerJS with ID: ${peerId}`);
             
@@ -691,12 +598,8 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    // Add ourselves to the online users with session ID
-                    onlineUsers.set(id, {
-                        username: localUsername,
-                        sessionId: sessionId,
-                        timestamp: Date.now()
-                    });
+                    // Add ourselves to the online users
+                    onlineUsers.set(id, localUsername);
                     updateOnlineUsersUI();
                     
                     // Connect to the tracker server (first try)
@@ -782,13 +685,11 @@
             trackerConnection.on('open', () => {
                 log('Connected to tracker server');
                 
-                // Register with the tracker including session ID
+                // Register with the tracker
                 trackerConnection.send({
                     type: 'register',
                     peerId: myPeerId,
-                    username: localUsername,
-                    sessionId: sessionId,
-                    timestamp: Date.now()
+                    username: localUsername
                 });
                 
                 // Set up heartbeat to keep the connection alive
@@ -798,9 +699,7 @@
                         trackerConnection.send({
                             type: 'heartbeat',
                             peerId: myPeerId,
-                            username: localUsername,
-                            sessionId: sessionId,
-                            timestamp: Date.now()
+                            username: localUsername
                         });
                     }
                 }, 30000); // Send heartbeat every 30 seconds
@@ -851,20 +750,12 @@
                     debug: 2
                 });
                 
-                // Track all connected users with session IDs
+                // Track all connected users
                 const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, {
-                    username: localUsername,
-                    sessionId: sessionId,
-                    timestamp: Date.now()
-                });
+                connectedUsers.set(myPeerId, localUsername); // Add ourselves
                 
                 // Track connections to each user
                 const userConnections = new Map();
-                
-                // Track last active time for each session
-                const sessionLastActive = new Map();
-                sessionLastActive.set(sessionId, Date.now());
                 
                 trackerServer.on('open', (id) => {
                     log(`Tracker server started with ID: ${id}`);
@@ -878,645 +769,372 @@
                 });
                 
                 trackerServer.on('connection', (conn) => {
-    log(`Tracker: New connection from ${conn.peer}`);
-    
-    // Store connection info
-    const userId = conn.peer;
-    let username;
-    let browserSessionId = null;
-    
-    // Keep track of this connection
-    userConnections.set(userId, conn);
-    
-    conn.on('open', () => {
-        log(`Tracker: Connection to ${userId} opened`);
-    });
-    
-    conn.on('data', (data) => {
-        log(`Tracker: Received data from ${userId}: ${JSON.stringify(data)}`);
-        
-        if (data.type === 'register') {
-            // Extract username and session ID
-            username = data.username;
-            browserSessionId = data.sessionId || generateSessionId();
-            
-            // Check if this browser session already exists with a different peer ID
-            // If so, remove the old entry
-            connectedUsers.forEach((userData, peerId) => {
-                if (peerId !== userId && 
-                    userData.sessionId === browserSessionId) {
-                    log(`Tracker: Removing old connection for same browser session: ${peerId}`);
-                    connectedUsers.delete(peerId);
+                    log(`Tracker: New connection from ${conn.peer}`);
                     
-                    // Close the old connection if it exists
-                    const oldConn = userConnections.get(peerId);
-                    if (oldConn) {
-                        oldConn.close();
-                        userConnections.delete(peerId);
+                    // Keep track of this connection
+                    userConnections.set(conn.peer, conn);
+                    
+                    conn.on('open', () => {
+                        log(`Tracker: Connection to ${conn.peer} opened`);
+                        
+                        // Send the current user list
+                        conn.send({
+                            type: 'userList',
+                            users: Object.fromEntries(connectedUsers)
+                        });
+                    });
+                    
+                    conn.on('data', (data) => {
+                        log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
+                        
+                        if (data.type === 'register' || data.type === 'heartbeat') {
+                            // Register or update this user
+                            connectedUsers.set(data.peerId, data.username);
+                            
+                            // Broadcast the updated user list to all connected users
+                            broadcastUserList();
+                        }
+                    });
+                    
+                    conn.on('close', () => {
+                        log(`Tracker: Connection to ${conn.peer} closed`);
+                        
+                        // Remove the user from our list
+                        connectedUsers.delete(conn.peer);
+                        userConnections.delete(conn.peer);
+                        
+                        // Broadcast the updated user list
+                        broadcastUserList();
+                    });
+                    
+                    conn.on('error', (error) => {
+                        log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
+                        
+                        // Remove the user
+                        connectedUsers.delete(conn.peer);
+                        userConnections.delete(conn.peer);
+                        
+                        // Broadcast the updated user list
+                        broadcastUserList();
+                    });
+                });
+                
+                // Function to broadcast user list to all connected peers
+                function broadcastUserList() {
+                    const userListMessage = {
+                        type: 'userList',
+                        users: Object.fromEntries(connectedUsers)
+                    };
+                    
+                    // Update our own UI first
+                    onlineUsers = new Map(connectedUsers);
+                    updateOnlineUsersUI();
+                    
+                    // Then broadcast to others
+                    userConnections.forEach((conn, peerId) => {
+                        if (conn.open) {
+                            conn.send(userListMessage);
+                        } else {
+                            // Clean up closed connections
+                            userConnections.delete(peerId);
+                            connectedUsers.delete(peerId);
+                        }
+                    });
+                }
+                
+                // Handle errors
+                trackerServer.on('error', (error) => {
+                    log(`Tracker server error: ${error}`);
+                    
+                    // If we can't be the tracker, try to connect as a regular peer
+                    if (error.type === 'unavailable-id') {
+                        log('Tracker server ID is taken, reconnecting as regular peer');
+                        connectToTracker();
                     }
+                });
+                
+                // Clean up disconnected users periodically
+                const cleanupInterval = setInterval(() => {
+                    let changed = false;
+                    
+                    userConnections.forEach((conn, peerId) => {
+                        if (!conn.open) {
+                            userConnections.delete(peerId);
+                            connectedUsers.delete(peerId);
+                            changed = true;
+                        }
+                    });
+                    
+                    if (changed) {
+                        broadcastUserList();
+                    }
+                }, 60000); // Check every minute
+                
+                // Clean up on unload
+                window.addEventListener('beforeunload', () => {
+                    clearInterval(cleanupInterval);
+                    trackerServer.destroy();
+                });
+                
+            } catch (error) {
+                log(`Error becoming tracker server: ${error.message}`);
+                
+                // Try again as a regular peer
+                setTimeout(() => {
+                    connectToTracker();
+                }, 5000);
+            }
+        }
+        
+        // Set up connection event handlers
+        function setupConnection() {
+            log('Setting up connection handlers');
+            
+            connection.on('open', () => {
+                log('Connection opened');
+                isConnected = true;
+                
+                // Show chat UI
+                setupScreen.style.display = 'none';
+                chatScreen.style.display = 'flex';
+                
+                updateStatus('Connected');
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                
+                // Send our username
+                connection.send({
+                    type: 'username',
+                    username: localUsername
+                });
+                
+                // Add system message
+                const systemMessage = document.createElement('div');
+                systemMessage.textContent = 'Connected to chat!';
+                systemMessage.style.textAlign = 'center';
+                systemMessage.style.padding = '0.5rem';
+                systemMessage.style.margin = '0.5rem 0';
+                systemMessage.style.color = 'var(--accent)';
+                messagesContainer.appendChild(systemMessage);
+            });
+            
+            connection.on('data', (data) => {
+                log(`Received data: ${JSON.stringify(data)}`);
+                
+                if (data.type === 'username') {
+                    remoteUsername = data.username;
+                    usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
+                } else if (data.type === 'message') {
+                    addMessage(data.text, false);
                 }
             });
             
-            // Register this user with sessionId
-            connectedUsers.set(userId, {
-                username: username,
-                sessionId: browserSessionId,
-                lastSeen: Date.now()
+            connection.on('close', () => {
+                log('Connection closed');
+                handleDisconnect('Chat partner disconnected');
             });
             
-            // Send back the session ID to the client
-            conn.send({
-                type: 'sessionInfo',
-                sessionId: browserSessionId
+            connection.on('error', (error) => {
+                log(`Connection error: ${error}`);
+                handleDisconnect('Connection error');
             });
+        }
+        
+        // Handle disconnection
+        function handleDisconnect(message) {
+            log(`Disconnected: ${message}`);
             
-            // Broadcast the updated user list to all connected users
-            broadcastUserList();
-        } 
-        else if (data.type === 'heartbeat') {
-            // Update this user's last seen time and session data
-            username = data.username;
-            browserSessionId = data.sessionId;
+            isConnected = false;
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            updateStatus('Disconnected');
             
-            if (connectedUsers.has(userId)) {
-                const userData = connectedUsers.get(userId);
-                userData.lastSeen = Date.now();
-                userData.username = username;
+            // Add system message
+            const systemMessage = document.createElement('div');
+            systemMessage.textContent = message || 'Disconnected';
+            systemMessage.style.textAlign = 'center';
+            systemMessage.style.padding = '0.5rem';
+            systemMessage.style.margin = '0.5rem 0';
+            systemMessage.style.color = 'var(--danger)';
+            messagesContainer.appendChild(systemMessage);
+            
+            // Show setup screen again after a short delay
+            setTimeout(() => {
+                setupScreen.style.display = 'flex';
+                chatScreen.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Connect to a peer
+        function connectToPeer(peerId) {
+            if (!peer) {
+                showError('Connection not initialized. Please refresh the page.');
+                return false;
+            }
+            
+            log(`Attempting to connect to: ${peerId}`);
+            updateStatus('Connecting...');
+            
+            try {
+                connection = peer.connect(peerId, {
+                    reliable: true
+                });
                 
-                if (browserSessionId && !userData.sessionId) {
-                    userData.sessionId = browserSessionId;
-                }
-                
-                connectedUsers.set(userId, userData);
+                setupConnection();
+                return true;
+            } catch (error) {
+                log(`Error connecting to peer: ${error.message}`);
+                showError(`Failed to connect: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Update the connection status UI
+        function updateStatus(status) {
+            statusText.textContent = status;
+            
+            if (status === 'Connecting...') {
+                statusText.className = 'status-connecting';
+            } else if (status === 'Connected') {
+                statusText.className = 'status-connected';
             } else {
-                // Re-register if somehow missing
-                connectedUsers.set(userId, {
-                    username: username,
-                    sessionId: browserSessionId || generateSessionId(),
-                    lastSeen: Date.now()
+                statusText.className = 'status-disconnected';
+            }
+        }
+        
+        // Add a message to the chat
+        function addMessage(text, isSent) {
+            if (!text.trim()) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            
+            const usernameSpan = document.createElement('div');
+            usernameSpan.classList.add('username');
+            usernameSpan.textContent = isSent ? localUsername : remoteUsername || 'Stranger';
+            
+            const textSpan = document.createElement('div');
+            textSpan.textContent = text;
+            
+            messageDiv.appendChild(usernameSpan);
+            messageDiv.appendChild(textSpan);
+            
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Send a message
+        function sendMessage(text) {
+            if (!isConnected || !connection) {
+                showError('Not connected to a chat partner!');
+                return;
+            }
+            
+            log(`Sending message: ${text}`);
+            
+            try {
+                connection.send({
+                    type: 'message',
+                    text: text
+                });
+                
+                addMessage(text, true);
+            } catch (error) {
+                log(`Error sending message: ${error.message}`);
+                showError('Failed to send message. Connection may be lost.');
+            }
+        }
+        
+        // Disconnect from current peer
+        function disconnect() {
+            log('Disconnecting from current peer');
+            
+            if (connection) {
+                connection.close();
+                connection = null;
+            }
+            
+            isConnected = false;
+            remoteUsername = null;
+            messagesContainer.innerHTML = '';
+            
+            // Reset UI
+            updateStatus('Disconnected');
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Show setup screen
+            setupScreen.style.display = 'flex';
+            chatScreen.style.display = 'none';
+        }
+        
+        // Event Listeners
+        connectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const peerId = peerIdInput.value.trim();
+            if (peerId) {
+                connectToPeer(peerId);
+                // Keep the setup screen visible until connection is established
+            } else {
+                showError('Please enter a peer ID');
+            }
+        });
+        
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message) {
+                sendMessage(message);
+                messageInput.value = '';
+            }
+        });
+        
+        disconnectBtn.addEventListener('click', disconnect);
+        
+        // Handle user leaving the page - update online status
+        window.addEventListener('beforeunload', () => {
+            // If we're connected to the tracker, let it know we're leaving
+            if (trackerConnection && trackerConnection.open) {
+                trackerConnection.send({
+                    type: 'leave',
+                    peerId: myPeerId
                 });
             }
             
-            // No need to broadcast for every heartbeat
-        }
-        else if (data.type === 'leave') {
-            // User explicitly left
-            connectedUsers.delete(userId);
-            userConnections.delete(userId);
-            broadcastUserList();
-        }
-    });
-    
-    conn.on('close', () => {
-        log(`Tracker: Connection to ${userId} closed`);
-        
-        // Don't immediately remove the user - they might be refreshing
-        // Instead, mark the connection as closed but keep user data
-        userConnections.delete(userId);
-        
-        // Update last seen time
-        if (connectedUsers.has(userId)) {
-            const userData = connectedUsers.get(userId);
-            userData.lastSeen = Date.now();
-            userData.connected = false;
-            connectedUsers.set(userId, userData);
-        }
-        
-        // Schedule cleanup after a delay in case this is just a page refresh
-        setTimeout(() => {
-            if (!userConnections.has(userId)) {
-                // If user hasn't reconnected, remove them
-                connectedUsers.delete(userId);
-                broadcastUserList();
-            }
-        }, 10000); // Wait 10 seconds before cleanup
-    });
-    
-    conn.on('error', (error) => {
-        log(`Tracker: Error with connection to ${userId}: ${error}`);
-        
-        // Handle connection error
-        userConnections.delete(userId);
-        
-        // Same delayed cleanup as in close handler
-        setTimeout(() => {
-            if (!userConnections.has(userId)) {
-                connectedUsers.delete(userId);
-                broadcastUserList();
-            }
-        }, 10000);
-    });
-    
-    // Send the current user list immediately
-    conn.send({
-        type: 'userList',
-        users: convertUsersMapToList(connectedUsers)
-    });
-});
-
-// Helper function to generate a session ID
-function generateSessionId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
-
-// Helper function to convert users map to a format suitable for transmission
-function convertUsersMapToList(usersMap) {
-    const usersList = {};
-    usersMap.forEach((userData, peerId) => {
-        usersList[peerId] = userData.username;
-    });
-    return usersList;
-}
-
-// Function to broadcast user list to all connected peers
-function broadcastUserList() {
-    const userListMessage = {
-        type: 'userList',
-        users: convertUsersMapToList(connectedUsers)
-    };
-    
-    // Update our own UI first
-    onlineUsers = new Map();
-    connectedUsers.forEach((userData, peerId) => {
-        onlineUsers.set(peerId, userData.username);
-    });
-    updateOnlineUsersUI();
-    
-    // Then broadcast to others
-    userConnections.forEach((conn, peerId) => {
-        if (conn.open) {
-            conn.send(userListMessage);
-        }
-    });
-}
-
-// Add a cleanup function to periodically remove stale connections
-const cleanupInterval = setInterval(() => {
-    const now = Date.now();
-    let changed = false;
-    
-    connectedUsers.forEach((userData, peerId) => {
-        // Remove users who haven't been seen for more than 2 minutes
-        if (now - userData.lastSeen > 120000) {
-            connectedUsers.delete(peerId);
-            userConnections.delete(peerId);
-            changed = true;
-        }
-    });
-    
-    if (changed) {
-        broadcastUserList();
-    }
-}, 60000); // Check every minute
-
-trackerServer.on('error', (error) => {
-    log(`Tracker server error: ${error}`);
-    
-    // If we can't be the tracker, try to connect as a regular peer
-    if (error.type === 'unavailable-id') {
-        log('Tracker server ID is taken, reconnecting as regular peer');
-        connectToTracker();
-    }
-});
-
-// Clean up on unload
-window.addEventListener('beforeunload', () => {
-    clearInterval(cleanupInterval);
-    trackerServer.destroy();
-});
-
-} catch (error) {
-    log(`Error becoming tracker server: ${error.message}`);
-    
-    // Try again as a regular peer
-    setTimeout(() => {
-        connectToTracker();
-    }, 5000);
-}
-}
-
-// Set up connection event handlers
-function setupConnection() {
-log('Setting up connection handlers');
-
-connection.on('open', () => {
-    log('Connection opened');
-    isConnected = true;
-    
-    // Show chat UI
-    setupScreen.style.display = 'none';
-    chatScreen.style.display = 'flex';
-    
-    updateStatus('Connected');
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
-    
-    // Send our username
-    connection.send({
-        type: 'username',
-        username: localUsername
-    });
-    
-    // Add system message
-    const systemMessage = document.createElement('div');
-    systemMessage.textContent = 'Connected to chat!';
-    systemMessage.style.textAlign = 'center';
-    systemMessage.style.padding = '0.5rem';
-    systemMessage.style.margin = '0.5rem 0';
-    systemMessage.style.color = 'var(--accent)';
-    messagesContainer.appendChild(systemMessage);
-});
-
-connection.on('data', (data) => {
-    log(`Received data: ${JSON.stringify(data)}`);
-    
-    if (data.type === 'username') {
-        remoteUsername = data.username;
-        usernameDisplay.textContent = `Connected to: ${remoteUsername}`;
-    } else if (data.type === 'message') {
-        addMessage(data.text, false);
-    }
-});
-
-connection.on('close', () => {
-    log('Connection closed');
-    handleDisconnect('Chat partner disconnected');
-});
-
-connection.on('error', (error) => {
-    log(`Connection error: ${error}`);
-    handleDisconnect('Connection error');
-});
-}
-
-// Handle disconnection
-function handleDisconnect(message) {
-log(`Disconnected: ${message}`);
-
-isConnected = false;
-messageInput.disabled = true;
-sendBtn.disabled = true;
-updateStatus('Disconnected');
-
-// Add system message
-const systemMessage = document.createElement('div');
-systemMessage.textContent = message || 'Disconnected';
-systemMessage.style.textAlign = 'center';
-systemMessage.style.padding = '0.5rem';
-systemMessage.style.margin = '0.5rem 0';
-systemMessage.style.color = 'var(--danger)';
-messagesContainer.appendChild(systemMessage);
-
-// Show setup screen again after a short delay
-setTimeout(() => {
-    setupScreen.style.display = 'flex';
-    chatScreen.style.display = 'none';
-}, 3000);
-}
-
-// Connect to a peer
-function connectToPeer(peerId) {
-if (!peer) {
-    showError('Connection not initialized. Please refresh the page.');
-    return false;
-}
-
-log(`Attempting to connect to: ${peerId}`);
-updateStatus('Connecting...');
-
-try {
-    connection = peer.connect(peerId, {
-        reliable: true
-    });
-    
-    setupConnection();
-    return true;
-} catch (error) {
-    log(`Error connecting to peer: ${error.message}`);
-    showError(`Failed to connect: ${error.message}`);
-    return false;
-}
-}
-
-// Update the connection status UI
-function updateStatus(status) {
-statusText.textContent = status;
-
-if (status === 'Connecting...') {
-    statusText.className = 'status-connecting';
-} else if (status === 'Connected') {
-    statusText.className = 'status-connected';
-} else {
-    statusText.className = 'status-disconnected';
-}
-}
-
-// Add a message to the chat
-function addMessage(text, isSent) {
-if (!text.trim()) return;
-
-const messageDiv = document.createElement('div');
-messageDiv.classList.add('message', isSent ? 'sent' : 'received');
-
-const usernameSpan = document.createElement('div');
-usernameSpan.classList.add('username');
-usernameSpan.textContent = isSent ? localUsername : remoteUsername || 'Stranger';
-
-const textSpan = document.createElement('div');
-textSpan.textContent = text;
-
-messageDiv.appendChild(usernameSpan);
-messageDiv.appendChild(textSpan);
-
-messagesContainer.appendChild(messageDiv);
-
-// Scroll to bottom
-messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Send a message
-function sendMessage(text) {
-if (!isConnected || !connection) {
-    showError('Not connected to a chat partner!');
-    return;
-}
-
-log(`Sending message: ${text}`);
-
-try {
-    connection.send({
-        type: 'message',
-        text: text
-    });
-    
-    addMessage(text, true);
-} catch (error) {
-    log(`Error sending message: ${error.message}`);
-    showError('Failed to send message. Connection may be lost.');
-}
-}
-
-// Disconnect from current peer
-function disconnect() {
-log('Disconnecting from current peer');
-
-if (connection) {
-    connection.close();
-    connection = null;
-}
-
-isConnected = false;
-remoteUsername = null;
-messagesContainer.innerHTML = '';
-
-// Reset UI
-updateStatus('Disconnected');
-messageInput.disabled = true;
-sendBtn.disabled = true;
-
-// Show setup screen
-setupScreen.style.display = 'flex';
-chatScreen.style.display = 'none';
-}
-
-// Event Listeners
-connectForm.addEventListener('submit', (e) => {
-e.preventDefault();
-const peerId = peerIdInput.value.trim();
-if (peerId) {
-    connectToPeer(peerId);
-    // Keep the setup screen visible until connection is established
-} else {
-    showError('Please enter a peer ID');
-}
-});
-
-messageForm.addEventListener('submit', (e) => {
-e.preventDefault();
-const message = messageInput.value.trim();
-if (message) {
-    sendMessage(message);
-    messageInput.value = '';
-}
-});
-
-disconnectBtn.addEventListener('click', disconnect);
-
-// Handle user leaving the page - update online status
-window.addEventListener('beforeunload', () => {
-// If we're connected to the tracker, let it know we're leaving
-if (trackerConnection && trackerConnection.open) {
-    trackerConnection.send({
-        type: 'leave',
-        peerId: myPeerId,
-        sessionId: browserSessionId
-    });
-}
-
-// Close connections
-if (connection) connection.close();
-if (trackerConnection) trackerConnection.close();
-
-// Clean up PeerJS
-if (peer) peer.destroy();
-
-// Clear intervals
-if (heartbeatInterval) clearInterval(heartbeatInterval);
-});
-
-// Also detect when the user becomes inactive (tab switching/minimizing)
-document.addEventListener('visibilitychange', () => {
-if (document.visibilityState === 'hidden') {
-    // User is away - could update status to "away" here
-    log('User is away');
-} else {
-    // User is back - refresh our presence
-    log('User is back');
-    if (trackerConnection && trackerConnection.open) {
-        trackerConnection.send({
-            type: 'heartbeat',
-            peerId: myPeerId,
-            username: localUsername,
-            sessionId: browserSessionId
+            // Close connections
+            if (connection) connection.close();
+            if (trackerConnection) trackerConnection.close();
+            
+            // Clean up PeerJS
+            if (peer) peer.destroy();
+            
+            // Clear intervals
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
         });
-    }
-}
-});
-
-// Initialize PeerJS on page load with browser session support
-let browserSessionId = localStorage.getItem('chatSessionId') || null;
-
-// Initialize PeerJS
-function initializePeer() {
-const peerId = generateSimpleId();
-localUsername = generateUsername();
-
-log(`Initializing PeerJS with ID: ${peerId}`);
-
-try {
-    // Initialize with minimal options to avoid errors
-    peer = new Peer(peerId, {
-        debug: 2
-    });
-    
-    peer.on('open', (id) => {
-        log(`Peer connected with ID: ${id}`);
-        myPeerId = id;
-        myIdDisplay.textContent = id;
-        usernameDisplay.textContent = `Your username: ${localUsername}`;
         
-        // Add ourselves to the online users
-        onlineUsers.set(id, localUsername);
-        updateOnlineUsersUI();
+        // Also detect when the user becomes inactive (tab switching/minimizing)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // User is away - could update status to "away" here
+                log('User is away');
+            } else {
+                // User is back - refresh our presence
+                log('User is back');
+                if (trackerConnection && trackerConnection.open) {
+                    trackerConnection.send({
+                        type: 'heartbeat',
+                        peerId: myPeerId,
+                        username: localUsername
+                    });
+                }
+            }
+        });
         
-        // Connect to the tracker server
-        connectToTracker();
-    });
-    
-    peer.on('connection', (conn) => {
-        log(`Incoming connection from: ${conn.peer}`);
-        
-        // If it's the tracker server
-        if (conn.peer === TRACKER_SERVER_ID) {
-            log('Tracker server initiated connection');
-            trackerConnection = conn;
-            setupTrackerConnection();
-            return;
-        }
-        
-        // For regular peer connections
-        if (!isConnected) {
-            connection = conn;
-            setupConnection();
-        } else {
-            conn.close();
-        }
-    });
-    
-    peer.on('error', (err) => {
-        log(`Peer error: ${err.type}`);
-        
-        // If tracker server doesn't exist, become the tracker server
-        if (err.type === 'peer-unavailable' && err.message.includes(TRACKER_SERVER_ID)) {
-            log('Tracker server not found, becoming tracker server');
-            becomeTrackerServer();
-            return;
-        }
-        
-        showError(`Connection error: ${err.type}`);
-        
-        if (err.type === 'peer-unavailable') {
-            showError('Peer ID not found. Check the ID and try again.');
-        } else if (err.type === 'network') {
-            showError('Network error. Check your internet connection.');
-        } else if (err.type === 'disconnected') {
-            showError('Disconnected from server. Try refreshing the page.');
-        }
-    });
-    
-    peer.on('disconnected', () => {
-        log('Peer disconnected from server');
-        showError('Disconnected from server. Click to reconnect.');
-        
-        // Try to reconnect
-        setTimeout(() => {
-            if (peer) peer.reconnect();
-        }, 3000);
-    });
-} catch (error) {
-    log(`Error initializing PeerJS: ${error.message}`);
-    showError(`Failed to initialize connection: ${error.message}`);
-}
-}
+        // Initialize PeerJS on page load
+        initializePeer();
+    </script>
 
-// Connect to the tracker server
-function connectToTracker() {
-log('Attempting to connect to tracker server');
-
-try {
-    trackerConnection = peer.connect(TRACKER_SERVER_ID, {
-        reliable: true
-    });
-    
-    setupTrackerConnection();
-} catch (error) {
-    log(`Error connecting to tracker: ${error.message}`);
-    // Will try to become tracker server in the error handler
-}
-}
-
-// Setup tracker connection
-function setupTrackerConnection() {
-log('Setting up tracker connection');
-
-trackerConnection.on('open', () => {
-    log('Connected to tracker server');
-    
-    // Register with the tracker, including session ID if we have one
-    trackerConnection.send({
-        type: 'register',
-        peerId: myPeerId,
-        username: localUsername,
-        sessionId: browserSessionId
-    });
-    
-    // Set up heartbeat to keep the connection alive
-    if (heartbeatInterval) clearInterval(heartbeatInterval);
-    heartbeatInterval = setInterval(() => {
-        if (trackerConnection && trackerConnection.open) {
-            trackerConnection.send({
-                type: 'heartbeat',
-                peerId: myPeerId,
-                username: localUsername,
-                sessionId: browserSessionId
-            });
-        }
-    }, 30000); // Send heartbeat every 30 seconds
-});
-
-trackerConnection.on('data', (data) => {
-    log(`Received tracker data: ${JSON.stringify(data)}`);
-    
-    if (data.type === 'userList') {
-        // Update our online users list
-        onlineUsers = new Map(Object.entries(data.users));
-        updateOnlineUsersUI();
-    }
-    else if (data.type === 'sessionInfo') {
-        // Store the session ID for future use
-        browserSessionId = data.sessionId;
-        localStorage.setItem('chatSessionId', browserSessionId);
-        log(`Received session ID: ${browserSessionId}`);
-    }
-});
-
-trackerConnection.on('close', () => {
-    log('Tracker connection closed');
-    
-    // Clear the heartbeat interval
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-    }
-    
-    // Try to reconnect to tracker or become tracker
-    setTimeout(() => {
-        connectToTracker();
-    }, 5000);
-});
-
-trackerConnection.on('error', (error) => {
-    log(`Tracker connection error: ${error}`);
-    
-    // Try to reconnect to tracker or become tracker
-    setTimeout(() => {
-        connectToTracker();
-    }, 5000);
-});
-}
-
-// Initialize everything
-initializePeer();
-</script>
 </body>
 </html>
