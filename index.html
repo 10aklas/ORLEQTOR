@@ -1186,6 +1186,36 @@
             updateRandomChatButton();
         });
         
+        // Add this function to your existing JavaScript
+        function updateConnectionStatus(inRoom) {
+        const connectButton = document.getElementById('connect-button');
+        if (connectButton) {
+            if (inRoom) {
+            connectButton.textContent = 'In a room';
+            } else {
+            connectButton.textContent = 'Connect';
+            }
+        }
+        }
+
+        // Then call this function in your existing code:
+        // 1. When a user successfully joins a room:
+        //    updateConnectionStatus(true);
+
+        // 2. When a user disconnects or leaves a room:
+        //    updateConnectionStatus(false);
+
+        // Example integration (adjust based on your actual event structure):
+        // After connecting to a room:
+        socket.on('join_room_success', () => {
+        updateConnectionStatus(true);
+        });
+
+        // When leaving a room:
+        socket.on('disconnected', () => {
+        updateConnectionStatus(false);
+        });
+
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             // Close connections
