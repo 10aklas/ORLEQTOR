@@ -1216,6 +1216,21 @@
         updateConnectionStatus(false);
         });
 
+        function updateConnectionStatus(inRoom) {
+  console.log("updateConnectionStatus called with inRoom =", inRoom);
+  const connectButton = document.getElementById('connect-button');
+  console.log("Button found:", connectButton);
+  if (connectButton) {
+    if (inRoom) {
+      connectButton.textContent = 'In a room';
+      console.log("Set text to: In a room");
+    } else {
+      connectButton.textContent = 'Connect';
+      console.log("Set text to: Connect");
+    }
+  }
+}
+
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             // Close connections
