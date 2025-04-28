@@ -622,15 +622,30 @@
                 userInfo.appendChild(userId);
                 userItem.appendChild(userInfo);
                 
-                // Add connect button for other users
-                if (peerId !== myPeerId && !isConnected) {
+                // Add connect button or status for other users
+                if (peerId !== myPeerId) {
                     const connectIcon = document.createElement('span');
                     connectIcon.classList.add('connect-icon');
-                    connectIcon.textContent = '→ Connect';
-                    connectIcon.onclick = () => {
-                        peerIdInput.value = peerId;
-                        connectToPeer(peerId);
-                    };
+                    
+                    // Check if this user is connected (assuming we need to track this)
+                    // For now, we'll just use our own connection status
+                    if (isConnected && connection && connection.peer === peerId) {
+                        connectIcon.textContent = 'In a room';
+                        connectIcon.style.color = 'var(--success)';
+                        connectIcon.style.cursor = 'default';
+                    } else if (!isConnected) {
+                        connectIcon.textContent = '→ Connect';
+                        connectIcon.onclick = () => {
+                            peerIdInput.value = peerId;
+                            connectToPeer(peerId);
+                        };
+                    } else {
+                        // We're connected to someone else
+                        connectIcon.textContent = 'Busy';
+                        connectIcon.style.color = 'var(--warning)';
+                        connectIcon.style.cursor = 'default';
+                    }
+                    
                     userItem.appendChild(connectIcon);
                 }
                 
@@ -997,6 +1012,9 @@
                 // Reset random chat button if we were using it
                 resetRandomChatButton();
                 
+                // Update online users list to reflect connection status
+                updateOnlineUsersUI();
+                
                 // System message about connection
                 appendSystemMessage('Connected! Say hello!');
             });
@@ -1051,6 +1069,9 @@
             // Reset random chat state if needed
             resetRandomChatButton();
             updateRandomChatButton();
+            
+            // Update online users list to reflect disconnection
+            updateOnlineUsersUI();
         }
         
         // Append a message to the chat
@@ -1186,51 +1207,6 @@
             updateRandomChatButton();
         });
         
-        // Add this function to your existing JavaScript
-        function updateConnectionStatus(inRoom) {
-        const connectButton = document.getElementById('connect-button');
-        if (connectButton) {
-            if (inRoom) {
-            connectButton.textContent = 'In a room';
-            } else {
-            connectButton.textContent = 'Connect';
-            }
-        }
-        }
-
-        // Then call this function in your existing code:
-        // 1. When a user successfully joins a room:
-        //    updateConnectionStatus(true);
-
-        // 2. When a user disconnects or leaves a room:
-        //    updateConnectionStatus(false);
-
-        // Example integration (adjust based on your actual event structure):
-        // After connecting to a room:
-        socket.on('join_room_success', () => {
-        updateConnectionStatus(true);
-        });
-
-        // When leaving a room:
-        socket.on('disconnected', () => {
-        updateConnectionStatus(false);
-        });
-
-        function updateConnectionStatus(inRoom) {
-  console.log("updateConnectionStatus called with inRoom =", inRoom);
-  const connectButton = document.getElementById('connect-button');
-  console.log("Button found:", connectButton);
-  if (connectButton) {
-    if (inRoom) {
-      connectButton.textContent = 'In a room';
-      console.log("Set text to: In a room");
-    } else {
-      connectButton.textContent = 'Connect';
-      console.log("Set text to: Connect");
-    }
-  }
-}
-
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             // Close connections
