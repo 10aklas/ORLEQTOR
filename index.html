@@ -593,6 +593,7 @@
     </footer>
 
     <script>
+        // DOM elements and variables
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
         const myIdDisplay = document.getElementById('my-id');
@@ -619,9 +620,11 @@
         const pendingRequest = document.getElementById('pending-request');
         const cancelRequestBtn = document.getElementById('cancel-request-btn');
         
+        // UI state
         chatScreen.style.display = 'none';
         pendingRequest.style.display = 'none';
         
+        // PeerJS and connection variables
         let peer;
         let connection;
         let localUsername;
@@ -630,6 +633,7 @@
         let myPeerId;
         let isRandomConnecting = false;
         
+        // Tracker server variables
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
         let onlineUsers = new Map();
@@ -641,6 +645,7 @@
         let incomingRequestUsername = null;
         let requestConnection = null;
     
+        // Helper functions
         function log(message) {
             console.log(message);
             const now = new Date().toLocaleTimeString();
@@ -676,7 +681,6 @@
         
         function updateOnlineUsersUI() {
             onlineCount.textContent = onlineUsers.size;
-            
             usersList.innerHTML = '';
             
             onlineUsers.forEach((username, peerId) => {
@@ -688,7 +692,6 @@
                 }
                 
                 const userInfo = document.createElement('div');
-                
                 const userName = document.createElement('span');
                 userName.classList.add('user-name');
                 userName.textContent = username;
@@ -718,6 +721,7 @@
             updateRandomChatButton();
         }
         
+        // Initialize PeerJS connection
         function initializePeer() {
             const peerId = generateSimpleId();
             localUsername = generateUsername();
@@ -737,7 +741,6 @@
                     
                     onlineUsers.set(id, localUsername);
                     updateOnlineUsersUI();
-                    
                     connectToTracker();
                 });
                 
@@ -745,7 +748,6 @@
                     log(`Incoming connection from: ${conn.peer}`);
                     
                     if (conn.peer === TRACKER_SERVER_ID) {
-                        log('Tracker server initiated connection');
                         trackerConnection = conn;
                         setupTrackerConnection();
                         return;
@@ -763,7 +765,6 @@
                     log(`Peer error: ${err.type}`);
                     
                     if (err.type === 'peer-unavailable' && err.message.includes(TRACKER_SERVER_ID)) {
-                        log('Tracker server not found, becoming tracker server');
                         becomeTrackerServer();
                         return;
                     }
@@ -772,14 +773,8 @@
                     
                     if (err.type === 'peer-unavailable') {
                         showError('Peer ID not found. Check the ID and try again.');
-                        
-                        if (isRandomConnecting) {
-                            resetRandomChatButton();
-                        }
-                        
-                        if (pendingRequestId) {
-                            cancelPendingRequest();
-                        }
+                        if (isRandomConnecting) resetRandomChatButton();
+                        if (pendingRequestId) cancelPendingRequest();
                     } else if (err.type === 'network') {
                         showError('Network error. Check your internet connection.');
                     } else if (err.type === 'disconnected') {
@@ -790,7 +785,6 @@
                 peer.on('disconnected', () => {
                     log('Peer disconnected from server');
                     showError('Disconnected from server. Click to reconnect.');
-                    
                     setTimeout(() => {
                         if (peer) peer.reconnect();
                     }, 3000);
@@ -801,6 +795,7 @@
             }
         }
         
+        // Tracker server functions
         function connectToTracker() {
             log('Attempting to connect to tracker server');
             
@@ -808,7 +803,6 @@
                 trackerConnection = peer.connect(TRACKER_SERVER_ID, {
                     reliable: true
                 });
-                
                 setupTrackerConnection();
             } catch (error) {
                 log(`Error connecting to tracker: ${error.message}`);
@@ -816,8 +810,6 @@
         }
         
         function setupTrackerConnection() {
-            log('Setting up tracker connection');
-            
             trackerConnection.on('open', () => {
                 log('Connected to tracker server');
                 
@@ -840,8 +832,6 @@
             });
             
             trackerConnection.on('data', (data) => {
-                log(`Received tracker data: ${JSON.stringify(data)}`);
-                
                 if (data.type === 'userList') {
                     onlineUsers = new Map(Object.entries(data.users));
                     updateOnlineUsersUI();
@@ -850,29 +840,17 @@
             
             trackerConnection.on('close', () => {
                 log('Tracker connection closed');
-                
-                if (heartbeatInterval) {
-                    clearInterval(heartbeatInterval);
-                    heartbeatInterval = null;
-                }
-                
-                setTimeout(() => {
-                    connectToTracker();
-                }, 5000);
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                setTimeout(connectToTracker, 5000);
             });
             
             trackerConnection.on('error', (error) => {
                 log(`Tracker connection error: ${error}`);
-                
-                setTimeout(() => {
-                    connectToTracker();
-                }, 5000);
+                setTimeout(connectToTracker, 5000);
             });
         }
     
         function becomeTrackerServer() {
-            log('Becoming tracker server');
-            
             try {
                 const trackerServer = new Peer(TRACKER_SERVER_ID, {
                     debug: 2
@@ -885,7 +863,6 @@
                 
                 trackerServer.on('open', (id) => {
                     log(`Tracker server started with ID: ${id}`);
-                    
                     const trackerStatus = document.createElement('div');
                     trackerStatus.textContent = '🔄 Tracking server active';
                     trackerStatus.style.color = 'var(--accent)';
@@ -894,13 +871,9 @@
                 });
                 
                 trackerServer.on('connection', (conn) => {
-                    log(`Tracker: New connection from ${conn.peer}`);
-                    
                     userConnections.set(conn.peer, conn);
                     
                     conn.on('open', () => {
-                        log(`Tracker: Connection to ${conn.peer} opened`);
-                        
                         conn.send({
                             type: 'userList',
                             users: Object.fromEntries(connectedUsers)
@@ -908,30 +881,21 @@
                     });
                     
                     conn.on('data', (data) => {
-                        log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
-                        
                         if (data.type === 'register' || data.type === 'heartbeat') {
                             connectedUsers.set(data.peerId, data.username);
-                            
                             broadcastUserList();
                         }
                     });
                     
                     conn.on('close', () => {
-                        log(`Tracker: Connection to ${conn.peer} closed`);
-                        
                         connectedUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
-                        
                         broadcastUserList();
                     });
                     
                     conn.on('error', (error) => {
-                        log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
-                        
                         connectedUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
-                        
                         broadcastUserList();
                     });
                 });
@@ -955,18 +919,8 @@
                     });
                 }
                 
-                trackerServer.on('error', (error) => {
-                    log(`Tracker server error: ${error}`);
-                    
-                    if (error.type === 'unavailable-id') {
-                        log('Tracker server ID is taken, reconnecting as regular peer');
-                        connectToTracker();
-                    }
-                });
-                
                 const cleanupInterval = setInterval(() => {
                     let changed = false;
-                    
                     userConnections.forEach((conn, peerId) => {
                         if (!conn.open) {
                             userConnections.delete(peerId);
@@ -974,10 +928,7 @@
                             changed = true;
                         }
                     });
-                    
-                    if (changed) {
-                        broadcastUserList();
-                    }
+                    if (changed) broadcastUserList();
                 }, 60000);
                 
                 window.addEventListener('beforeunload', () => {
@@ -986,21 +937,17 @@
                 });
                 
             } catch (error) {
-                log(`Error becoming tracker server: ${error.message}`);
-                
-                setTimeout(() => {
-                    connectToTracker();
-                }, 5000);
+                setTimeout(connectToTracker, 5000);
             }
         }
         
+        // Chat request and connection functions
         function connectToPeer(peerId) {
             if (isConnected || pendingRequestId) return;
             
             log(`Sending chat request to peer: ${peerId}`);
             statusText.textContent = 'Sending request...';
             statusText.className = 'status-connecting';
-            
             pendingRequestId = peerId;
             pendingRequest.style.display = 'block';
             
@@ -1014,8 +961,6 @@
                 });
                 
                 requestConnection.on('open', () => {
-                    log(`Request connection established with: ${requestConnection.peer}`);
-                    
                     requestConnection.send({
                         type: 'chat-request',
                         username: localUsername
@@ -1025,7 +970,7 @@
                 requestConnection.on('data', (data) => {
                     if (data.type === 'chat-request-accepted') {
                         log('Chat request accepted');
-                        establishChatConnection(peerId);
+                        establishChatConnection(peerId, true);
                     } else if (data.type === 'chat-request-declined') {
                         log('Chat request declined');
                         showError('Chat request was declined');
@@ -1035,7 +980,6 @@
                 });
                 
                 requestConnection.on('close', () => {
-                    log('Request connection closed');
                     if (pendingRequestId) {
                         showError('Request timed out or was canceled');
                         handleDisconnect();
@@ -1043,22 +987,18 @@
                 });
                 
                 requestConnection.on('error', (err) => {
-                    log(`Request connection error: ${err}`);
                     showError(`Request failed: ${err}`);
                     handleDisconnect();
                 });
                 
             } catch (error) {
-                log(`Error sending chat request: ${error.message}`);
                 showError(`Failed to send request: ${error.message}`);
-                statusText.textContent = 'Disconnected';
-                statusText.className = 'status-disconnected';
                 pendingRequestId = null;
                 pendingRequest.style.display = 'none';
             }
         }
         
-        function establishChatConnection(peerId) {
+        function establishChatConnection(peerId, isRequester) {
             log(`Establishing chat connection with ${peerId}`);
             
             if (requestConnection) {
@@ -1066,13 +1006,19 @@
                 requestConnection = null;
             }
             
-            connection = peer.connect(peerId, {
-                reliable: true,
-                metadata: {
-                    type: 'chat-connection',
-                    username: localUsername
-                }
-            });
+            if (isRequester) {
+                // The user who sent the request creates a new connection
+                connection = peer.connect(peerId, {
+                    reliable: true,
+                    metadata: {
+                        type: 'chat-connection',
+                        username: localUsername
+                    }
+                });
+            } else {
+                // The user who accepted the request uses the existing connection
+                connection = peer.connections[peerId][0];
+            }
             
             connection.on('open', () => {
                 log(`Chat connection established with: ${connection.peer}`);
@@ -1092,6 +1038,8 @@
                 
                 pendingRequestId = null;
                 pendingRequest.style.display = 'none';
+                incomingRequestId = null;
+                incomingRequestUsername = null;
                 
                 appendSystemMessage('Connected! Say hello!');
             });
@@ -1100,13 +1048,10 @@
         }
         
         function setupRequestConnection(conn) {
-            log('Setting up request connection');
             requestConnection = conn;
             
             conn.on('data', (data) => {
                 if (data.type === 'chat-request') {
-                    log(`Received chat request from ${conn.peer}`);
-                    
                     incomingRequestId = conn.peer;
                     incomingRequestUsername = data.username;
                     showRequestModal(data.username);
@@ -1114,7 +1059,6 @@
             });
             
             conn.on('close', () => {
-                log('Request connection closed before response');
                 if (incomingRequestId) {
                     incomingRequestId = null;
                     incomingRequestUsername = null;
@@ -1123,7 +1067,6 @@
             });
             
             conn.on('error', (err) => {
-                log(`Request connection error: ${err}`);
                 if (incomingRequestId) {
                     incomingRequestId = null;
                     incomingRequestUsername = null;
@@ -1152,17 +1095,12 @@
                 username: localUsername
             });
             
-            establishChatConnection(incomingRequestId);
-            
-            incomingRequestId = null;
-            incomingRequestUsername = null;
+            establishChatConnection(incomingRequestId, false);
             hideRequestModal();
         }
         
         function declineChatRequest() {
             if (!incomingRequestId) return;
-            
-            log('Declining chat request');
             
             requestConnection.send({
                 type: 'chat-request-declined'
@@ -1170,7 +1108,6 @@
             
             requestConnection.close();
             requestConnection = null;
-            
             incomingRequestId = null;
             incomingRequestUsername = null;
             hideRequestModal();
@@ -1178,8 +1115,6 @@
         
         function cancelPendingRequest() {
             if (!pendingRequestId) return;
-            
-            log('Canceling pending request');
             
             if (requestConnection) {
                 requestConnection.close();
@@ -1193,8 +1128,6 @@
         
         function setupConnection() {
             connection.on('data', (data) => {
-                log(`Received data: ${JSON.stringify(data)}`);
-                
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
                 } else if (data.type === 'username') {
@@ -1204,22 +1137,12 @@
                 }
             });
             
-            connection.on('close', () => {
-                log('Connection closed');
-                handleDisconnect();
-            });
-            
-            connection.on('error', (err) => {
-                log(`Connection error: ${err}`);
-                showError(`Connection error: ${err}`);
-                handleDisconnect();
-            });
+            connection.on('close', handleDisconnect);
+            connection.on('error', handleDisconnect);
         }
         
         function disconnectFromPeer() {
-            if (connection) {
-                connection.close();
-            }
+            if (connection) connection.close();
             handleDisconnect();
         }
         
@@ -1238,7 +1161,6 @@
             sendBtn.disabled = true;
             
             messagesContainer.innerHTML = '';
-            
             resetRandomChatButton();
             updateOnlineUsersUI();
         }
@@ -1257,7 +1179,6 @@
             
             messageElement.appendChild(usernameElement);
             messageElement.appendChild(textElement);
-            
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -1270,7 +1191,6 @@
             messageElement.style.color = '#aaa';
             messageElement.style.fontStyle = 'italic';
             messageElement.textContent = text;
-            
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -1310,21 +1230,15 @@
             
             const randomIndex = Math.floor(Math.random() * availableUsers.length);
             const randomUserId = availableUsers[randomIndex];
-            
-            log(`Randomly connecting to user: ${randomUserId}`);
-            
             connectToPeer(randomUserId);
         }
         
+        // Event listeners
         connectForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const peerId = peerIdInput.value.trim();
-            
-            if (peerId) {
-                connectToPeer(peerId);
-            } else {
-                showError('Please enter a valid Peer ID');
-            }
+            if (peerId) connectToPeer(peerId);
+            else showError('Please enter a valid Peer ID');
         });
         
         messageForm.addEventListener('submit', (e) => {
@@ -1337,41 +1251,23 @@
                         type: 'message',
                         message: message
                     });
-                    
                     appendMessage(message, true, localUsername);
                     messageInput.value = '';
                 } catch (err) {
-                    log(`Error sending message: ${err}`);
                     showError('Failed to send message');
                 }
             }
         });
         
-        disconnectBtn.addEventListener('click', () => {
-            disconnectFromPeer();
-        });
+        disconnectBtn.addEventListener('click', disconnectFromPeer);
+        randomChatBtn.addEventListener('click', connectToRandomUser);
+        acceptRequestBtn.addEventListener('click', acceptChatRequest);
+        declineRequestBtn.addEventListener('click', declineChatRequest);
+        cancelRequestBtn.addEventListener('click', cancelPendingRequest);
         
-        randomChatBtn.addEventListener('click', () => {
-            connectToRandomUser();
-        });
-        
-        acceptRequestBtn.addEventListener('click', () => {
-            acceptChatRequest();
-        });
-        
-        declineRequestBtn.addEventListener('click', () => {
-            declineChatRequest();
-        });
-        
-        cancelRequestBtn.addEventListener('click', () => {
-            cancelPendingRequest();
-        });
-        
+        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             initializePeer();
-            
-            chatScreen.style.display = 'none';
-            
             updateRandomChatButton();
         });
         
@@ -1379,7 +1275,6 @@
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
-            
             if (peer) peer.destroy();
         });
     </script>
