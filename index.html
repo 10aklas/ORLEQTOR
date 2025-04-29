@@ -438,21 +438,21 @@
         #setup-screen, #chat-screen {
             animation: fadeIn 0.5s ease-out;
         }
-
-        /* Chat request modal styles */
+        
+        /* Request modal styles */
         #request-modal {
             display: none;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
             z-index: 1000;
             justify-content: center;
             align-items: center;
         }
-
+        
         #request-modal-content {
             background-color: var(--bg-secondary);
             padding: 2rem;
@@ -460,82 +460,52 @@
             max-width: 400px;
             width: 90%;
             text-align: center;
-            border: 1px solid var(--bg-tertiary);
+            border: 1px solid var(--accent);
         }
-
+        
         #request-modal h3 {
             margin-bottom: 1rem;
-            color: var(--text-primary);
+            color: var(--accent);
         }
-
+        
         #request-modal p {
             margin-bottom: 1.5rem;
-            color: var(--text-secondary);
         }
-
+        
         #request-modal-buttons {
             display: flex;
             gap: 1rem;
             justify-content: center;
         }
-
+        
         #request-modal-buttons button {
             flex: 1;
-            padding: 0.8rem;
         }
-
-        #accept-request {
+        
+        #accept-request-btn {
             background-color: var(--success);
-            color: #000;
         }
-
-        #decline-request {
+        
+        #decline-request-btn {
             background-color: var(--danger);
             color: white;
         }
-
+        
         /* Pending request indicator */
-        .pending-request {
-            color: var(--warning);
-            font-style: italic;
-            margin-top: 0.5rem;
+        #pending-request {
             display: none;
-        }
-
-        /* Request notification */
-        #request-notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: var(--bg-tertiary);
             padding: 1rem;
+            background-color: rgba(255, 187, 0, 0.1);
+            border: 1px solid var(--warning);
             border-radius: 8px;
-            border-left: 4px solid var(--warning);
-            display: none;
-            max-width: 300px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-        }
-
-        #request-notification h4 {
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        #request-notification p {
-            color: var(--text-secondary);
             margin-bottom: 1rem;
+            text-align: center;
         }
-
-        #request-notification-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        #request-notification-buttons button {
-            flex: 1;
-            padding: 0.5rem;
-            font-size: 0.9rem;
+        
+        #cancel-request-btn {
+            background-color: var(--danger);
+            color: white;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
@@ -553,7 +523,6 @@
                     <span class="icon">🎲</span>
                     Chat with Random Person
                 </button>
-                <p id="pending-request" class="pending-request">Request sent, waiting for response...</p>
             </div>
             
             <div id="online-users-panel">
@@ -582,13 +551,17 @@
             </form>
             
             <div id="error-display"></div>
+            
+            <div id="pending-request">
+                <p>Request sent. Waiting for response...</p>
+                <button id="cancel-request-btn">Cancel Request</button>
+            </div>
         </div>
         
         <div id="chat-screen">
             <div id="connection-status">
                 <p id="status-text" class="status-disconnected">Disconnected</p>
                 <p id="username-display"></p>
-                <p id="room-id-display"></p>
             </div>
             
             <div id="messages"></div>
@@ -603,26 +576,15 @@
         
         <div id="debug-log"></div>
     </div>
-
-    <!-- Chat Request Modal -->
+    
     <div id="request-modal">
         <div id="request-modal-content">
-            <h3>Chat Request</h3>
-            <p id="request-modal-message">You have a chat request from <span id="request-username">Unknown</span>.</p>
+            <h3 id="request-modal-title">Chat Request</h3>
+            <p id="request-modal-message">User wants to chat with you!</p>
             <div id="request-modal-buttons">
-                <button id="accept-request">Accept</button>
-                <button id="decline-request">Decline</button>
+                <button id="accept-request-btn">Accept</button>
+                <button id="decline-request-btn">Decline</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Request Notification -->
-    <div id="request-notification">
-        <h4>New Chat Request</h4>
-        <p>You have a chat request from <span id="notification-username">Unknown</span>.</p>
-        <div id="request-notification-buttons">
-            <button id="notification-accept">Accept</button>
-            <button id="notification-decline">Decline</button>
         </div>
     </div>
     
@@ -640,7 +602,6 @@
         const disconnectBtn = document.getElementById('disconnect-btn');
         const statusText = document.getElementById('status-text');
         const usernameDisplay = document.getElementById('username-display');
-        const roomIdDisplay = document.getElementById('room-id-display');
         const messagesContainer = document.getElementById('messages');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
@@ -650,22 +611,16 @@
         const onlineCount = document.getElementById('online-count');
         const usersList = document.getElementById('users-list');
         const randomChatBtn = document.getElementById('random-chat-btn');
-        const pendingRequestText = document.getElementById('pending-request');
-        
-        // Request modal elements
         const requestModal = document.getElementById('request-modal');
+        const requestModalTitle = document.getElementById('request-modal-title');
         const requestModalMessage = document.getElementById('request-modal-message');
-        const requestUsername = document.getElementById('request-username');
-        const acceptRequestBtn = document.getElementById('accept-request');
-        const declineRequestBtn = document.getElementById('decline-request');
-        
-        // Notification elements
-        const requestNotification = document.getElementById('request-notification');
-        const notificationUsername = document.getElementById('notification-username');
-        const notificationAccept = document.getElementById('notification-accept');
-        const notificationDecline = document.getElementById('notification-decline');
+        const acceptRequestBtn = document.getElementById('accept-request-btn');
+        const declineRequestBtn = document.getElementById('decline-request-btn');
+        const pendingRequest = document.getElementById('pending-request');
+        const cancelRequestBtn = document.getElementById('cancel-request-btn');
         
         chatScreen.style.display = 'none';
+        pendingRequest.style.display = 'none';
         
         let peer;
         let connection;
@@ -674,7 +629,6 @@
         let isConnected = false;
         let myPeerId;
         let isRandomConnecting = false;
-        let currentRoomId = null;
         
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
@@ -682,8 +636,9 @@
         let heartbeatInterval;
         
         // Request management
-        let pendingRequests = new Map(); // Tracks outgoing requests
-        let incomingRequest = null; // Tracks the current incoming request
+        let pendingRequestId = null;
+        let incomingRequestId = null;
+        let incomingRequestUsername = null;
         
         function log(message) {
             console.log(message);
@@ -718,10 +673,6 @@
             return result;
         }
         
-        function generateRoomId() {
-            return 'room-' + generateSimpleId();
-        }
-        
         function updateOnlineUsersUI() {
             onlineCount.textContent = onlineUsers.size;
             
@@ -749,23 +700,14 @@
                 userInfo.appendChild(userId);
                 userItem.appendChild(userInfo);
                 
-                if (peerId !== myPeerId && !isConnected) {
+                if (peerId !== myPeerId && !isConnected && !pendingRequestId) {
                     const connectIcon = document.createElement('span');
                     connectIcon.classList.add('connect-icon');
-                    
-                    // Check if we have a pending request to this user
-                    if (pendingRequests.has(peerId)) {
-                        connectIcon.textContent = '⏳ Pending';
-                        connectIcon.style.color = 'var(--warning)';
-                        connectIcon.style.cursor = 'default';
-                    } else {
-                        connectIcon.textContent = '→ Request Chat';
-                        connectIcon.onclick = () => {
-                            peerIdInput.value = peerId;
-                            sendChatRequest(peerId);
-                        };
-                    }
-                    
+                    connectIcon.textContent = '→ Request Chat';
+                    connectIcon.onclick = () => {
+                        peerIdInput.value = peerId;
+                        connectForm.dispatchEvent(new Event('submit'));
+                    };
                     userItem.appendChild(connectIcon);
                 }
                 
@@ -809,15 +751,12 @@
                     }
                     
                     // Handle incoming chat requests
-                    conn.on('data', (data) => {
-                        if (data.type === 'chat-request') {
-                            handleIncomingRequest(conn, data);
-                        } else if (data.type === 'chat-response') {
-                            handleRequestResponse(conn, data);
-                        } else if (data.type === 'room-connection') {
-                            handleRoomConnection(conn, data);
-                        }
-                    });
+                    if (!isConnected && !incomingRequestId) {
+                        incomingRequestId = conn.peer;
+                        setupRequestConnection(conn);
+                    } else {
+                        conn.close();
+                    }
                 });
                 
                 peer.on('error', (err) => {
@@ -836,6 +775,10 @@
                         
                         if (isRandomConnecting) {
                             resetRandomChatButton();
+                        }
+                        
+                        if (pendingRequestId) {
+                            cancelPendingRequest();
                         }
                     } else if (err.type === 'network') {
                         showError('Network error. Check your internet connection.');
@@ -1051,157 +994,106 @@
             }
         }
         
-        function sendChatRequest(peerId) {
-            if (isConnected || pendingRequests.has(peerId)) return;
+        function connectToPeer(peerId) {
+            if (isConnected || pendingRequestId) return;
             
-            log(`Sending chat request to: ${peerId}`);
+            log(`Sending chat request to peer: ${peerId}`);
+            statusText.textContent = 'Sending request...';
+            statusText.className = 'status-connecting';
             
-            // Create a connection for the request
-            const requestConn = peer.connect(peerId, {
-                reliable: true,
-                serialization: 'json'
-            });
+            pendingRequestId = peerId;
+            pendingRequest.style.display = 'block';
             
-            requestConn.on('open', () => {
-                log(`Request connection opened to ${peerId}`);
-                
-                // Mark this as a pending request
-                pendingRequests.set(peerId, requestConn);
-                updateOnlineUsersUI();
-                
-                // Show pending status
-                if (peerIdInput.value === peerId) {
-                    pendingRequestText.style.display = 'block';
-                }
-                
-                // Send the chat request
-                requestConn.send({
-                    type: 'chat-request',
-                    fromPeerId: myPeerId,
-                    fromUsername: localUsername,
-                    timestamp: Date.now()
-                });
-                
-                // Set timeout for request expiration
-                setTimeout(() => {
-                    if (pendingRequests.has(peerId)) {
-                        log(`Request to ${peerId} timed out`);
-                        pendingRequests.delete(peerId);
-                        updateOnlineUsersUI();
-                        pendingRequestText.style.display = 'none';
-                        
-                        if (peerIdInput.value === peerId) {
-                            showError('Request timed out. The user may be unavailable.');
-                        }
+            try {
+                connection = peer.connect(peerId, {
+                    reliable: true,
+                    metadata: {
+                        type: 'chat-request',
+                        username: localUsername
                     }
-                }, 30000); // 30 seconds timeout
+                });
+                
+                connection.on('open', () => {
+                    log(`Request connection established with: ${connection.peer}`);
+                    
+                    connection.send({
+                        type: 'chat-request',
+                        username: localUsername
+                    });
+                });
+                
+                connection.on('data', (data) => {
+                    if (data.type === 'chat-request-accepted') {
+                        log('Chat request accepted');
+                        setupConnection();
+                        pendingRequestId = null;
+                        pendingRequest.style.display = 'none';
+                    } else if (data.type === 'chat-request-declined') {
+                        log('Chat request declined');
+                        showError('Chat request was declined');
+                        connection.close();
+                        handleDisconnect();
+                    }
+                });
+                
+                connection.on('close', () => {
+                    log('Request connection closed');
+                    if (pendingRequestId) {
+                        showError('Request timed out or was canceled');
+                        handleDisconnect();
+                    }
+                });
+                
+                connection.on('error', (err) => {
+                    log(`Request connection error: ${err}`);
+                    showError(`Request failed: ${err}`);
+                    handleDisconnect();
+                });
+                
+            } catch (error) {
+                log(`Error sending chat request: ${error.message}`);
+                showError(`Failed to send request: ${error.message}`);
+                statusText.textContent = 'Disconnected';
+                statusText.className = 'status-disconnected';
+                pendingRequestId = null;
+                pendingRequest.style.display = 'none';
+            }
+        }
+        
+        function setupRequestConnection(conn) {
+            log('Setting up request connection');
+            
+            conn.on('data', (data) => {
+                if (data.type === 'chat-request') {
+                    log(`Received chat request from ${conn.peer}`);
+                    
+                    incomingRequestUsername = data.username;
+                    showRequestModal(data.username);
+                }
             });
             
-            requestConn.on('close', () => {
-                log(`Request connection to ${peerId} closed`);
-                pendingRequests.delete(peerId);
-                updateOnlineUsersUI();
-                pendingRequestText.style.display = 'none';
+            conn.on('close', () => {
+                log('Request connection closed before response');
+                if (incomingRequestId) {
+                    incomingRequestId = null;
+                    incomingRequestUsername = null;
+                    hideRequestModal();
+                }
             });
             
-            requestConn.on('error', (err) => {
+            conn.on('error', (err) => {
                 log(`Request connection error: ${err}`);
-                pendingRequests.delete(peerId);
-                updateOnlineUsersUI();
-                pendingRequestText.style.display = 'none';
-                showError('Failed to send request. User may be offline.');
-            });
-            
-            requestConn.on('data', (data) => {
-                if (data.type === 'chat-response') {
-                    handleRequestResponse(requestConn, data);
+                if (incomingRequestId) {
+                    incomingRequestId = null;
+                    incomingRequestUsername = null;
+                    hideRequestModal();
                 }
             });
-        }
-        
-        function handleIncomingRequest(conn, data) {
-            if (isConnected) {
-                log('Already connected, rejecting incoming request');
-                conn.send({
-                    type: 'chat-response',
-                    accepted: false,
-                    reason: 'User is already in a chat'
-                });
-                conn.close();
-                return;
-            }
-            
-            log(`Incoming chat request from ${data.fromPeerId} (${data.fromUsername})`);
-            
-            // Store the incoming request
-            incomingRequest = {
-                conn: conn,
-                peerId: data.fromPeerId,
-                username: data.fromUsername,
-                timestamp: data.timestamp
-            };
-            
-            // Show the request modal and notification
-            showRequestModal(data.fromUsername);
-            showRequestNotification(data.fromUsername);
-        }
-        
-        function handleRequestResponse(conn, data) {
-            const peerId = conn.peer;
-            
-            if (data.accepted) {
-                log(`Request to ${peerId} was accepted`);
-                
-                // Clear any pending request state
-                pendingRequests.delete(peerId);
-                updateOnlineUsersUI();
-                pendingRequestText.style.display = 'none';
-                
-                // Create a room ID
-                currentRoomId = generateRoomId();
-                
-                // Send room connection info to the other peer
-                conn.send({
-                    type: 'room-connection',
-                    roomId: currentRoomId,
-                    initiator: true
-                });
-                
-                // This connection is now our main chat connection
-                connection = conn;
-                setupConnection();
-            } else {
-                log(`Request to ${peerId} was declined: ${data.reason || 'No reason given'}`);
-                
-                // Clear pending request state
-                pendingRequests.delete(peerId);
-                updateOnlineUsersUI();
-                pendingRequestText.style.display = 'none';
-                
-                // Show error message if this was from the form
-                if (peerIdInput.value === peerId) {
-                    showError(`Request declined: ${data.reason || 'User declined your chat request'}`);
-                }
-                
-                conn.close();
-            }
-        }
-        
-        function handleRoomConnection(conn, data) {
-            log(`Received room connection info: ${JSON.stringify(data)}`);
-            
-            if (data.initiator) {
-                // We're the receiver, join the room
-                currentRoomId = data.roomId;
-                
-                // This connection is now our main chat connection
-                connection = conn;
-                setupConnection();
-            }
         }
         
         function showRequestModal(username) {
-            requestUsername.textContent = username;
+            requestModalTitle.textContent = 'Chat Request';
+            requestModalMessage.textContent = `${username} wants to chat with you!`;
             requestModal.style.display = 'flex';
         }
         
@@ -1209,86 +1101,33 @@
             requestModal.style.display = 'none';
         }
         
-        function showRequestNotification(username) {
-            notificationUsername.textContent = username;
-            requestNotification.style.display = 'block';
+        function acceptChatRequest() {
+            if (!incomingRequestId) return;
             
-            // Auto-hide after 30 seconds if not responded to
-            setTimeout(() => {
-                if (incomingRequest && incomingRequest.peerId === requestNotification.dataset.peerId) {
-                    requestNotification.style.display = 'none';
-                    respondToRequest(false, 'Request timed out');
+            log('Accepting chat request');
+            
+            // Close the existing connection (request connection)
+            peer.connections[incomingRequestId].forEach(conn => conn.close());
+            
+            // Create a new connection for actual chat
+            connection = peer.connect(incomingRequestId, {
+                reliable: true,
+                metadata: {
+                    type: 'chat-accept',
+                    username: localUsername
                 }
-            }, 30000);
-        }
-        
-        function hideRequestNotification() {
-            requestNotification.style.display = 'none';
-        }
-        
-        function respondToRequest(accepted, reason = '') {
-            if (!incomingRequest) return;
-            
-            const { conn, peerId, username } = incomingRequest;
-            
-            log(`Responding to request from ${peerId}: ${accepted ? 'accepted' : 'declined'}`);
-            
-            conn.send({
-                type: 'chat-response',
-                accepted: accepted,
-                reason: reason
             });
             
-            if (accepted) {
-                // Create a room ID (the initiator already created one)
-                currentRoomId = generateRoomId();
-                
-                // Send room connection info back to the initiator
-                conn.send({
-                    type: 'room-connection',
-                    roomId: currentRoomId,
-                    initiator: false
-                });
-                
-                // This connection is now our main chat connection
-                connection = conn;
-                setupConnection();
-            } else {
-                conn.close();
-            }
-            
-            // Clear the incoming request
-            incomingRequest = null;
-            hideRequestModal();
-            hideRequestNotification();
-        }
-        
-        function connectToPeer(peerId) {
-            if (isConnected) return;
-            
-            log(`Connecting to peer: ${peerId}`);
-            statusText.textContent = 'Connecting...';
-            statusText.className = 'status-connecting';
-            
-            try {
-                sendChatRequest(peerId);
-            } catch (error) {
-                log(`Error connecting to peer: ${error.message}`);
-                showError(`Failed to connect: ${error.message}`);
-                statusText.textContent = 'Disconnected';
-                statusText.className = 'status-disconnected';
-            }
-        }
-        
-        function setupConnection() {
             connection.on('open', () => {
-                log(`Connection established with: ${connection.peer}`);
-                isConnected = true;
+                log('Chat connection established');
                 
                 connection.send({
-                    type: 'username',
+                    type: 'chat-request-accepted',
                     username: localUsername
                 });
+                
+                isConnected = true;
+                remoteUsername = incomingRequestUsername;
                 
                 setupScreen.style.display = 'none';
                 chatScreen.style.display = 'flex';
@@ -1296,15 +1135,52 @@
                 statusText.className = 'status-connected';
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
+                usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
                 
-                // Display room ID
-                roomIdDisplay.textContent = `Room ID: ${currentRoomId}`;
+                appendSystemMessage(`You're now chatting with ${remoteUsername}`);
                 
-                resetRandomChatButton();
-                
-                appendSystemMessage('Connected! Say hello!');
+                incomingRequestId = null;
+                incomingRequestUsername = null;
+                hideRequestModal();
             });
             
+            setupConnection();
+        }
+        
+        function declineChatRequest() {
+            if (!incomingRequestId) return;
+            
+            log('Declining chat request');
+            
+            // Send decline message before closing
+            peer.connections[incomingRequestId].forEach(conn => {
+                conn.send({
+                    type: 'chat-request-declined'
+                });
+                conn.close();
+            });
+            
+            incomingRequestId = null;
+            incomingRequestUsername = null;
+            hideRequestModal();
+        }
+        
+        function cancelPendingRequest() {
+            if (!pendingRequestId) return;
+            
+            log('Canceling pending request');
+            
+            if (connection) {
+                connection.close();
+            }
+            
+            pendingRequestId = null;
+            pendingRequest.style.display = 'none';
+            statusText.textContent = 'Disconnected';
+            statusText.className = 'status-disconnected';
+        }
+        
+        function setupConnection() {
             connection.on('data', (data) => {
                 log(`Received data: ${JSON.stringify(data)}`);
                 
@@ -1338,20 +1214,22 @@
         
         function handleDisconnect() {
             isConnected = false;
-            currentRoomId = null;
+            pendingRequestId = null;
+            incomingRequestId = null;
+            incomingRequestUsername = null;
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
+            pendingRequest.style.display = 'none';
             statusText.textContent = 'Disconnected';
             statusText.className = 'status-disconnected';
             messageInput.disabled = true;
             sendBtn.disabled = true;
             
             messagesContainer.innerHTML = '';
-            roomIdDisplay.textContent = '';
             
             resetRandomChatButton();
-            updateRandomChatButton();
+            updateOnlineUsersUI();
         }
         
         function appendMessage(text, isSent, sender) {
@@ -1387,7 +1265,7 @@
         }
         
         function updateRandomChatButton() {
-            randomChatBtn.disabled = onlineUsers.size < 2 || isConnected || isRandomConnecting;
+            randomChatBtn.disabled = onlineUsers.size < 2 || isConnected || isRandomConnecting || pendingRequestId;
             
             if (onlineUsers.size < 2) {
                 randomChatBtn.textContent = 'Waiting for Users...';
@@ -1405,13 +1283,13 @@
         }
         
         function connectToRandomUser() {
-            if (isConnected || isRandomConnecting || onlineUsers.size < 2) return;
+            if (isConnected || isRandomConnecting || onlineUsers.size < 2 || pendingRequestId) return;
             
             isRandomConnecting = true;
             randomChatBtn.classList.add('random-connecting');
             randomChatBtn.textContent = 'Finding Someone...';
             
-            const availableUsers = [...onlineUsers.keys()].filter(id => id !== myPeerId && !pendingRequests.has(id));
+            const availableUsers = [...onlineUsers.keys()].filter(id => id !== myPeerId);
             
             if (availableUsers.length === 0) {
                 showError('No other users available right now');
@@ -1424,10 +1302,9 @@
             
             log(`Randomly connecting to user: ${randomUserId}`);
             
-            sendChatRequest(randomUserId);
+            connectToPeer(randomUserId);
         }
         
-        // Event listeners
         connectForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const peerId = peerIdInput.value.trim();
@@ -1463,22 +1340,16 @@
             connectToRandomUser();
         });
         
-        // Request modal buttons
         acceptRequestBtn.addEventListener('click', () => {
-            respondToRequest(true);
+            acceptChatRequest();
         });
         
         declineRequestBtn.addEventListener('click', () => {
-            respondToRequest(false, 'User declined');
+            declineChatRequest();
         });
         
-        // Notification buttons
-        notificationAccept.addEventListener('click', () => {
-            respondToRequest(true);
-        });
-        
-        notificationDecline.addEventListener('click', () => {
-            respondToRequest(false, 'User declined');
+        cancelRequestBtn.addEventListener('click', () => {
+            cancelPendingRequest();
         });
         
         document.addEventListener('DOMContentLoaded', () => {
