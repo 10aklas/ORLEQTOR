@@ -639,7 +639,8 @@
         let pendingRequestId = null;
         let incomingRequestId = null;
         let incomingRequestUsername = null;
-        
+        let requestConnection = null;
+    
         function log(message) {
             console.log(message);
             const now = new Date().toLocaleTimeString();
@@ -750,7 +751,6 @@
                         return;
                     }
                     
-                    // Handle incoming chat requests
                     if (!isConnected && !incomingRequestId) {
                         incomingRequestId = conn.peer;
                         setupRequestConnection(conn);
@@ -869,7 +869,7 @@
                 }, 5000);
             });
         }
-
+    
         function becomeTrackerServer() {
             log('Becoming tracker server');
             
@@ -1005,7 +1005,7 @@
             pendingRequest.style.display = 'block';
             
             try {
-                connection = peer.connect(peerId, {
+                requestConnection = peer.connect(peerId, {
                     reliable: true,
                     metadata: {
                         type: 'chat-request',
@@ -1013,30 +1013,28 @@
                     }
                 });
                 
-                connection.on('open', () => {
-                    log(`Request connection established with: ${connection.peer}`);
+                requestConnection.on('open', () => {
+                    log(`Request connection established with: ${requestConnection.peer}`);
                     
-                    connection.send({
+                    requestConnection.send({
                         type: 'chat-request',
                         username: localUsername
                     });
                 });
                 
-                connection.on('data', (data) => {
+                requestConnection.on('data', (data) => {
                     if (data.type === 'chat-request-accepted') {
                         log('Chat request accepted');
-                        setupConnection();
-                        pendingRequestId = null;
-                        pendingRequest.style.display = 'none';
+                        establishChatConnection(peerId);
                     } else if (data.type === 'chat-request-declined') {
                         log('Chat request declined');
                         showError('Chat request was declined');
-                        connection.close();
+                        requestConnection.close();
                         handleDisconnect();
                     }
                 });
                 
-                connection.on('close', () => {
+                requestConnection.on('close', () => {
                     log('Request connection closed');
                     if (pendingRequestId) {
                         showError('Request timed out or was canceled');
@@ -1044,7 +1042,7 @@
                     }
                 });
                 
-                connection.on('error', (err) => {
+                requestConnection.on('error', (err) => {
                     log(`Request connection error: ${err}`);
                     showError(`Request failed: ${err}`);
                     handleDisconnect();
@@ -1060,13 +1058,56 @@
             }
         }
         
+        function establishChatConnection(peerId) {
+            log(`Establishing chat connection with ${peerId}`);
+            
+            if (requestConnection) {
+                requestConnection.close();
+                requestConnection = null;
+            }
+            
+            connection = peer.connect(peerId, {
+                reliable: true,
+                metadata: {
+                    type: 'chat-connection',
+                    username: localUsername
+                }
+            });
+            
+            connection.on('open', () => {
+                log(`Chat connection established with: ${connection.peer}`);
+                isConnected = true;
+                
+                connection.send({
+                    type: 'username',
+                    username: localUsername
+                });
+                
+                setupScreen.style.display = 'none';
+                chatScreen.style.display = 'flex';
+                statusText.textContent = 'Connected';
+                statusText.className = 'status-connected';
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                
+                pendingRequestId = null;
+                pendingRequest.style.display = 'none';
+                
+                appendSystemMessage('Connected! Say hello!');
+            });
+            
+            setupConnection();
+        }
+        
         function setupRequestConnection(conn) {
             log('Setting up request connection');
+            requestConnection = conn;
             
             conn.on('data', (data) => {
                 if (data.type === 'chat-request') {
                     log(`Received chat request from ${conn.peer}`);
                     
+                    incomingRequestId = conn.peer;
                     incomingRequestUsername = data.username;
                     showRequestModal(data.username);
                 }
@@ -1106,45 +1147,16 @@
             
             log('Accepting chat request');
             
-            // Close the existing connection (request connection)
-            peer.connections[incomingRequestId].forEach(conn => conn.close());
-            
-            // Create a new connection for actual chat
-            connection = peer.connect(incomingRequestId, {
-                reliable: true,
-                metadata: {
-                    type: 'chat-accept',
-                    username: localUsername
-                }
+            requestConnection.send({
+                type: 'chat-request-accepted',
+                username: localUsername
             });
             
-            connection.on('open', () => {
-                log('Chat connection established');
-                
-                connection.send({
-                    type: 'chat-request-accepted',
-                    username: localUsername
-                });
-                
-                isConnected = true;
-                remoteUsername = incomingRequestUsername;
-                
-                setupScreen.style.display = 'none';
-                chatScreen.style.display = 'flex';
-                statusText.textContent = 'Connected';
-                statusText.className = 'status-connected';
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
-                usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
-                
-                appendSystemMessage(`You're now chatting with ${remoteUsername}`);
-                
-                incomingRequestId = null;
-                incomingRequestUsername = null;
-                hideRequestModal();
-            });
+            establishChatConnection(incomingRequestId);
             
-            setupConnection();
+            incomingRequestId = null;
+            incomingRequestUsername = null;
+            hideRequestModal();
         }
         
         function declineChatRequest() {
@@ -1152,13 +1164,12 @@
             
             log('Declining chat request');
             
-            // Send decline message before closing
-            peer.connections[incomingRequestId].forEach(conn => {
-                conn.send({
-                    type: 'chat-request-declined'
-                });
-                conn.close();
+            requestConnection.send({
+                type: 'chat-request-declined'
             });
+            
+            requestConnection.close();
+            requestConnection = null;
             
             incomingRequestId = null;
             incomingRequestUsername = null;
@@ -1170,8 +1181,8 @@
             
             log('Canceling pending request');
             
-            if (connection) {
-                connection.close();
+            if (requestConnection) {
+                requestConnection.close();
             }
             
             pendingRequestId = null;
@@ -1320,15 +1331,19 @@
             e.preventDefault();
             const message = messageInput.value.trim();
             
-            if (message && isConnected) {
-                connection.send({
-                    type: 'message',
-                    message: message
-                });
-                
-                appendMessage(message, true, localUsername);
-                
-                messageInput.value = '';
+            if (message && isConnected && connection && connection.open) {
+                try {
+                    connection.send({
+                        type: 'message',
+                        message: message
+                    });
+                    
+                    appendMessage(message, true, localUsername);
+                    messageInput.value = '';
+                } catch (err) {
+                    log(`Error sending message: ${err}`);
+                    showError('Failed to send message');
+                }
             }
         });
         
