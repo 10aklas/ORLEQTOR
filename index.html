@@ -588,6 +588,7 @@
             <div id="connection-status">
                 <p id="status-text" class="status-disconnected">Disconnected</p>
                 <p id="username-display"></p>
+                <p id="room-id-display"></p>
             </div>
             
             <div id="messages"></div>
@@ -639,6 +640,7 @@
         const disconnectBtn = document.getElementById('disconnect-btn');
         const statusText = document.getElementById('status-text');
         const usernameDisplay = document.getElementById('username-display');
+        const roomIdDisplay = document.getElementById('room-id-display');
         const messagesContainer = document.getElementById('messages');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
@@ -672,6 +674,7 @@
         let isConnected = false;
         let myPeerId;
         let isRandomConnecting = false;
+        let currentRoomId = null;
         
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
@@ -713,6 +716,10 @@
                 result += characters.charAt(Math.floor(Math.random() * characters.length));
             }
             return result;
+        }
+        
+        function generateRoomId() {
+            return 'room-' + generateSimpleId();
         }
         
         function updateOnlineUsersUI() {
@@ -807,6 +814,8 @@
                             handleIncomingRequest(conn, data);
                         } else if (data.type === 'chat-response') {
                             handleRequestResponse(conn, data);
+                        } else if (data.type === 'room-connection') {
+                            handleRoomConnection(conn, data);
                         }
                     });
                 });
@@ -1148,6 +1157,16 @@
                 updateOnlineUsersUI();
                 pendingRequestText.style.display = 'none';
                 
+                // Create a room ID
+                currentRoomId = generateRoomId();
+                
+                // Send room connection info to the other peer
+                conn.send({
+                    type: 'room-connection',
+                    roomId: currentRoomId,
+                    initiator: true
+                });
+                
                 // This connection is now our main chat connection
                 connection = conn;
                 setupConnection();
@@ -1165,6 +1184,19 @@
                 }
                 
                 conn.close();
+            }
+        }
+        
+        function handleRoomConnection(conn, data) {
+            log(`Received room connection info: ${JSON.stringify(data)}`);
+            
+            if (data.initiator) {
+                // We're the receiver, join the room
+                currentRoomId = data.roomId;
+                
+                // This connection is now our main chat connection
+                connection = conn;
+                setupConnection();
             }
         }
         
@@ -1208,6 +1240,16 @@
             });
             
             if (accepted) {
+                // Create a room ID (the initiator already created one)
+                currentRoomId = generateRoomId();
+                
+                // Send room connection info back to the initiator
+                conn.send({
+                    type: 'room-connection',
+                    roomId: currentRoomId,
+                    initiator: false
+                });
+                
                 // This connection is now our main chat connection
                 connection = conn;
                 setupConnection();
@@ -1255,6 +1297,9 @@
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
                 
+                // Display room ID
+                roomIdDisplay.textContent = `Room ID: ${currentRoomId}`;
+                
                 resetRandomChatButton();
                 
                 appendSystemMessage('Connected! Say hello!');
@@ -1293,6 +1338,7 @@
         
         function handleDisconnect() {
             isConnected = false;
+            currentRoomId = null;
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
@@ -1302,6 +1348,7 @@
             sendBtn.disabled = true;
             
             messagesContainer.innerHTML = '';
+            roomIdDisplay.textContent = '';
             
             resetRandomChatButton();
             updateRandomChatButton();
