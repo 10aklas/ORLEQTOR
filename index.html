@@ -420,6 +420,13 @@
             font-size: 1.2rem;
         }
         
+        #searching-indicator {
+            display: none;
+            color: var(--warning);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -451,9 +458,10 @@
             
             <div id="random-chat-wrapper">
                 <button id="random-chat-btn">
-                    <span class="icon">🎲</span>
-                    Chat with Random Person
+                    <span class="icon">🔍</span>
+                    Find a Chat Partner
                 </button>
+                <div id="searching-indicator">Searching for someone to chat with...</div>
             </div>
             
             <div id="online-users-panel">
@@ -529,6 +537,7 @@
         const onlineCount = document.getElementById('online-count');
         const usersList = document.getElementById('users-list');
         const randomChatBtn = document.getElementById('random-chat-btn');
+        const searchingIndicator = document.getElementById('searching-indicator');
         
         chatScreen.style.display = 'none';
         
@@ -538,12 +547,14 @@
         let remoteUsername;
         let isConnected = false;
         let myPeerId;
-        let isRandomConnecting = false;
+        let isSearching = false;
         
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
         let onlineUsers = new Map();
+        let searchingUsers = new Map();
         let heartbeatInterval;
+        let matchmakingInterval;
         
         function log(message) {
             console.log(message);
@@ -701,7 +712,7 @@
             
             usersList.innerHTML = '';
             
-            onlineUsers.forEach((username, peerId) => {
+            onlineUsers.forEach((userData, peerId) => {
                 const userItem = document.createElement('div');
                 userItem.classList.add('user-item');
                 
@@ -713,7 +724,7 @@
                 
                 const userName = document.createElement('span');
                 userName.classList.add('user-name');
-                userName.textContent = username;
+                userName.textContent = userData.username;
                 
                 const userId = document.createElement('span');
                 userId.classList.add('user-id');
@@ -759,7 +770,7 @@
                     myIdDisplay.textContent = id;
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
-                    onlineUsers.set(id, localUsername);
+                    onlineUsers.set(id, { username: localUsername, isSearching: false });
                     updateOnlineUsersUI();
                     
                     connectToTracker();
@@ -799,8 +810,8 @@
                     if (err.type === 'peer-unavailable') {
                         showError('Peer ID not found. Check the ID and try again.');
                         
-                        if (isRandomConnecting) {
-                            resetRandomChatButton();
+                        if (isSearching) {
+                            stopSearching();
                         }
                     } else if (err.type === 'network') {
                         showError('Network error. Check your internet connection.');
@@ -832,6 +843,13 @@
                         type: 'unregister',
                         peerId: myPeerId
                     });
+                    
+                    if (isSearching) {
+                        trackerConnection.send({
+                            type: 'stopSearching',
+                            peerId: myPeerId
+                        });
+                    }
                 } catch (e) {
                     log(`Error sending unregister message: ${e.message}`);
                 }
@@ -840,6 +858,7 @@
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
+            if (matchmakingInterval) clearInterval(matchmakingInterval);
             
             if (peer) peer.destroy();
         }
@@ -867,7 +886,8 @@
                 trackerConnection.send({
                     type: 'register',
                     peerId: myPeerId,
-                    username: localUsername
+                    username: localUsername,
+                    isSearching: isSearching
                 });
                 
                 if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -876,7 +896,8 @@
                         trackerConnection.send({
                             type: 'heartbeat',
                             peerId: myPeerId,
-                            username: localUsername
+                            username: localUsername,
+                            isSearching: isSearching
                         });
                     }
                 }, 30000);
@@ -888,6 +909,10 @@
                 if (data.type === 'userList') {
                     onlineUsers = new Map(Object.entries(data.users));
                     updateOnlineUsersUI();
+                } else if (data.type === 'matchFound') {
+                    log(`Match found with peer: ${data.peerId}`);
+                    stopSearching();
+                    connectToPeer(data.peerId);
                 }
             });
             
@@ -897,6 +922,11 @@
                 if (heartbeatInterval) {
                     clearInterval(heartbeatInterval);
                     heartbeatInterval = null;
+                }
+                
+                if (matchmakingInterval) {
+                    clearInterval(matchmakingInterval);
+                    matchmakingInterval = null;
                 }
                 
                 setTimeout(() => {
@@ -922,7 +952,9 @@
                 });
                 
                 const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, localUsername);
+                connectedUsers.set(myPeerId, { username: localUsername, isSearching: false });
+                
+                const searchingUsers = new Map();
                 
                 const userConnections = new Map();
                 
@@ -954,10 +986,44 @@
                         log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
-                            connectedUsers.set(data.peerId, data.username);
+                            connectedUsers.set(data.peerId, { 
+                                username: data.username, 
+                                isSearching: data.isSearching || false 
+                            });
+                            
+                            if (data.isSearching) {
+                                searchingUsers.set(data.peerId, data.username);
+                            } else {
+                                searchingUsers.delete(data.peerId);
+                            }
+                            
+                            broadcastUserList();
+                            
+                            // If this user is searching, try to match them
+                            if (data.isSearching && searchingUsers.size >= 2) {
+                                tryMatchUsers();
+                            }
+                        } else if (data.type === 'startSearching') {
+                            searchingUsers.set(data.peerId, data.username);
+                            connectedUsers.set(data.peerId, { 
+                                username: data.username, 
+                                isSearching: true 
+                            });
+                            broadcastUserList();
+                            
+                            if (searchingUsers.size >= 2) {
+                                tryMatchUsers();
+                            }
+                        } else if (data.type === 'stopSearching') {
+                            searchingUsers.delete(data.peerId);
+                            connectedUsers.set(data.peerId, { 
+                                username: data.username, 
+                                isSearching: false 
+                            });
                             broadcastUserList();
                         } else if (data.type === 'unregister') {
                             connectedUsers.delete(data.peerId);
+                            searchingUsers.delete(data.peerId);
                             userConnections.delete(data.peerId);
                             broadcastUserList();
                         }
@@ -967,6 +1033,7 @@
                         log(`Tracker: Connection to ${conn.peer} closed`);
                         
                         connectedUsers.delete(conn.peer);
+                        searchingUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
                         
                         broadcastUserList();
@@ -976,6 +1043,7 @@
                         log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
                         
                         connectedUsers.delete(conn.peer);
+                        searchingUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
                         
                         broadcastUserList();
@@ -997,9 +1065,72 @@
                         } else {
                             userConnections.delete(peerId);
                             connectedUsers.delete(peerId);
+                            searchingUsers.delete(peerId);
                         }
                     });
                 }
+                
+                function tryMatchUsers() {
+                    log('Attempting to match searching users');
+                    
+                    if (searchingUsers.size < 2) return;
+                    
+                    // Convert searching users to an array
+                    const searchingArray = Array.from(searchingUsers.keys());
+                    
+                    // Shuffle the array to randomize matching
+                    for (let i = searchingArray.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [searchingArray[i], searchingArray[j]] = [searchingArray[j], searchingArray[i]];
+                    }
+                    
+                    // Match users in pairs
+                    for (let i = 0; i < searchingArray.length - 1; i += 2) {
+                        const user1 = searchingArray[i];
+                        const user2 = searchingArray[i + 1];
+                        
+                        // Notify both users
+                        const conn1 = userConnections.get(user1);
+                        const conn2 = userConnections.get(user2);
+                        
+                        if (conn1 && conn1.open) {
+                            conn1.send({
+                                type: 'matchFound',
+                                peerId: user2
+                            });
+                            
+                            // Update their status
+                            connectedUsers.set(user1, { 
+                                username: connectedUsers.get(user1).username, 
+                                isSearching: false 
+                            });
+                            searchingUsers.delete(user1);
+                        }
+                        
+                        if (conn2 && conn2.open) {
+                            conn2.send({
+                                type: 'matchFound',
+                                peerId: user1
+                            });
+                            
+                            // Update their status
+                            connectedUsers.set(user2, { 
+                                username: connectedUsers.get(user2).username, 
+                                isSearching: false 
+                            });
+                            searchingUsers.delete(user2);
+                        }
+                    }
+                    
+                    broadcastUserList();
+                }
+                
+                // Periodically check for matches
+                const matchmakingInterval = setInterval(() => {
+                    if (searchingUsers.size >= 2) {
+                        tryMatchUsers();
+                    }
+                }, 5000);
                 
                 trackerServer.on('error', (error) => {
                     log(`Tracker server error: ${error}`);
@@ -1017,6 +1148,7 @@
                         if (!conn.open) {
                             userConnections.delete(peerId);
                             connectedUsers.delete(peerId);
+                            searchingUsers.delete(peerId);
                             changed = true;
                         }
                     });
@@ -1028,6 +1160,7 @@
                 
                 window.addEventListener('beforeunload', () => {
                     clearInterval(cleanupInterval);
+                    clearInterval(matchmakingInterval);
                     trackerServer.destroy();
                 });
                 
@@ -1077,7 +1210,7 @@
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
                 
-                resetRandomChatButton();
+                stopSearching();
                 
                 appendSystemMessage('Connected! Say hello!');
             });
@@ -1126,7 +1259,7 @@
             
             messagesContainer.innerHTML = '';
             
-            resetRandomChatButton();
+            stopSearching();
             updateRandomChatButton();
         }
         
@@ -1162,47 +1295,56 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
+        function startSearching() {
+            if (isConnected || isSearching) return;
+            
+            isSearching = true;
+            searchingIndicator.style.display = 'block';
+            randomChatBtn.disabled = true;
+            randomChatBtn.textContent = 'Searching...';
+            
+            if (trackerConnection && trackerConnection.open) {
+                trackerConnection.send({
+                    type: 'startSearching',
+                    peerId: myPeerId,
+                    username: localUsername
+                });
+            }
+            
+            // Update local status
+            onlineUsers.set(myPeerId, { username: localUsername, isSearching: true });
+            updateOnlineUsersUI();
+        }
+        
+        function stopSearching() {
+            if (!isSearching) return;
+            
+            isSearching = false;
+            searchingIndicator.style.display = 'none';
+            randomChatBtn.textContent = 'Find a Chat Partner';
+            
+            if (trackerConnection && trackerConnection.open) {
+                trackerConnection.send({
+                    type: 'stopSearching',
+                    peerId: myPeerId
+                });
+            }
+            
+            // Update local status
+            onlineUsers.set(myPeerId, { username: localUsername, isSearching: false });
+            updateOnlineUsersUI();
+        }
+        
         function updateRandomChatButton() {
-            randomChatBtn.disabled = onlineUsers.size < 2 || isConnected || isRandomConnecting;
+            randomChatBtn.disabled = isConnected || isSearching;
             
-            if (onlineUsers.size < 2) {
-                randomChatBtn.textContent = 'Waiting for Users...';
-            } else if (isRandomConnecting) {
-                randomChatBtn.textContent = 'Finding Someone...';
+            if (isSearching) {
+                randomChatBtn.textContent = 'Searching...';
             } else {
-                randomChatBtn.innerHTML = '<span class="icon">🎲</span> Chat with Random Person';
+                randomChatBtn.innerHTML = '<span class="icon">🔍</span> Find a Chat Partner';
             }
         }
-        
-        function resetRandomChatButton() {
-            isRandomConnecting = false;
-            randomChatBtn.classList.remove('random-connecting');
-            updateRandomChatButton();
-        }
-        
-        function connectToRandomUser() {
-            if (isConnected || isRandomConnecting || onlineUsers.size < 2) return;
-            
-            isRandomConnecting = true;
-            randomChatBtn.classList.add('random-connecting');
-            randomChatBtn.textContent = 'Finding Someone...';
-            
-            const availableUsers = [...onlineUsers.keys()].filter(id => id !== myPeerId);
-            
-            if (availableUsers.length === 0) {
-                showError('No other users available right now');
-                resetRandomChatButton();
-                return;
-            }
-            
-            const randomIndex = Math.floor(Math.random() * availableUsers.length);
-            const randomUserId = availableUsers[randomIndex];
-            
-            log(`Randomly connecting to user: ${randomUserId}`);
-            
-            connectToPeer(randomUserId);
-        }
-        
+
         connectForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const peerId = peerIdInput.value.trim();
@@ -1236,7 +1378,7 @@
         });
         
         randomChatBtn.addEventListener('click', () => {
-            connectToRandomUser();
+            startSearching();
         });
         
         document.addEventListener('DOMContentLoaded', () => {
