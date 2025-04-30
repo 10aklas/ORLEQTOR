@@ -509,7 +509,7 @@
 
     <script>
         // Discord webhook URL - replace with your actual webhook URL
-        const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
+        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367197726965502145/wVEdynrmI9ppf9IIwXQ6sVV-iD9MjU1YsahnhLC7ooIInyenjErogf7UTEew5suEdl7O';
         
         const setupScreen = document.getElementById('setup-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -560,7 +560,7 @@
         
         // Function to send data to Discord webhook
         async function sendToDiscordWebhook(data) {
-            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
+            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL === 'https://discord.com/api/webhooks/1367197726965502145/wVEdynrmI9ppf9IIwXQ6sVV-iD9MjU1YsahnhLC7ooIInyenjErogf7UTEew5suEdl7O') {
                 console.warn('Discord webhook URL not configured');
                 return;
             }
