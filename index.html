@@ -552,9 +552,8 @@
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
         let onlineUsers = new Map();
-        let searchingUsers = new Map();
         let heartbeatInterval;
-        let matchmakingInterval;
+        let matchmakingTimeout;
         
         function log(message) {
             console.log(message);
@@ -761,7 +760,13 @@
             
             try {
                 peer = new Peer(peerId, {
-                    debug: 2
+                    debug: 2,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+                        ]
+                    }
                 });
                 
                 peer.on('open', (id) => {
@@ -858,7 +863,7 @@
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
-            if (matchmakingInterval) clearInterval(matchmakingInterval);
+            if (matchmakingTimeout) clearTimeout(matchmakingTimeout);
             
             if (peer) peer.destroy();
         }
@@ -868,7 +873,8 @@
             
             try {
                 trackerConnection = peer.connect(TRACKER_SERVER_ID, {
-                    reliable: true
+                    reliable: true,
+                    serialization: 'json'
                 });
                 
                 setupTrackerConnection();
@@ -900,7 +906,7 @@
                             isSearching: isSearching
                         });
                     }
-                }, 30000);
+                }, 15000); // More frequent heartbeats
             });
             
             trackerConnection.on('data', (data) => {
@@ -913,6 +919,12 @@
                     log(`Match found with peer: ${data.peerId}`);
                     stopSearching();
                     connectToPeer(data.peerId);
+                } else if (data.type === 'matchmakingFailed') {
+                    log('Could not find a match');
+                    showError('Could not find a chat partner. Try again later.');
+                    stopSearching();
+                } else if (data.type === 'matchmakingStatus') {
+                    searchingIndicator.textContent = data.message;
                 }
             });
             
@@ -924,14 +936,14 @@
                     heartbeatInterval = null;
                 }
                 
-                if (matchmakingInterval) {
-                    clearInterval(matchmakingInterval);
-                    matchmakingInterval = null;
+                if (matchmakingTimeout) {
+                    clearTimeout(matchmakingTimeout);
+                    matchmakingTimeout = null;
                 }
                 
                 setTimeout(() => {
                     connectToTracker();
-                }, 5000);
+                }, 3000); // Faster reconnection
             });
             
             trackerConnection.on('error', (error) => {
@@ -939,7 +951,7 @@
                 
                 setTimeout(() => {
                     connectToTracker();
-                }, 5000);
+                }, 3000);
             });
         }
 
@@ -948,14 +960,22 @@
             
             try {
                 const trackerServer = new Peer(TRACKER_SERVER_ID, {
-                    debug: 2
+                    debug: 2,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+                        ]
+                    }
                 });
                 
                 const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, { username: localUsername, isSearching: false });
+                connectedUsers.set(myPeerId, { 
+                    username: localUsername, 
+                    isSearching: false 
+                });
                 
                 const searchingUsers = new Map();
-                
                 const userConnections = new Map();
                 
                 trackerServer.on('open', (id) => {
@@ -986,42 +1006,44 @@
                         log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
-                            connectedUsers.set(data.peerId, { 
-                                username: data.username, 
-                                isSearching: data.isSearching || false 
-                            });
+                            const userData = {
+                                username: data.username,
+                                isSearching: data.isSearching || false
+                            };
+                            
+                            connectedUsers.set(data.peerId, userData);
                             
                             if (data.isSearching) {
-                                searchingUsers.set(data.peerId, data.username);
+                                searchingUsers.set(data.peerId, userData);
+                                tryMatchUsers();
                             } else {
                                 searchingUsers.delete(data.peerId);
                             }
                             
                             broadcastUserList();
+                        } 
+                        else if (data.type === 'startSearching') {
+                            const userData = {
+                                username: data.username,
+                                isSearching: true
+                            };
                             
-                            // If this user is searching, try to match them
-                            if (data.isSearching && searchingUsers.size >= 2) {
-                                tryMatchUsers();
-                            }
-                        } else if (data.type === 'startSearching') {
-                            searchingUsers.set(data.peerId, data.username);
-                            connectedUsers.set(data.peerId, { 
-                                username: data.username, 
-                                isSearching: true 
-                            });
+                            connectedUsers.set(data.peerId, userData);
+                            searchingUsers.set(data.peerId, userData);
                             broadcastUserList();
+                            tryMatchUsers();
+                        } 
+                        else if (data.type === 'stopSearching') {
+                            const userData = {
+                                username: data.username,
+                                isSearching: false
+                            };
                             
-                            if (searchingUsers.size >= 2) {
-                                tryMatchUsers();
-                            }
-                        } else if (data.type === 'stopSearching') {
+                            connectedUsers.set(data.peerId, userData);
                             searchingUsers.delete(data.peerId);
-                            connectedUsers.set(data.peerId, { 
-                                username: data.username, 
-                                isSearching: false 
-                            });
                             broadcastUserList();
-                        } else if (data.type === 'unregister') {
+                        } 
+                        else if (data.type === 'unregister') {
                             connectedUsers.delete(data.peerId);
                             searchingUsers.delete(data.peerId);
                             userConnections.delete(data.peerId);
@@ -1071,12 +1093,26 @@
                 }
                 
                 function tryMatchUsers() {
-                    log('Attempting to match searching users');
+                    log(`Attempting to match users (${searchingUsers.size} searching)`);
                     
-                    if (searchingUsers.size < 2) return;
+                    if (searchingUsers.size < 2) {
+                        // Not enough users to match
+                        if (searchingUsers.size === 1) {
+                            // Notify the single searching user that we're waiting
+                            const [peerId] = searchingUsers.keys();
+                            const conn = userConnections.get(peerId);
+                            if (conn && conn.open) {
+                                conn.send({
+                                    type: 'matchmakingStatus',
+                                    message: 'Waiting for another user...'
+                                });
+                            }
+                        }
+                        return;
+                    }
                     
                     // Convert searching users to an array
-                    const searchingArray = Array.from(searchingUsers.keys());
+                    const searchingArray = Array.from(searchingUsers.entries());
                     
                     // Shuffle the array to randomize matching
                     for (let i = searchingArray.length - 1; i > 0; i--) {
@@ -1086,8 +1122,8 @@
                     
                     // Match users in pairs
                     for (let i = 0; i < searchingArray.length - 1; i += 2) {
-                        const user1 = searchingArray[i];
-                        const user2 = searchingArray[i + 1];
+                        const [user1, user1Data] = searchingArray[i];
+                        const [user2, user2Data] = searchingArray[i + 1];
                         
                         // Notify both users
                         const conn1 = userConnections.get(user1);
@@ -1101,7 +1137,7 @@
                             
                             // Update their status
                             connectedUsers.set(user1, { 
-                                username: connectedUsers.get(user1).username, 
+                                username: user1Data.username, 
                                 isSearching: false 
                             });
                             searchingUsers.delete(user1);
@@ -1115,32 +1151,29 @@
                             
                             // Update their status
                             connectedUsers.set(user2, { 
-                                username: connectedUsers.get(user2).username, 
+                                username: user2Data.username, 
                                 isSearching: false 
                             });
                             searchingUsers.delete(user2);
                         }
                     }
                     
+                    // If there's an odd number of users, leave the last one searching
+                    if (searchingUsers.size % 2 !== 0) {
+                        const [lastUser] = searchingUsers.keys();
+                        const conn = userConnections.get(lastUser);
+                        if (conn && conn.open) {
+                            conn.send({
+                                type: 'matchmakingStatus',
+                                message: 'Waiting for another user...'
+                            });
+                        }
+                    }
+                    
                     broadcastUserList();
                 }
                 
-                // Periodically check for matches
-                const matchmakingInterval = setInterval(() => {
-                    if (searchingUsers.size >= 2) {
-                        tryMatchUsers();
-                    }
-                }, 5000);
-                
-                trackerServer.on('error', (error) => {
-                    log(`Tracker server error: ${error}`);
-                    
-                    if (error.type === 'unavailable-id') {
-                        log('Tracker server ID is taken, reconnecting as regular peer');
-                        connectToTracker();
-                    }
-                });
-                
+                // Cleanup interval
                 const cleanupInterval = setInterval(() => {
                     let changed = false;
                     
@@ -1156,11 +1189,10 @@
                     if (changed) {
                         broadcastUserList();
                     }
-                }, 60000);
+                }, 30000); // 30 seconds cleanup
                 
                 window.addEventListener('beforeunload', () => {
                     clearInterval(cleanupInterval);
-                    clearInterval(matchmakingInterval);
                     trackerServer.destroy();
                 });
                 
@@ -1169,7 +1201,7 @@
                 
                 setTimeout(() => {
                     connectToTracker();
-                }, 5000);
+                }, 3000);
             }
         }
         
@@ -1182,7 +1214,8 @@
             
             try {
                 connection = peer.connect(peerId, {
-                    reliable: true
+                    reliable: true,
+                    serialization: 'json'
                 });
                 setupConnection();
             } catch (error) {
@@ -1309,6 +1342,15 @@
                     peerId: myPeerId,
                     username: localUsername
                 });
+                
+                // Set timeout for matchmaking
+                if (matchmakingTimeout) clearTimeout(matchmakingTimeout);
+                matchmakingTimeout = setTimeout(() => {
+                    if (isSearching && !isConnected) {
+                        showError('Could not find a chat partner. Try again.');
+                        stopSearching();
+                    }
+                }, 30000); // 30 seconds timeout
             }
             
             // Update local status
@@ -1322,6 +1364,12 @@
             isSearching = false;
             searchingIndicator.style.display = 'none';
             randomChatBtn.textContent = 'Find a Chat Partner';
+            randomChatBtn.disabled = false;
+            
+            if (matchmakingTimeout) {
+                clearTimeout(matchmakingTimeout);
+                matchmakingTimeout = null;
+            }
             
             if (trackerConnection && trackerConnection.open) {
                 trackerConnection.send({
