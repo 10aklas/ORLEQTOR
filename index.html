@@ -935,8 +935,7 @@
                             peerId !== TRACKER_SERVER_ID
                         );
                     
-                    // If we have at least one other searching user (including the case where there are exactly 2 users)
-                    if (searchingUsers.length >= 1) {
+                    if (searchingUsers.length > 0) {
                         // Match with the first available searching user
                         const [matchPeerId, matchUserData] = searchingUsers[0];
                         
