@@ -549,12 +549,6 @@
         let sessionStartTime;
         let lastChatPartner = null;
         
-        // Online status tracking
-        let lastPingTime = new Map(); // Tracks last ping time for each user
-        let onlineStatusInterval;
-        const ONLINE_CHECK_INTERVAL = 5000; // 5 seconds
-        const PING_TIMEOUT = 10000; // 10 seconds timeout
-        
         function log(message) {
             console.log(message);
             const now = new Date().toLocaleTimeString();
@@ -806,18 +800,6 @@
                 userName.classList.add('user-name');
                 userName.textContent = username;
                 
-                // Add online status indicator
-                const lastSeen = lastPingTime.get(peerId);
-                const isOnline = lastSeen && (Date.now() - lastSeen < PING_TIMEOUT);
-                
-                // Update the indicator before the username
-                userName.innerHTML = `
-                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;
-                    background-color:${isOnline ? 'var(--success)' : 'var(--danger)'};
-                    margin-right:8px;"></span>
-                    ${username}
-                `;
-                
                 const userId = document.createElement('span');
                 userId.classList.add('user-id');
                 userId.textContent = ` (${peerId})`;
@@ -843,31 +825,6 @@
             updateRandomChatButton();
         }
         
-        // Function to start checking online status
-        function startOnlineStatusChecker() {
-            if (onlineStatusInterval) {
-                clearInterval(onlineStatusInterval);
-            }
-            
-            onlineStatusInterval = setInterval(() => {
-                // Update our own last ping time
-                lastPingTime.set(myPeerId, Date.now());
-                
-                // Send ping to tracker if we're connected
-                if (trackerConnection && trackerConnection.open) {
-                    trackerConnection.send({
-                        type: 'ping',
-                        peerId: myPeerId,
-                        timestamp: Date.now()
-                    });
-                }
-                
-                // Update UI to reflect current online status
-                updateOnlineUsersUI();
-                
-            }, ONLINE_CHECK_INTERVAL);
-        }
-        
         function initializePeer() {
             const peerId = generateSimpleId();
             localUsername = generateUsername();
@@ -888,11 +845,9 @@
                     usernameDisplay.textContent = `Your username: ${localUsername}`;
                     
                     onlineUsers.set(id, localUsername);
-                    lastPingTime.set(id, Date.now()); // Set initial ping time
                     updateOnlineUsersUI();
                     
                     connectToTracker();
-                    startOnlineStatusChecker(); // Start checking online status
                     
                     window.addEventListener('beforeunload', handleUserLeave);
                 });
@@ -973,7 +928,6 @@
             if (connection) connection.close();
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
-            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
             
             if (peer) peer.destroy();
         }
@@ -1021,10 +975,6 @@
                 
                 if (data.type === 'userList') {
                     onlineUsers = new Map(Object.entries(data.users));
-                    updateOnlineUsersUI();
-                } else if (data.type === 'ping') {
-                    // Update last ping time for the user who sent the ping
-                    lastPingTime.set(data.peerId, data.timestamp);
                     updateOnlineUsersUI();
                 }
             });
@@ -1093,17 +1043,11 @@
                         
                         if (data.type === 'register' || data.type === 'heartbeat') {
                             connectedUsers.set(data.peerId, data.username);
-                            lastPingTime.set(data.peerId, Date.now()); // Update ping time
                             broadcastUserList();
                         } else if (data.type === 'unregister') {
                             connectedUsers.delete(data.peerId);
                             userConnections.delete(data.peerId);
-                            lastPingTime.delete(data.peerId); // Remove ping time
                             broadcastUserList();
-                        } else if (data.type === 'ping') {
-                            // Update last ping time for the user
-                            lastPingTime.set(data.peerId, data.timestamp);
-                            updateOnlineUsersUI();
                         }
                     });
                     
@@ -1112,7 +1056,6 @@
                         
                         connectedUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
-                        lastPingTime.delete(conn.peer); // Remove ping time
                         
                         broadcastUserList();
                     });
@@ -1122,7 +1065,6 @@
                         
                         connectedUsers.delete(conn.peer);
                         userConnections.delete(conn.peer);
-                        lastPingTime.delete(conn.peer); // Remove ping time
                         
                         broadcastUserList();
                     });
@@ -1143,7 +1085,6 @@
                         } else {
                             userConnections.delete(peerId);
                             connectedUsers.delete(peerId);
-                            lastPingTime.delete(peerId); // Remove ping time
                         }
                     });
                 }
@@ -1164,7 +1105,6 @@
                         if (!conn.open) {
                             userConnections.delete(peerId);
                             connectedUsers.delete(peerId);
-                            lastPingTime.delete(peerId); // Remove ping time
                             changed = true;
                         }
                     });
