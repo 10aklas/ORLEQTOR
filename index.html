@@ -451,7 +451,7 @@
             color: #ccc;
         }
         
-        .request-btn.in-chat {
+        .request-btn.in-room {
             background-color: var(--accent);
             color: #000;
             cursor: default;
@@ -569,8 +569,8 @@
             display: none;
         }
         
-        /* Style for in-chat state */
-        .in-chat-btn {
+        /* Style for in-room state */
+        .in-room-btn {
             background-color: var(--accent);
             color: #000;
             padding: 1rem;
@@ -937,7 +937,7 @@
                     
                     appendSystemMessage('Connected! Say hello!');
                     
-                    // Update online users UI to show "In Chat" status
+                    // Update online users UI to show "In Room" status
                     updateOnlineUsersUI();
                 });
                 
@@ -1365,7 +1365,7 @@
                     
                     appendSystemMessage('Connected! Say hello!');
                     
-                    // Update online users UI to show "In Chat" status
+                    // Update online users UI to show "In Room" status
                     updateOnlineUsersUI();
                 });
                 
@@ -1556,12 +1556,12 @@
                 
                 // Update connect button based on chat state
                 if (state.isConnected) {
-                    elements.connectBtn.textContent = 'In a Chat';
-                    elements.connectBtn.classList.add('in-chat-btn');
+                    elements.connectBtn.textContent = 'In a Room';
+                    elements.connectBtn.classList.add('in-room-btn');
                     elements.connectBtn.disabled = true;
                 } else {
                     elements.connectBtn.textContent = 'Send Request';
-                    elements.connectBtn.classList.remove('in-chat-btn');
+                    elements.connectBtn.classList.remove('in-room-btn');
                     elements.connectBtn.disabled = false;
                 }
                 
@@ -1610,9 +1610,9 @@
                     const actionButton = document.createElement('button');
                     
                     if (state.isConnected) {
-                        // If we're in a chat with someone, show "In Chat" button for all users
-                        actionButton.classList.add('request-btn', 'in-chat');
-                        actionButton.textContent = 'In Chat';
+                        // If we're in a room with someone, show "In Room" button for all users
+                        actionButton.classList.add('request-btn', 'in-room');
+                        actionButton.textContent = 'In Room';
                         actionButton.disabled = true;
                     } else if (state.sentRequests.has(peerId)) {
                         // If we've sent a request to this user, show "Request Sent" button
