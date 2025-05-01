@@ -556,8 +556,6 @@
         let searchingUsers = new Map();
         let heartbeatInterval;
         let matchmakingInterval;
-        let onlineCheckInterval;
-        let visibilityChangeHandler;
         
         // Function to get user's IP address
         async function getUserIP() {
@@ -685,66 +683,6 @@
             updateRandomChatButton();
         }
         
-        // Function to check if users are still online
-        function checkOnlineUsers() {
-            if (!trackerConnection || !trackerConnection.open) return;
-            
-            log('Checking online users status...');
-            
-            // Send a ping to the tracker to verify online users
-            trackerConnection.send({
-                type: 'ping',
-                peerId: myPeerId,
-                timestamp: Date.now()
-            });
-        }
-        
-        // Function to handle visibility change
-        function setupVisibilityChangeHandler() {
-            let hidden, visibilityChange;
-            
-            if (typeof document.hidden !== "undefined") {
-                hidden = "hidden";
-                visibilityChange = "visibilitychange";
-            } else if (typeof document.msHidden !== "undefined") {
-                hidden = "msHidden";
-                visibilityChange = "msvisibilitychange";
-            } else if (typeof document.webkitHidden !== "undefined") {
-                hidden = "webkitHidden";
-                visibilityChange = "webkitvisibilitychange";
-            }
-            
-            visibilityChangeHandler = function() {
-                if (document[hidden]) {
-                    // Tab is inactive, stop checking online users
-                    if (onlineCheckInterval) {
-                        clearInterval(onlineCheckInterval);
-                        onlineCheckInterval = null;
-                        log('Tab inactive - stopped online user checks');
-                    }
-                } else {
-                    // Tab is active, start checking online users
-                    if (!onlineCheckInterval) {
-                        onlineCheckInterval = setInterval(checkOnlineUsers, 5000);
-                        log('Tab active - started online user checks');
-                        // Do an immediate check
-                        checkOnlineUsers();
-                    }
-                }
-            };
-            
-            // Handle page visibility change
-            document.addEventListener(visibilityChange, visibilityChangeHandler, false);
-            
-            // Initial setup based on current visibility
-            if (document[hidden]) {
-                visibilityChangeHandler();
-            } else {
-                onlineCheckInterval = setInterval(checkOnlineUsers, 5000);
-                log('Initialized online user checks');
-            }
-        }
-        
         async function initializePeer() {
             const peerId = generateSimpleId();
             localUsername = generateUsername();
@@ -773,9 +711,6 @@
                     updateOnlineUsersUI();
                     
                     connectToTracker();
-                    
-                    // Set up online user checks when tab is active
-                    setupVisibilityChangeHandler();
                 });
                 
                 peer.on('connection', (conn) => {
@@ -884,13 +819,6 @@
                     // A match has been found for us
                     stopSearching();
                     connectToPeer(data.matchPeerId);
-                } else if (data.type === 'userOffline') {
-                    // A user has gone offline
-                    if (onlineUsers.has(data.peerId)) {
-                        onlineUsers.delete(data.peerId);
-                        updateOnlineUsersUI();
-                        log(`User ${data.peerId} marked as offline`);
-                    }
                 }
             });
             
@@ -905,11 +833,6 @@
                 if (matchmakingInterval) {
                     clearInterval(matchmakingInterval);
                     matchmakingInterval = null;
-                }
-                
-                if (onlineCheckInterval) {
-                    clearInterval(onlineCheckInterval);
-                    onlineCheckInterval = null;
                 }
                 
                 setTimeout(() => {
@@ -950,37 +873,11 @@
                     trackerStatus.style.color = 'var(--accent)';
                     trackerStatus.style.marginTop = '0.5rem';
                     document.querySelector('#my-id-display').appendChild(trackerStatus);
-                    
-                    // Start checking for inactive users
-                    const inactiveCheckInterval = setInterval(() => {
-                        const now = Date.now();
-                        const inactiveThreshold = 15000; // 15 seconds
-                        let changed = false;
-                        
-                        userConnections.forEach((conn, peerId) => {
-                            if (now - conn.lastActivity > inactiveThreshold) {
-                                log(`User ${peerId} inactive, removing`);
-                                userConnections.delete(peerId);
-                                connectedUsers.delete(peerId);
-                                changed = true;
-                            }
-                        });
-                        
-                        if (changed) {
-                            broadcastUserList();
-                        }
-                    }, 5000);
-                    
-                    // Clean up interval when server is destroyed
-                    trackerServer.on('close', () => {
-                        clearInterval(inactiveCheckInterval);
-                    });
                 });
                 
                 trackerServer.on('connection', (conn) => {
                     log(`Tracker: New connection from ${conn.peer}`);
                     
-                    conn.lastActivity = Date.now();
                     userConnections.set(conn.peer, conn);
                     
                     conn.on('open', () => {
@@ -995,10 +892,7 @@
                     conn.on('data', (data) => {
                         log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
                         
-                        if (data.type === 'register' || data.type === 'heartbeat' || data.type === 'ping') {
-                            // Update last activity time
-                            conn.lastActivity = Date.now();
-                            
+                        if (data.type === 'register' || data.type === 'heartbeat') {
                             connectedUsers.set(data.peerId, {
                                 username: data.username,
                                 searching: data.searching || false
@@ -1421,23 +1315,6 @@
             if (trackerConnection) trackerConnection.close();
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             if (matchmakingInterval) clearInterval(matchmakingInterval);
-            if (onlineCheckInterval) clearInterval(onlineCheckInterval);
-            
-            // Remove visibility change handler
-            if (visibilityChangeHandler) {
-                let visibilityChange;
-                if (typeof document.hidden !== "undefined") {
-                    visibilityChange = "visibilitychange";
-                } else if (typeof document.msHidden !== "undefined") {
-                    visibilityChange = "msvisibilitychange";
-                } else if (typeof document.webkitHidden !== "undefined") {
-                    visibilityChange = "webkitvisibilitychange";
-                }
-                
-                if (visibilityChange) {
-                    document.removeEventListener(visibilityChange, visibilityChangeHandler);
-                }
-            }
             
             if (peer) peer.destroy();
         });
