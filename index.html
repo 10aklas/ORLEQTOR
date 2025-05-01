@@ -446,6 +446,16 @@
             transform: none;
         }
         
+        .request-btn.sent {
+            background-color: #666;
+            color: #ccc;
+        }
+        
+        .request-btn.in-room {
+            background-color: var(--accent);
+            color: #000;
+        }
+        
         #request-panel {
             background-color: var(--bg-tertiary);
             border-radius: 10px;
@@ -609,6 +619,7 @@
                 TRACKER_SERVER_ID: 'user-tracker-server',
                 onlineUsers: new Map(),
                 pendingRequests: new Map(),
+                sentRequests: new Set(),
                 heartbeatInterval: null
             };
             
@@ -749,7 +760,7 @@
                 }, 30000);
             }
             
-            // Accept a chat request - FIXED VERSION
+            // Accept a chat request
             function acceptChatRequest(requestId) {
                 const request = state.pendingRequests.get(requestId);
                 if (!request) return;
@@ -814,6 +825,9 @@
                     elements.sendBtn.disabled = false;
                     
                     appendSystemMessage('Connected! Say hello!');
+                    
+                    // Update online users UI to show "In Room" status
+                    updateOnlineUsersUI();
                 });
                 
                 chatConn.on('data', handlePeerData);
@@ -1093,11 +1107,17 @@
             
             // Send chat request to a peer
             function sendChatRequest(peerId) {
-                if (state.isConnected) return;
+                if (state.isConnected || state.sentRequests.has(peerId)) return;
                 
                 log(`Sending chat request to: ${peerId}`);
                 elements.statusText.textContent = 'Sending request...';
                 elements.statusText.className = 'status-connecting';
+                
+                // Add to sent requests
+                state.sentRequests.add(peerId);
+                
+                // Update UI immediately
+                updateOnlineUsersUI();
                 
                 try {
                     const conn = state.peer.connect(peerId, {
@@ -1122,6 +1142,12 @@
                         log(`Request connection to ${peerId} closed`);
                         elements.statusText.textContent = 'Disconnected';
                         elements.statusText.className = 'status-disconnected';
+                        
+                        // Remove from sent requests if not accepted
+                        if (!state.isConnected) {
+                            state.sentRequests.delete(peerId);
+                            updateOnlineUsersUI();
+                        }
                     });
                     
                     conn.on('error', (err) => {
@@ -1129,6 +1155,10 @@
                         showError(`Failed to send request: ${err}`);
                         elements.statusText.textContent = 'Disconnected';
                         elements.statusText.className = 'status-disconnected';
+                        
+                        // Remove from sent requests on error
+                        state.sentRequests.delete(peerId);
+                        updateOnlineUsersUI();
                     });
                     
                 } catch (error) {
@@ -1136,6 +1166,10 @@
                     showError(`Failed to send request: ${error.message}`);
                     elements.statusText.textContent = 'Disconnected';
                     elements.statusText.className = 'status-disconnected';
+                    
+                    // Remove from sent requests on error
+                    state.sentRequests.delete(peerId);
+                    updateOnlineUsersUI();
                 }
             }
             
@@ -1152,6 +1186,9 @@
                     });
                     state.pendingRequests.clear();
                     
+                    // Clear sent requests
+                    state.sentRequests.clear();
+                    
                     // Establish the connection
                     state.connection = conn;
                     state.remoteUsername = data.username || 'Stranger';
@@ -1162,6 +1199,10 @@
                     conn.close();
                     elements.statusText.textContent = 'Disconnected';
                     elements.statusText.className = 'status-disconnected';
+                    
+                    // Remove from sent requests
+                    state.sentRequests.delete(peerId);
+                    updateOnlineUsersUI();
                 }
             }
             
@@ -1193,6 +1234,9 @@
                     elements.sendBtn.disabled = false;
                     
                     appendSystemMessage('Connected! Say hello!');
+                    
+                    // Update online users UI to show "In Room" status
+                    updateOnlineUsersUI();
                 });
                 
                 state.connection.on('data', handlePeerData);
@@ -1241,6 +1285,7 @@
             function handleDisconnect() {
                 state.isConnected = false;
                 state.remoteUsername = '';
+                state.sentRequests.clear();
                 
                 elements.setupScreen.style.display = 'flex';
                 elements.chatScreen.style.display = 'none';
@@ -1250,6 +1295,9 @@
                 elements.sendBtn.disabled = true;
                 
                 elements.messagesContainer.innerHTML = '';
+                
+                // Update online users UI
+                updateOnlineUsersUI();
             }
             
             // Handle connect form submission
@@ -1415,17 +1463,30 @@
                     userInfo.appendChild(userId);
                     userItem.appendChild(userInfo);
                     
-                    if (!state.isConnected) {
-                        const connectIcon = document.createElement('button');
-                        connectIcon.classList.add('request-btn');
-                        connectIcon.textContent = 'Request Chat';
-                        connectIcon.onclick = () => {
+                    // Add appropriate button based on state
+                    const actionButton = document.createElement('button');
+                    
+                    if (state.isConnected) {
+                        // If we're in a chat room, show "In Room" button
+                        actionButton.classList.add('request-btn', 'in-room');
+                        actionButton.textContent = 'In Room';
+                        actionButton.disabled = true;
+                    } else if (state.sentRequests.has(peerId)) {
+                        // If we've sent a request to this user, show "Request Sent" button
+                        actionButton.classList.add('request-btn', 'sent');
+                        actionButton.textContent = 'Request Sent';
+                        actionButton.disabled = true;
+                    } else {
+                        // Otherwise show normal "Request Chat" button
+                        actionButton.classList.add('request-btn');
+                        actionButton.textContent = 'Request Chat';
+                        actionButton.onclick = () => {
                             elements.peerIdInput.value = peerId;
                             connectToPeer(peerId);
                         };
-                        userItem.appendChild(connectIcon);
                     }
                     
+                    userItem.appendChild(actionButton);
                     elements.usersList.appendChild(userItem);
                 });
             }
