@@ -1610,17 +1610,10 @@
                     const actionButton = document.createElement('button');
                     
                     if (state.isConnected) {
-                        if (peerId === state.currentChatPeerId) {
-                            // If this is the user we're currently chatting with
-                            actionButton.classList.add('request-btn', 'in-chat');
-                            actionButton.textContent = 'In Chat';
-                            actionButton.disabled = true;
-                        } else {
-                            // If we're in a chat with someone else
-                            actionButton.classList.add('request-btn');
-                            actionButton.textContent = 'Request Chat';
-                            actionButton.disabled = true;
-                        }
+                        // If we're in a chat with someone, show "In Chat" button for all users
+                        actionButton.classList.add('request-btn', 'in-chat');
+                        actionButton.textContent = 'In Chat';
+                        actionButton.disabled = true;
                     } else if (state.sentRequests.has(peerId)) {
                         // If we've sent a request to this user, show "Request Sent" button
                         actionButton.classList.add('request-btn', 'sent');
