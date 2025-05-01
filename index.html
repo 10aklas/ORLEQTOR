@@ -508,15 +508,29 @@
             margin: 1rem 0;
             font-size: 0.9rem;
         }
-        
-        .in-room-status {
-            background-color: var(--accent-dark);
-            color: #000;
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
+
+        /* New styles for refresh button */
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 1.2rem;
             margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
+
+        .refresh-btn.loading {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -538,6 +552,7 @@
                 <h3>
                     Online Users
                     <span id="online-count">0</span>
+                    <button id="refresh-users-btn" class="refresh-btn" title="Refresh list">↻</button>
                 </h3>
                 <div id="users-list">
                     <div class="user-item current-user">
@@ -613,7 +628,8 @@
                 onlineCount: document.getElementById('online-count'),
                 usersList: document.getElementById('users-list'),
                 requestPanel: document.getElementById('request-panel'),
-                requestsList: document.getElementById('requests-list')
+                requestsList: document.getElementById('requests-list'),
+                refreshUsersBtn: document.getElementById('refresh-users-btn')
             };
             
             // App state
@@ -631,7 +647,8 @@
                 pendingRequests: new Map(),
                 sentRequests: new Set(),
                 heartbeatInterval: null,
-                activeConnections: new Map() // Track who is connected to whom
+                refreshInterval: null,
+                isRefreshing: false
             };
             
             // Initialize the app
@@ -639,6 +656,7 @@
                 elements.chatScreen.style.display = 'none';
                 setupEventListeners();
                 await initializePeer();
+                setupAutoRefresh();
             }
             
             // Set up event listeners
@@ -646,8 +664,56 @@
                 elements.connectForm.addEventListener('submit', handleConnectSubmit);
                 elements.messageForm.addEventListener('submit', handleMessageSubmit);
                 elements.disconnectBtn.addEventListener('click', disconnectFromPeer);
+                elements.refreshUsersBtn.addEventListener('click', manualRefreshUsers);
                 
                 window.addEventListener('beforeunload', cleanupBeforeUnload);
+            }
+            
+            // Set up auto-refresh for online users
+            function setupAutoRefresh() {
+                // Clear any existing interval
+                if (state.refreshInterval) {
+                    clearInterval(state.refreshInterval);
+                }
+                
+                // Set up new interval (every 30 seconds)
+                state.refreshInterval = setInterval(() => {
+                    if (!state.isRefreshing && state.trackerConnection && state.trackerConnection.open) {
+                        refreshOnlineUsers();
+                    }
+                }, 30000);
+            }
+            
+            // Manual refresh of online users
+            function manualRefreshUsers() {
+                if (state.isRefreshing) return;
+                
+                // Visual feedback
+                elements.refreshUsersBtn.classList.add('loading');
+                state.isRefreshing = true;
+                
+                refreshOnlineUsers();
+                
+                // Remove loading state after a short delay
+                setTimeout(() => {
+                    elements.refreshUsersBtn.classList.remove('loading');
+                    state.isRefreshing = false;
+                }, 1000);
+            }
+            
+            // Refresh online users list
+            function refreshOnlineUsers() {
+                if (state.trackerConnection && state.trackerConnection.open) {
+                    log('Refreshing online users list');
+                    state.trackerConnection.send({
+                        type: 'refresh-request',
+                        peerId: state.myPeerId
+                    });
+                } else {
+                    log('No tracker connection available for refresh');
+                    // Attempt to reconnect to tracker
+                    connectToTracker();
+                }
             }
             
             // Initialize PeerJS connection
@@ -673,8 +739,7 @@
                         // Add current user to online users list
                         state.onlineUsers.set(id, {
                             username: state.localUsername,
-                            isCurrentUser: true,
-                            inRoomWith: null
+                            isCurrentUser: true
                         });
                         updateOnlineUsersUI();
                         
@@ -815,20 +880,6 @@
                 // Set up the connection
                 state.connection = chatConn;
                 state.remoteUsername = request.username;
-                state.activeConnections.set(request.peerId, {
-                    username: request.username,
-                    connection: chatConn
-                });
-                
-                // Notify tracker about the new connection
-                if (state.trackerConnection && state.trackerConnection.open) {
-                    state.trackerConnection.send({
-                        type: 'connection-update',
-                        peerId: state.myPeerId,
-                        connectedTo: request.peerId,
-                        username: state.localUsername
-                    });
-                }
                 
                 // Set up connection handlers
                 chatConn.on('open', () => {
@@ -952,17 +1003,20 @@
                         username: state.localUsername
                     });
                     
+                    // Set up heartbeat
                     if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
                     state.heartbeatInterval = setInterval(() => {
                         if (state.trackerConnection && state.trackerConnection.open) {
                             state.trackerConnection.send({
                                 type: 'heartbeat',
                                 peerId: state.myPeerId,
-                                username: state.localUsername,
-                                connectedTo: state.isConnected ? state.connection.peer : null
+                                username: state.localUsername
                             });
                         }
                     }, 30000);
+                    
+                    // Set up auto-refresh
+                    setupAutoRefresh();
                 });
                 
                 state.trackerConnection.on('data', handleTrackerData);
@@ -985,21 +1039,6 @@
                     
                     state.onlineUsers = newUserList;
                     updateOnlineUsersUI();
-                } else if (data.type === 'connection-update') {
-                    // Update connection status for users
-                    if (state.onlineUsers.has(data.peerId)) {
-                        const userData = state.onlineUsers.get(data.peerId);
-                        userData.inRoomWith = data.connectedTo || null;
-                        state.onlineUsers.set(data.peerId, userData);
-                    }
-                    
-                    if (state.onlineUsers.has(data.connectedTo)) {
-                        const otherUserData = state.onlineUsers.get(data.connectedTo);
-                        otherUserData.inRoomWith = data.peerId;
-                        state.onlineUsers.set(data.connectedTo, otherUserData);
-                    }
-                    
-                    updateOnlineUsersUI();
                 }
             }
             
@@ -1010,6 +1049,11 @@
                 if (state.heartbeatInterval) {
                     clearInterval(state.heartbeatInterval);
                     state.heartbeatInterval = null;
+                }
+                
+                if (state.refreshInterval) {
+                    clearInterval(state.refreshInterval);
+                    state.refreshInterval = null;
                 }
                 
                 setTimeout(() => {
@@ -1038,12 +1082,10 @@
                     const connectedUsers = new Map();
                     connectedUsers.set(state.myPeerId, {
                         username: state.localUsername,
-                        isCurrentUser: true,
-                        inRoomWith: null
+                        isCurrentUser: true
                     });
                     
                     const userConnections = new Map();
-                    const userConnectionsMap = new Map(); // Tracks who is connected to whom
                     
                     trackerServer.on('open', (id) => {
                         log(`Tracker server started with ID: ${id}`);
@@ -1074,51 +1116,17 @@
                             
                             if (data.type === 'register' || data.type === 'heartbeat') {
                                 connectedUsers.set(data.peerId, {
-                                    username: data.username,
-                                    inRoomWith: data.connectedTo || null
+                                    username: data.username
                                 });
                                 
-                                // Update connection mapping
-                                if (data.connectedTo) {
-                                    userConnectionsMap.set(data.peerId, data.connectedTo);
-                                    
-                                    // Also update the other user's connection status
-                                    if (connectedUsers.has(data.connectedTo)) {
-                                        const otherUser = connectedUsers.get(data.connectedTo);
-                                        otherUser.inRoomWith = data.peerId;
-                                        connectedUsers.set(data.connectedTo, otherUser);
-                                    }
-                                } else {
-                                    // Remove any existing connection for this user
-                                    if (userConnectionsMap.has(data.peerId)) {
-                                        const otherPeerId = userConnectionsMap.get(data.peerId);
-                                        userConnectionsMap.delete(data.peerId);
-                                        
-                                        // Also update the other user's status
-                                        if (connectedUsers.has(otherPeerId)) {
-                                            const otherUser = connectedUsers.get(otherPeerId);
-                                            otherUser.inRoomWith = null;
-                                            connectedUsers.set(otherPeerId, otherUser);
-                                        }
-                                    }
-                                }
-                                
                                 broadcastUserList();
-                            } else if (data.type === 'connection-update') {
-                                // Update connection status
-                                if (connectedUsers.has(data.peerId)) {
-                                    const user = connectedUsers.get(data.peerId);
-                                    user.inRoomWith = data.connectedTo;
-                                    connectedUsers.set(data.peerId, user);
-                                    
-                                    // Update the other user's status if they're connected
-                                    if (data.connectedTo && connectedUsers.has(data.connectedTo)) {
-                                        const otherUser = connectedUsers.get(data.connectedTo);
-                                        otherUser.inRoomWith = data.peerId;
-                                        connectedUsers.set(data.connectedTo, otherUser);
-                                    }
-                                    
-                                    broadcastUserList();
+                            } else if (data.type === 'refresh-request') {
+                                // Handle refresh request by sending updated user list
+                                if (userConnections.has(data.peerId)) {
+                                    userConnections.get(data.peerId).send({
+                                        type: 'userList',
+                                        users: Object.fromEntries(connectedUsers)
+                                    });
                                 }
                             }
                         });
@@ -1126,20 +1134,7 @@
                         conn.on('close', () => {
                             log(`Tracker: Connection to ${conn.peer} closed`);
                             
-                            // Remove user from connected users
-                            if (connectedUsers.has(conn.peer)) {
-                                const userData = connectedUsers.get(conn.peer);
-                                
-                                // If user was in a room, update the other user's status
-                                if (userData.inRoomWith && connectedUsers.has(userData.inRoomWith)) {
-                                    const otherUser = connectedUsers.get(userData.inRoomWith);
-                                    otherUser.inRoomWith = null;
-                                    connectedUsers.set(userData.inRoomWith, otherUser);
-                                }
-                                
-                                connectedUsers.delete(conn.peer);
-                            }
-                            
+                            connectedUsers.delete(conn.peer);
                             userConnections.delete(conn.peer);
                             
                             broadcastUserList();
@@ -1148,19 +1143,7 @@
                         conn.on('error', (error) => {
                             log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
                             
-                            if (connectedUsers.has(conn.peer)) {
-                                const userData = connectedUsers.get(conn.peer);
-                                
-                                // If user was in a room, update the other user's status
-                                if (userData.inRoomWith && connectedUsers.has(userData.inRoomWith)) {
-                                    const otherUser = connectedUsers.get(userData.inRoomWith);
-                                    otherUser.inRoomWith = null;
-                                    connectedUsers.set(userData.inRoomWith, otherUser);
-                                }
-                                
-                                connectedUsers.delete(conn.peer);
-                            }
-                            
+                            connectedUsers.delete(conn.peer);
                             userConnections.delete(conn.peer);
                             
                             broadcastUserList();
@@ -1192,20 +1175,7 @@
                         userConnections.forEach((conn, peerId) => {
                             if (!conn.open) {
                                 userConnections.delete(peerId);
-                                
-                                if (connectedUsers.has(peerId)) {
-                                    const userData = connectedUsers.get(peerId);
-                                    
-                                    // If user was in a room, update the other user's status
-                                    if (userData.inRoomWith && connectedUsers.has(userData.inRoomWith)) {
-                                        const otherUser = connectedUsers.get(userData.inRoomWith);
-                                        otherUser.inRoomWith = null;
-                                        connectedUsers.set(userData.inRoomWith, otherUser);
-                                    }
-                                    
-                                    connectedUsers.delete(peerId);
-                                }
-                                
+                                connectedUsers.delete(peerId);
                                 changed = true;
                             }
                         });
@@ -1316,21 +1286,6 @@
                     // Establish the connection
                     state.connection = conn;
                     state.remoteUsername = data.username || 'Stranger';
-                    state.activeConnections.set(peerId, {
-                        username: data.username,
-                        connection: conn
-                    });
-                    
-                    // Notify tracker about the new connection
-                    if (state.trackerConnection && state.trackerConnection.open) {
-                        state.trackerConnection.send({
-                            type: 'connection-update',
-                            peerId: state.myPeerId,
-                            connectedTo: peerId,
-                            username: state.localUsername
-                        });
-                    }
-                    
                     setupConnection();
                 } else {
                     log(`Chat request declined by ${peerId}: ${data.reason || 'No reason given'}`);
@@ -1401,17 +1356,6 @@
             // Handle connection close
             function handleConnectionClose() {
                 log('Connection closed');
-                
-                // Notify tracker about disconnection
-                if (state.trackerConnection && state.trackerConnection.open) {
-                    state.trackerConnection.send({
-                        type: 'connection-update',
-                        peerId: state.myPeerId,
-                        connectedTo: null,
-                        username: state.localUsername
-                    });
-                }
-                
                 sendToDiscordWebhook(`🔌 **Disconnected**\n- User: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- From chat with: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Time: ${new Date().toLocaleString()}`);
                 handleDisconnect();
             }
@@ -1419,17 +1363,6 @@
             // Handle connection error
             function handleConnectionError(err) {
                 log(`Connection error: ${err}`);
-                
-                // Notify tracker about disconnection
-                if (state.trackerConnection && state.trackerConnection.open) {
-                    state.trackerConnection.send({
-                        type: 'connection-update',
-                        peerId: state.myPeerId,
-                        connectedTo: null,
-                        username: state.localUsername
-                    });
-                }
-                
                 showError(`Connection error: ${err}`);
                 handleDisconnect();
             }
@@ -1447,7 +1380,6 @@
                 state.isConnected = false;
                 state.remoteUsername = '';
                 state.sentRequests.clear();
-                state.activeConnections.clear();
                 
                 elements.setupScreen.style.display = 'flex';
                 elements.chatScreen.style.display = 'none';
@@ -1498,6 +1430,7 @@
                 if (state.connection) state.connection.close();
                 if (state.trackerConnection) state.trackerConnection.close();
                 if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
+                if (state.refreshInterval) clearInterval(state.refreshInterval);
                 
                 // Close all pending requests
                 state.pendingRequests.forEach(request => {
@@ -1602,15 +1535,6 @@
                 currentUserInfo.appendChild(currentUserName);
                 currentUserInfo.appendChild(currentUserId);
                 currentUserItem.appendChild(currentUserInfo);
-                
-                // Add "In Room" status if connected
-                if (state.isConnected) {
-                    const inRoomStatus = document.createElement('span');
-                    inRoomStatus.classList.add('in-room-status');
-                    inRoomStatus.textContent = 'In Room';
-                    currentUserInfo.appendChild(inRoomStatus);
-                }
-                
                 elements.usersList.appendChild(currentUserItem);
                 
                 // Show other online users
@@ -1632,15 +1556,6 @@
                     
                     userInfo.appendChild(userName);
                     userInfo.appendChild(userId);
-                    
-                    // Add "In Room" status if user is connected to someone
-                    if (userData.inRoomWith) {
-                        const inRoomStatus = document.createElement('span');
-                        inRoomStatus.classList.add('in-room-status');
-                        inRoomStatus.textContent = 'In Room';
-                        userInfo.appendChild(inRoomStatus);
-                    }
-                    
                     userItem.appendChild(userInfo);
                     
                     // Add appropriate button based on state
@@ -1655,11 +1570,6 @@
                         // If we've sent a request to this user, show "Request Sent" button
                         actionButton.classList.add('request-btn', 'sent');
                         actionButton.textContent = 'Request Sent';
-                        actionButton.disabled = true;
-                    } else if (userData.inRoomWith) {
-                        // If user is already in a room, show "In Room" button
-                        actionButton.classList.add('request-btn', 'in-room');
-                        actionButton.textContent = 'In Room';
                         actionButton.disabled = true;
                     } else {
                         // Otherwise show normal "Request Chat" button
