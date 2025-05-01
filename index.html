@@ -3,30 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with Strangers</title>
+    <title>Peer Chat</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://unpkg.com">
     <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js" defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-        :root{--bg-primary:#0a0a0a;--bg-secondary:#111111;--bg-tertiary:#1a1a1a;--text-primary:#e0e0e0;--text-secondary:#909090;--accent:#00ff9d;--accent-dark:#00cc7d;--accent-glow:rgba(0,255,157,0.2);--danger:#ff3a4c;--success:#00ff9d;--warning:#ffbb00}*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}body{background-color:var(--bg-primary);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh}header{background-color:var(--bg-secondary);padding:1rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3)}header h1{color:var(--accent);font-weight:600;letter-spacing:1px}.container{flex:1;max-width:800px;margin:0 auto;padding:1rem;width:100%;display:flex;flex-direction:column}#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.5rem;margin-bottom:1.5rem}#setup-screen h2{font-size:1.5rem;margin-bottom:0.5rem;color:var(--text-primary);font-weight:600}#my-id-display{padding:1rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;word-break:break-all;border:1px solid #222}#my-id{color:var(--accent);font-weight:bold;font-family:monospace}#connect-form{display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:400px}#connect-form h3{color:var(--text-primary);font-weight:600;font-size:1.2rem}#peer-id-input{padding:0.8rem 1rem;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222;border-radius:4px;font-size:1rem}#peer-id-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}#chat-screen{display:flex;flex-direction:column;flex:1}#connection-status{padding:1rem;background-color:var(--bg-tertiary);margin-bottom:1rem;border-radius:8px;text-align:center;border:1px solid #222}#messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.8rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;min-height:300px;max-height:60vh;border:1px solid #222}#messages::-webkit-scrollbar{width:6px}#messages::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#messages::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.message{padding:0.8rem 1rem;border-radius:8px;max-width:80%;word-break:break-word;line-height:1.4}.message.sent{background-color:var(--accent-dark);align-self:flex-end;color:#000;font-weight:500}.message.received{background-color:#222;align-self:flex-start}.username{font-size:0.8rem;opacity:0.8;margin-bottom:0.2rem;font-weight:600}#message-form{display:flex;gap:0.5rem}input,button{padding:0.8rem 1rem;border:none;border-radius:4px;font-size:1rem}#message-input{flex:1;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222}#message-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}button{background-color:var(--accent);color:#000;cursor:pointer;font-weight:bold;transition:background-color 0.2s}button:hover{background-color:var(--accent-dark)}button:disabled{background-color:#333;color:#666;cursor:not-allowed}#disconnect-btn{background-color:var(--danger);color:white;margin-top:1rem}#disconnect-btn:hover{background-color:#e6293a}footer{text-align:center;padding:1rem;background-color:var(--bg-secondary);color:var(--text-secondary);font-size:0.8rem;box-shadow:0 -2px 8px rgba(0,0,0,0.3)}.status-connecting{color:var(--warning)}.status-connected{color:var(--success)}.status-disconnected{color:var(--danger)}#error-display{color:var(--danger);padding:1rem;margin-top:1rem;background-color:rgba(255,58,76,0.1);border-radius:4px;text-align:center;display:none;border:1px solid rgba(255,58,76,0.3)}#debug-log{background-color:#0a0a0a;color:var(--accent);padding:0.8rem;font-family:monospace;height:100px;overflow-y:auto;margin-top:1rem;font-size:0.8rem;white-space:pre-wrap;border-radius:4px;border:1px solid #222}#online-users-panel{background-color:var(--bg-tertiary);border-radius:8px;padding:1rem;margin-bottom:1.5rem;border:1px solid #222;width:100%}#online-users-panel h3{margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:1.1rem}#online-count{background-color:var(--accent);color:#000;border-radius:12px;padding:0.2rem 0.6rem;font-size:0.8rem;font-weight:bold}#users-list{max-height:200px;overflow-y:auto;background-color:rgba(0,0,0,0.2);border-radius:4px}#users-list::-webkit-scrollbar{width:6px}#users-list::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#users-list::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.user-item{display:flex;justify-content:space-between;padding:0.8rem;border-bottom:1px solid #222}.user-item:last-child{border-bottom:none}.user-item .user-name{font-weight:bold;display:flex;align-items:center}.user-item .user-name::before{content:'';display:inline-block;width:8px;height:8px;background-color:var(--success);border-radius:50%;margin-right:8px}.user-item .user-id{color:var(--text-secondary);font-size:0.8rem;font-family:monospace}.user-item.current-user{background-color:rgba(0,255,157,0.1)}.connect-icon{cursor:pointer;color:var(--accent);margin-left:0.5rem}#random-chat-wrapper{margin-bottom:1.5rem;width:100%;max-width:400px}#random-chat-btn{width:100%;background-color:var(--warning);color:#000;font-size:1.1rem;padding:1rem;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:transform 0.2s,background-color 0.2s}#random-chat-btn:hover{background-color:#e6a800;transform:translateY(-2px)}#random-chat-btn:active{transform:translateY(0)}#random-chat-btn:disabled{background-color:#665000;transform:none}#random-chat-btn .icon{font-size:1.2rem}@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}.random-connecting{animation:pulse 1s infinite}@keyframes fadeIn{from{opacity:0}to{opacity:1}}#setup-screen,#chat-screen{animation:fadeIn 0.5s ease-out}#searching-indicator{margin-top:0.5rem;font-size:0.9rem;color:var(--accent);display:none}
+        :root{--bg-primary:#0a0a0a;--bg-secondary:#111111;--bg-tertiary:#1a1a1a;--text-primary:#e0e0e0;--text-secondary:#909090;--accent:#00ff9d;--accent-dark:#00cc7d;--accent-glow:rgba(0,255,157,0.2);--danger:#ff3a4c;--success:#00ff9d;--warning:#ffbb00}*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}body{background-color:var(--bg-primary);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh}header{background-color:var(--bg-secondary);padding:1rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3)}header h1{color:var(--accent);font-weight:600;letter-spacing:1px}.container{flex:1;max-width:800px;margin:0 auto;padding:1rem;width:100%;display:flex;flex-direction:column}#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.5rem;margin-bottom:1.5rem}#setup-screen h2{font-size:1.5rem;margin-bottom:0.5rem;color:var(--text-primary);font-weight:600}#my-id-display{padding:1rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;word-break:break-all;border:1px solid #222}#my-id{color:var(--accent);font-weight:bold;font-family:monospace}#connect-form{display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:400px}#connect-form h3{color:var(--text-primary);font-weight:600;font-size:1.2rem}#peer-id-input{padding:0.8rem 1rem;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222;border-radius:4px;font-size:1rem}#peer-id-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}#chat-screen{display:flex;flex-direction:column;flex:1}#connection-status{padding:1rem;background-color:var(--bg-tertiary);margin-bottom:1rem;border-radius:8px;text-align:center;border:1px solid #222}#messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.8rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;min-height:300px;max-height:60vh;border:1px solid #222}#messages::-webkit-scrollbar{width:6px}#messages::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#messages::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.message{padding:0.8rem 1rem;border-radius:8px;max-width:80%;word-break:break-word;line-height:1.4}.message.sent{background-color:var(--accent-dark);align-self:flex-end;color:#000;font-weight:500}.message.received{background-color:#222;align-self:flex-start}.username{font-size:0.8rem;opacity:0.8;margin-bottom:0.2rem;font-weight:600}#message-form{display:flex;gap:0.5rem}input,button{padding:0.8rem 1rem;border:none;border-radius:4px;font-size:1rem}#message-input{flex:1;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222}#message-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}button{background-color:var(--accent);color:#000;cursor:pointer;font-weight:bold;transition:background-color 0.2s}button:hover{background-color:var(--accent-dark)}button:disabled{background-color:#333;color:#666;cursor:not-allowed}#disconnect-btn{background-color:var(--danger);color:white;margin-top:1rem}#disconnect-btn:hover{background-color:#e6293a}footer{text-align:center;padding:1rem;background-color:var(--bg-secondary);color:var(--text-secondary);font-size:0.8rem;box-shadow:0 -2px 8px rgba(0,0,0,0.3)}.status-connecting{color:var(--warning)}.status-connected{color:var(--success)}.status-disconnected{color:var(--danger)}#error-display{color:var(--danger);padding:1rem;margin-top:1rem;background-color:rgba(255,58,76,0.1);border-radius:4px;text-align:center;display:none;border:1px solid rgba(255,58,76,0.3)}#debug-log{background-color:#0a0a0a;color:var(--accent);padding:0.8rem;font-family:monospace;height:100px;overflow-y:auto;margin-top:1rem;font-size:0.8rem;white-space:pre-wrap;border-radius:4px;border:1px solid #222}#online-users-panel{background-color:var(--bg-tertiary);border-radius:8px;padding:1rem;margin-bottom:1.5rem;border:1px solid #222;width:100%}#online-users-panel h3{margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:1.1rem}#online-count{background-color:var(--accent);color:#000;border-radius:12px;padding:0.2rem 0.6rem;font-size:0.8rem;font-weight:bold}#users-list{max-height:200px;overflow-y:auto;background-color:rgba(0,0,0,0.2);border-radius:4px}#users-list::-webkit-scrollbar{width:6px}#users-list::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#users-list::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.user-item{display:flex;justify-content:space-between;padding:0.8rem;border-bottom:1px solid #222}.user-item:last-child{border-bottom:none}.user-item .user-name{font-weight:bold;display:flex;align-items:center}.user-item .user-name::before{content:'';display:inline-block;width:8px;height:8px;background-color:var(--success);border-radius:50%;margin-right:8px}.user-item .user-id{color:var(--text-secondary);font-size:0.8rem;font-family:monospace}.user-item.current-user{background-color:rgba(0,255,157,0.1)}.connect-icon{cursor:pointer;color:var(--accent);margin-left:0.5rem}@keyframes fadeIn{from{opacity:0}to{opacity:1}}#setup-screen,#chat-screen{animation:fadeIn 0.5s ease-out}.request-btn{background-color:var(--warning);color:#000;padding:0.4rem 0.8rem;font-size:0.9rem;border-radius:4px;cursor:pointer;transition:background-color 0.2s}.request-btn:hover{background-color:#e6a800}.request-btn:disabled{background-color:#333;color:#666;cursor:not-allowed}#request-panel{background-color:var(--bg-tertiary);border-radius:8px;padding:1rem;margin-bottom:1.5rem;border:1px solid #222;display:none}#request-panel h3{margin-bottom:1rem;font-weight:600}.request-item{display:flex;justify-content:space-between;align-items:center;padding:0.8rem;border-bottom:1px solid #222}.request-item:last-child{border-bottom:none}.request-info{flex:1}.request-actions{display:flex;gap:0.5rem}.request-btn.accept{background-color:var(--success)}.request-btn.decline{background-color:var(--danger);color:white}
     </style>
 </head>
 <body>
     <header>
-        <h1>Chat with Strangers</h1>
+        <h1>Peer Chat</h1>
     </header>
     
     <div class="container">
         <div id="setup-screen">
-            <h2>Find Someone to Chat With</h2>
+            <h2>Connect with Other Users</h2>
             
-            <div id="random-chat-wrapper">
-                <button id="random-chat-btn">
-                    <span class="icon">🎲</span>
-                    Start Random Chat
-                </button>
-                <div id="searching-indicator">Searching for someone to chat with...</div>
+            <div id="request-panel">
+                <h3>Connection Requests</h3>
+                <div id="requests-list"></div>
             </div>
             
             <div id="online-users-panel">
@@ -51,7 +48,7 @@
             <form id="connect-form">
                 <h3>Connect to someone</h3>
                 <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
-                <button type="submit" id="connect-btn">Connect</button>
+                <button type="submit" id="connect-btn">Send Request</button>
             </form>
             
             <div id="error-display"></div>
@@ -77,7 +74,7 @@
     </div>
     
     <footer>
-        <p>Chat with Strangers &copy; 2025</p>
+        <p>Peer Chat &copy; 2025</p>
     </footer>
 
     <script>
@@ -105,8 +102,8 @@
                 debugLog: document.getElementById('debug-log'),
                 onlineCount: document.getElementById('online-count'),
                 usersList: document.getElementById('users-list'),
-                randomChatBtn: document.getElementById('random-chat-btn'),
-                searchingIndicator: document.getElementById('searching-indicator')
+                requestPanel: document.getElementById('request-panel'),
+                requestsList: document.getElementById('requests-list')
             };
             
             // App state
@@ -118,13 +115,11 @@
                 remoteUsername: '',
                 isConnected: false,
                 myPeerId: '',
-                isSearching: false,
                 userIP: 'Unknown',
                 TRACKER_SERVER_ID: 'user-tracker-server',
                 onlineUsers: new Map(),
-                searchingUsers: new Map(),
-                heartbeatInterval: null,
-                matchmakingInterval: null
+                pendingRequests: new Map(),
+                heartbeatInterval: null
             };
             
             // Initialize the app
@@ -132,7 +127,6 @@
                 elements.chatScreen.style.display = 'none';
                 setupEventListeners();
                 await initializePeer();
-                updateRandomChatButton();
             }
             
             // Set up event listeners
@@ -140,7 +134,6 @@
                 elements.connectForm.addEventListener('submit', handleConnectSubmit);
                 elements.messageForm.addEventListener('submit', handleMessageSubmit);
                 elements.disconnectBtn.addEventListener('click', disconnectFromPeer);
-                elements.randomChatBtn.addEventListener('click', toggleRandomChat);
                 
                 window.addEventListener('beforeunload', cleanupBeforeUnload);
             }
@@ -165,8 +158,7 @@
                         elements.usernameDisplay.textContent = `Your username: ${state.localUsername}`;
                         
                         state.onlineUsers.set(id, {
-                            username: state.localUsername,
-                            searching: false
+                            username: state.localUsername
                         });
                         updateOnlineUsersUI();
                         
@@ -193,11 +185,139 @@
                     return;
                 }
                 
+                // Check if this is a chat request
+                if (conn.metadata && conn.metadata.type === 'request') {
+                    handleChatRequest(conn);
+                    return;
+                }
+                
+                // Handle established chat connection
                 if (!state.isConnected) {
                     state.connection = conn;
                     setupConnection();
                 } else {
                     conn.close();
+                }
+            }
+            
+            // Handle chat requests
+            function handleChatRequest(conn) {
+                const requestId = generateSimpleId();
+                const fromPeerId = conn.peer;
+                const fromUsername = conn.metadata.username || 'Unknown';
+                
+                log(`Received chat request from ${fromUsername} (${fromPeerId})`);
+                
+                // Store the request
+                state.pendingRequests.set(requestId, {
+                    conn: conn,
+                    peerId: fromPeerId,
+                    username: fromUsername,
+                    timestamp: Date.now()
+                });
+                
+                // Show the request panel if hidden
+                elements.requestPanel.style.display = 'block';
+                
+                // Add request to UI
+                const requestItem = document.createElement('div');
+                requestItem.className = 'request-item';
+                requestItem.id = `request-${requestId}`;
+                
+                const requestInfo = document.createElement('div');
+                requestInfo.className = 'request-info';
+                requestInfo.innerHTML = `<strong>${fromUsername}</strong> wants to chat<br><small>ID: ${fromPeerId}</small>`;
+                
+                const requestActions = document.createElement('div');
+                requestActions.className = 'request-actions';
+                
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'request-btn accept';
+                acceptBtn.textContent = 'Accept';
+                acceptBtn.onclick = () => acceptChatRequest(requestId);
+                
+                const declineBtn = document.createElement('button');
+                declineBtn.className = 'request-btn decline';
+                declineBtn.textContent = 'Decline';
+                declineBtn.onclick = () => declineChatRequest(requestId);
+                
+                requestActions.appendChild(acceptBtn);
+                requestActions.appendChild(declineBtn);
+                requestItem.appendChild(requestInfo);
+                requestItem.appendChild(requestActions);
+                
+                elements.requestsList.appendChild(requestItem);
+                
+                // Set timeout to auto-decline after 30 seconds
+                setTimeout(() => {
+                    if (state.pendingRequests.has(requestId)) {
+                        declineChatRequest(requestId);
+                    }
+                }, 30000);
+            }
+            
+            // Accept a chat request
+            function acceptChatRequest(requestId) {
+                const request = state.pendingRequests.get(requestId);
+                if (!request) return;
+                
+                log(`Accepting chat request from ${request.username} (${request.peerId})`);
+                
+                // Send acceptance response
+                request.conn.send({
+                    type: 'request-response',
+                    accepted: true,
+                    username: state.localUsername
+                });
+                
+                // Close all other pending requests
+                state.pendingRequests.forEach((req, id) => {
+                    if (id !== requestId) {
+                        req.conn.send({
+                            type: 'request-response',
+                            accepted: false,
+                            reason: 'User accepted another chat'
+                        });
+                        req.conn.close();
+                    }
+                });
+                
+                // Clear all requests
+                state.pendingRequests.clear();
+                elements.requestsList.innerHTML = '';
+                elements.requestPanel.style.display = 'none';
+                
+                // Establish the connection
+                state.connection = request.conn;
+                setupConnection();
+            }
+            
+            // Decline a chat request
+            function declineChatRequest(requestId) {
+                const request = state.pendingRequests.get(requestId);
+                if (!request) return;
+                
+                log(`Declining chat request from ${request.username} (${request.peerId})`);
+                
+                // Send decline response
+                request.conn.send({
+                    type: 'request-response',
+                    accepted: false,
+                    reason: 'Request declined'
+                });
+                
+                request.conn.close();
+                
+                // Remove from UI and state
+                state.pendingRequests.delete(requestId);
+                const requestElement = document.getElementById(`request-${requestId}`);
+                if (requestElement) {
+                    requestElement.remove();
+                }
+                
+                // Hide panel if no more requests
+                if (state.pendingRequests.size === 0) {
+                    elements.requestPanel.style.display = 'none';
                 }
             }
             
@@ -257,8 +377,7 @@
                     state.trackerConnection.send({
                         type: 'register',
                         peerId: state.myPeerId,
-                        username: state.localUsername,
-                        searching: state.isSearching
+                        username: state.localUsername
                     });
                     
                     if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
@@ -267,15 +386,10 @@
                             state.trackerConnection.send({
                                 type: 'heartbeat',
                                 peerId: state.myPeerId,
-                                username: state.localUsername,
-                                searching: state.isSearching
+                                username: state.localUsername
                             });
                         }
                     }, 30000);
-                    
-                    if (state.isSearching && !state.matchmakingInterval) {
-                        startMatchmaking();
-                    }
                 });
                 
                 state.trackerConnection.on('data', handleTrackerData);
@@ -290,9 +404,6 @@
                 if (data.type === 'userList') {
                     state.onlineUsers = new Map(Object.entries(data.users));
                     updateOnlineUsersUI();
-                } else if (data.type === 'matchFound' && state.isSearching) {
-                    stopSearching();
-                    connectToPeer(data.matchPeerId);
                 }
             }
             
@@ -303,11 +414,6 @@
                 if (state.heartbeatInterval) {
                     clearInterval(state.heartbeatInterval);
                     state.heartbeatInterval = null;
-                }
-                
-                if (state.matchmakingInterval) {
-                    clearInterval(state.matchmakingInterval);
-                    state.matchmakingInterval = null;
                 }
                 
                 setTimeout(() => {
@@ -335,8 +441,7 @@
                     
                     const connectedUsers = new Map();
                     connectedUsers.set(state.myPeerId, {
-                        username: state.localUsername,
-                        searching: false
+                        username: state.localUsername
                     });
                     
                     const userConnections = new Map();
@@ -370,13 +475,8 @@
                             
                             if (data.type === 'register' || data.type === 'heartbeat') {
                                 connectedUsers.set(data.peerId, {
-                                    username: data.username,
-                                    searching: data.searching || false
+                                    username: data.username
                                 });
-                                
-                                if (data.searching) {
-                                    tryToMatchUsers(data.peerId, connectedUsers);
-                                }
                                 
                                 broadcastUserList();
                             }
@@ -400,48 +500,6 @@
                             broadcastUserList();
                         });
                     });
-                    
-                    function tryToMatchUsers(newSearchingPeerId, users) {
-                        const searchingUsers = Array.from(users.entries())
-                            .filter(([peerId, userData]) => 
-                                userData.searching && 
-                                peerId !== newSearchingPeerId && 
-                                peerId !== state.TRACKER_SERVER_ID
-                            );
-                        
-                        if (searchingUsers.length > 0) {
-                            const [matchPeerId, matchUserData] = searchingUsers[0];
-                            
-                            users.set(newSearchingPeerId, {
-                                ...users.get(newSearchingPeerId),
-                                searching: false
-                            });
-                            
-                            users.set(matchPeerId, {
-                                ...users.get(matchPeerId),
-                                searching: false
-                            });
-                            
-                            const newUserConn = userConnections.get(newSearchingPeerId);
-                            const matchUserConn = userConnections.get(matchPeerId);
-                            
-                            if (newUserConn && newUserConn.open) {
-                                newUserConn.send({
-                                    type: 'matchFound',
-                                    matchPeerId: matchPeerId
-                                });
-                            }
-                            
-                            if (matchUserConn && matchUserConn.open) {
-                                matchUserConn.send({
-                                    type: 'matchFound',
-                                    matchPeerId: newSearchingPeerId
-                                });
-                            }
-                            
-                            broadcastUserList();
-                        }
-                    }
                     
                     function broadcastUserList() {
                         const userListMessage = {
@@ -492,85 +550,77 @@
                 }
             }
             
-            // Start matchmaking process
-            function startMatchmaking() {
-                if (!state.matchmakingInterval) {
-                    state.matchmakingInterval = setInterval(() => {
-                        if (state.trackerConnection && state.trackerConnection.open) {
-                            state.trackerConnection.send({
-                                type: 'heartbeat',
-                                peerId: state.myPeerId,
-                                username: state.localUsername,
-                                searching: state.isSearching
-                            });
+            // Send chat request to a peer
+            function sendChatRequest(peerId) {
+                if (state.isConnected) return;
+                
+                log(`Sending chat request to: ${peerId}`);
+                elements.statusText.textContent = 'Sending request...';
+                elements.statusText.className = 'status-connecting';
+                
+                try {
+                    const conn = state.peer.connect(peerId, {
+                        reliable: true,
+                        metadata: {
+                            type: 'request',
+                            username: state.localUsername
                         }
-                    }, 5000);
-                }
-            }
-            
-            // Stop matchmaking process
-            function stopMatchmaking() {
-                if (state.matchmakingInterval) {
-                    clearInterval(state.matchmakingInterval);
-                    state.matchmakingInterval = null;
-                }
-            }
-            
-            // Start searching for random chat
-            function startSearching() {
-                if (state.isSearching || state.isConnected) return;
-                
-                state.isSearching = true;
-                elements.searchingIndicator.style.display = 'block';
-                elements.randomChatBtn.disabled = true;
-                elements.randomChatBtn.textContent = 'Searching...';
-                
-                if (state.trackerConnection && state.trackerConnection.open) {
-                    state.trackerConnection.send({
-                        type: 'heartbeat',
-                        peerId: state.myPeerId,
-                        username: state.localUsername,
-                        searching: true
                     });
                     
-                    if (state.onlineUsers.has(state.myPeerId)) {
-                        state.onlineUsers.set(state.myPeerId, {
-                            username: state.localUsername,
-                            searching: true
-                        });
-                        updateOnlineUsersUI();
-                    }
+                    conn.on('open', () => {
+                        log(`Request connection opened to ${peerId}`);
+                    });
                     
-                    startMatchmaking();
+                    conn.on('data', (data) => {
+                        if (data.type === 'request-response') {
+                            handleRequestResponse(data, peerId, conn);
+                        }
+                    });
+                    
+                    conn.on('close', () => {
+                        log(`Request connection to ${peerId} closed`);
+                        elements.statusText.textContent = 'Disconnected';
+                        elements.statusText.className = 'status-disconnected';
+                    });
+                    
+                    conn.on('error', (err) => {
+                        log(`Request connection error: ${err}`);
+                        showError(`Failed to send request: ${err}`);
+                        elements.statusText.textContent = 'Disconnected';
+                        elements.statusText.className = 'status-disconnected';
+                    });
+                    
+                } catch (error) {
+                    log(`Error sending chat request: ${error.message}`);
+                    showError(`Failed to send request: ${error.message}`);
+                    elements.statusText.textContent = 'Disconnected';
+                    elements.statusText.className = 'status-disconnected';
                 }
             }
             
-            // Stop searching for random chat
-            function stopSearching() {
-                if (!state.isSearching) return;
-                
-                state.isSearching = false;
-                elements.searchingIndicator.style.display = 'none';
-                elements.randomChatBtn.disabled = false;
-                elements.randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
-                
-                if (state.trackerConnection && state.trackerConnection.open) {
-                    state.trackerConnection.send({
-                        type: 'heartbeat',
-                        peerId: state.myPeerId,
-                        username: state.localUsername,
-                        searching: false
+            // Handle response to our chat request
+            function handleRequestResponse(data, peerId, conn) {
+                if (data.accepted) {
+                    log(`Chat request accepted by ${peerId}`);
+                    
+                    // Close any other pending requests we might have sent
+                    state.pendingRequests.forEach(req => {
+                        if (req.conn && req.conn !== conn && req.conn.open) {
+                            req.conn.close();
+                        }
                     });
+                    state.pendingRequests.clear();
                     
-                    if (state.onlineUsers.has(state.myPeerId)) {
-                        state.onlineUsers.set(state.myPeerId, {
-                            username: state.localUsername,
-                            searching: false
-                        });
-                        updateOnlineUsersUI();
-                    }
-                    
-                    stopMatchmaking();
+                    // Establish the connection
+                    state.connection = conn;
+                    state.remoteUsername = data.username || 'Stranger';
+                    setupConnection();
+                } else {
+                    log(`Chat request declined by ${peerId}: ${data.reason || 'No reason given'}`);
+                    showError(`Chat request declined: ${data.reason || 'No reason given'}`);
+                    conn.close();
+                    elements.statusText.textContent = 'Disconnected';
+                    elements.statusText.className = 'status-disconnected';
                 }
             }
             
@@ -578,23 +628,7 @@
             function connectToPeer(peerId) {
                 if (state.isConnected) return;
                 
-                log(`Connecting to peer: ${peerId}`);
-                elements.statusText.textContent = 'Connecting...';
-                elements.statusText.className = 'status-connecting';
-                
-                stopSearching();
-                
-                try {
-                    state.connection = state.peer.connect(peerId, {
-                        reliable: true
-                    });
-                    setupConnection();
-                } catch (error) {
-                    log(`Error connecting to peer: ${error.message}`);
-                    showError(`Failed to connect: ${error.message}`);
-                    elements.statusText.textContent = 'Disconnected';
-                    elements.statusText.className = 'status-disconnected';
-                }
+                sendChatRequest(peerId);
             }
             
             // Set up peer connection
@@ -665,6 +699,7 @@
             // Handle disconnection
             function handleDisconnect() {
                 state.isConnected = false;
+                state.remoteUsername = '';
                 
                 elements.setupScreen.style.display = 'flex';
                 elements.chatScreen.style.display = 'none';
@@ -674,9 +709,6 @@
                 elements.sendBtn.disabled = true;
                 
                 elements.messagesContainer.innerHTML = '';
-                
-                stopSearching();
-                updateRandomChatButton();
             }
             
             // Handle connect form submission
@@ -708,15 +740,6 @@
                 }
             }
             
-            // Toggle random chat
-            function toggleRandomChat() {
-                if (state.isSearching) {
-                    stopSearching();
-                } else {
-                    startSearching();
-                }
-            }
-            
             // Clean up before page unload
             function cleanupBeforeUnload() {
                 sendToDiscordWebhook(`🚪 **User Left**\n- Username: ${state.localUsername}\n- Peer ID: ${state.myPeerId}\n- IP: ${state.userIP}\n- Time: ${new Date().toLocaleString()}`);
@@ -724,7 +747,13 @@
                 if (state.connection) state.connection.close();
                 if (state.trackerConnection) state.trackerConnection.close();
                 if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
-                if (state.matchmakingInterval) clearInterval(state.matchmakingInterval);
+                
+                // Close all pending requests
+                state.pendingRequests.forEach(request => {
+                    if (request.conn && request.conn.open) {
+                        request.conn.close();
+                    }
+                });
                 
                 if (state.peer) state.peer.destroy();
             }
@@ -806,27 +835,25 @@
                 
                 elements.usersList.innerHTML = '';
                 
+                if (state.onlineUsers.size === 0) {
+                    const noUsersItem = document.createElement('div');
+                    noUsersItem.classList.add('user-item');
+                    noUsersItem.textContent = 'No other users online';
+                    elements.usersList.appendChild(noUsersItem);
+                    return;
+                }
+                
                 state.onlineUsers.forEach((userData, peerId) => {
+                    if (peerId === state.myPeerId || peerId === state.TRACKER_SERVER_ID) return;
+                    
                     const userItem = document.createElement('div');
                     userItem.classList.add('user-item');
-                    
-                    if (peerId === state.myPeerId) {
-                        userItem.classList.add('current-user');
-                    }
                     
                     const userInfo = document.createElement('div');
                     
                     const userName = document.createElement('span');
                     userName.classList.add('user-name');
                     userName.textContent = userData.username;
-                    
-                    if (userData.searching) {
-                        const searchingBadge = document.createElement('span');
-                        searchingBadge.textContent = ' 🔍';
-                        searchingBadge.style.fontSize = '0.8em';
-                        searchingBadge.style.opacity = '0.7';
-                        userName.appendChild(searchingBadge);
-                    }
                     
                     const userId = document.createElement('span');
                     userId.classList.add('user-id');
@@ -836,10 +863,10 @@
                     userInfo.appendChild(userId);
                     userItem.appendChild(userInfo);
                     
-                    if (peerId !== state.myPeerId && !state.isConnected) {
-                        const connectIcon = document.createElement('span');
-                        connectIcon.classList.add('connect-icon');
-                        connectIcon.textContent = '→ Connect';
+                    if (!state.isConnected) {
+                        const connectIcon = document.createElement('button');
+                        connectIcon.classList.add('request-btn');
+                        connectIcon.textContent = 'Request Chat';
                         connectIcon.onclick = () => {
                             elements.peerIdInput.value = peerId;
                             connectToPeer(peerId);
@@ -849,8 +876,6 @@
                     
                     elements.usersList.appendChild(userItem);
                 });
-                
-                updateRandomChatButton();
             }
             
             function appendMessage(text, isSent, sender) {
@@ -887,24 +912,6 @@
                 
                 elements.messagesContainer.appendChild(messageElement);
                 elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
-            }
-            
-            function updateRandomChatButton() {
-                const availableUsers = Array.from(state.onlineUsers.entries())
-                    .filter(([peerId, userData]) => 
-                        peerId !== state.myPeerId && 
-                        peerId !== state.TRACKER_SERVER_ID
-                    ).length;
-                
-                elements.randomChatBtn.disabled = availableUsers < 1 || state.isConnected || state.isSearching;
-                
-                if (availableUsers < 1) {
-                    elements.randomChatBtn.textContent = 'No Users Available';
-                } else if (state.isSearching) {
-                    elements.randomChatBtn.textContent = 'Searching...';
-                } else {
-                    elements.randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
-                }
             }
             
             // Public API
