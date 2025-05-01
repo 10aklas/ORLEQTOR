@@ -556,30 +556,6 @@
             font-size: 0.9rem;
         }
 
-        /* New styles for refresh button */
-        .refresh-btn {
-            background: none;
-            border: none;
-            color: var(--accent);
-            cursor: pointer;
-            font-size: 1.2rem;
-            margin-left: 0.5rem;
-            transition: transform 0.3s ease;
-        }
-
-        .refresh-btn:hover {
-            transform: rotate(180deg);
-        }
-
-        .refresh-btn.loading {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
         /* Overlay for when request panel is open */
         .overlay {
             position: fixed;
@@ -625,7 +601,6 @@
                 <h3>
                     Online Users
                     <span id="online-count">0</span>
-                    <button id="refresh-users-btn" class="refresh-btn" title="Refresh list">↻</button>
                 </h3>
                 <div id="users-list">
                     <div class="user-item current-user">
@@ -702,7 +677,6 @@
                 usersList: document.getElementById('users-list'),
                 requestPanel: document.getElementById('request-panel'),
                 requestsList: document.getElementById('requests-list'),
-                refreshUsersBtn: document.getElementById('refresh-users-btn'),
                 overlay: document.getElementById('overlay')
             };
             
@@ -721,8 +695,7 @@
                 pendingRequests: new Map(),
                 sentRequests: new Set(),
                 heartbeatInterval: null,
-                refreshInterval: null,
-                isRefreshing: false
+                refreshInterval: null
             };
             
             // Initialize the app
@@ -738,7 +711,6 @@
                 elements.connectForm.addEventListener('submit', handleConnectSubmit);
                 elements.messageForm.addEventListener('submit', handleMessageSubmit);
                 elements.disconnectBtn.addEventListener('click', disconnectFromPeer);
-                elements.refreshUsersBtn.addEventListener('click', manualRefreshUsers);
                 
                 window.addEventListener('beforeunload', cleanupBeforeUnload);
             }
@@ -752,27 +724,10 @@
                 
                 // Set up new interval (every 30 seconds)
                 state.refreshInterval = setInterval(() => {
-                    if (!state.isRefreshing && state.trackerConnection && state.trackerConnection.open) {
+                    if (state.trackerConnection && state.trackerConnection.open) {
                         refreshOnlineUsers();
                     }
                 }, 30000);
-            }
-            
-            // Manual refresh of online users
-            function manualRefreshUsers() {
-                if (state.isRefreshing) return;
-                
-                // Visual feedback
-                elements.refreshUsersBtn.classList.add('loading');
-                state.isRefreshing = true;
-                
-                refreshOnlineUsers();
-                
-                // Remove loading state after a short delay
-                setTimeout(() => {
-                    elements.refreshUsersBtn.classList.remove('loading');
-                    state.isRefreshing = false;
-                }, 1000);
             }
             
             // Refresh online users list
@@ -1593,9 +1548,6 @@
             
             function updateOnlineUsersUI() {
                 elements.onlineCount.textContent = state.onlineUsers.size;
-                
-                // Hide refresh button when in chat
-                elements.refreshUsersBtn.style.display = state.isConnected ? 'none' : 'inline-block';
                 
                 // Update connect button based on chat state
                 if (state.isConnected) {
