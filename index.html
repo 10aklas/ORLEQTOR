@@ -451,9 +451,10 @@
             color: #ccc;
         }
         
-        .request-btn.in-room {
+        .request-btn.in-chat {
             background-color: var(--accent);
             color: #000;
+            cursor: default;
         }
         
         /* Updated request panel styles */
@@ -695,7 +696,8 @@
                 pendingRequests: new Map(),
                 sentRequests: new Set(),
                 heartbeatInterval: null,
-                refreshInterval: null
+                refreshInterval: null,
+                currentChatPeerId: null
             };
             
             // Initialize the app
@@ -911,6 +913,7 @@
                 // Set up the connection
                 state.connection = chatConn;
                 state.remoteUsername = request.username;
+                state.currentChatPeerId = request.peerId;
                 
                 // Set up connection handlers
                 chatConn.on('open', () => {
@@ -934,7 +937,7 @@
                     
                     appendSystemMessage('Connected! Say hello!');
                     
-                    // Update online users UI to show "In Room" status
+                    // Update online users UI to show "In Chat" status
                     updateOnlineUsersUI();
                 });
                 
@@ -1318,6 +1321,7 @@
                     // Establish the connection
                     state.connection = conn;
                     state.remoteUsername = data.username || 'Stranger';
+                    state.currentChatPeerId = peerId;
                     setupConnection();
                 } else {
                     log(`Chat request declined by ${peerId}: ${data.reason || 'No reason given'}`);
@@ -1361,7 +1365,7 @@
                     
                     appendSystemMessage('Connected! Say hello!');
                     
-                    // Update online users UI to show "In Room" status
+                    // Update online users UI to show "In Chat" status
                     updateOnlineUsersUI();
                 });
                 
@@ -1412,6 +1416,7 @@
                 state.isConnected = false;
                 state.remoteUsername = '';
                 state.sentRequests.clear();
+                state.currentChatPeerId = null;
                 
                 elements.setupScreen.style.display = 'flex';
                 elements.chatScreen.style.display = 'none';
@@ -1605,10 +1610,17 @@
                     const actionButton = document.createElement('button');
                     
                     if (state.isConnected) {
-                        // If we're in a chat room, show "In Room" button
-                        actionButton.classList.add('request-btn', 'in-room');
-                        actionButton.textContent = 'In Room';
-                        actionButton.disabled = true;
+                        if (peerId === state.currentChatPeerId) {
+                            // If this is the user we're currently chatting with
+                            actionButton.classList.add('request-btn', 'in-chat');
+                            actionButton.textContent = 'In Chat';
+                            actionButton.disabled = true;
+                        } else {
+                            // If we're in a chat with someone else
+                            actionButton.classList.add('request-btn');
+                            actionButton.textContent = 'Request Chat';
+                            actionButton.disabled = true;
+                        }
                     } else if (state.sentRequests.has(peerId)) {
                         // If we've sent a request to this user, show "Request Sent" button
                         actionButton.classList.add('request-btn', 'sent');
