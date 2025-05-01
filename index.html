@@ -32,9 +32,10 @@
                     <span id="online-count">0</span>
                 </h3>
                 <div id="users-list">
-                    <div class="user-item">
+                    <div class="user-item current-user">
                         <div>
-                            <span class="user-name">Loading users...</span>
+                            <span class="user-name">You</span>
+                            <span class="user-id" id="current-user-id">Connecting...</span>
                         </div>
                     </div>
                 </div>
@@ -88,6 +89,7 @@
                 setupScreen: document.getElementById('setup-screen'),
                 chatScreen: document.getElementById('chat-screen'),
                 myIdDisplay: document.getElementById('my-id'),
+                currentUserId: document.getElementById('current-user-id'),
                 peerIdInput: document.getElementById('peer-id-input'),
                 connectForm: document.getElementById('connect-form'),
                 connectBtn: document.getElementById('connect-btn'),
@@ -155,10 +157,13 @@
                         log(`Peer connected with ID: ${id}`);
                         state.myPeerId = id;
                         elements.myIdDisplay.textContent = id;
+                        elements.currentUserId.textContent = id;
                         elements.usernameDisplay.textContent = `Your username: ${state.localUsername}`;
                         
+                        // Add current user to online users list
                         state.onlineUsers.set(id, {
-                            username: state.localUsername
+                            username: state.localUsername,
+                            isCurrentUser: true
                         });
                         updateOnlineUsersUI();
                         
@@ -289,6 +294,7 @@
                 
                 // Establish the connection
                 state.connection = request.conn;
+                state.remoteUsername = request.username;
                 setupConnection();
             }
             
@@ -402,7 +408,15 @@
                 log(`Received tracker data: ${JSON.stringify(data)}`);
                 
                 if (data.type === 'userList') {
-                    state.onlineUsers = new Map(Object.entries(data.users));
+                    // Merge the new user list with our current user data
+                    const newUserList = new Map(Object.entries(data.users));
+                    
+                    // Preserve our current user's data
+                    if (state.onlineUsers.has(state.myPeerId)) {
+                        newUserList.set(state.myPeerId, state.onlineUsers.get(state.myPeerId));
+                    }
+                    
+                    state.onlineUsers = newUserList;
                     updateOnlineUsersUI();
                 }
             }
@@ -441,7 +455,8 @@
                     
                     const connectedUsers = new Map();
                     connectedUsers.set(state.myPeerId, {
-                        username: state.localUsername
+                        username: state.localUsername,
+                        isCurrentUser: true
                     });
                     
                     const userConnections = new Map();
@@ -835,14 +850,25 @@
                 
                 elements.usersList.innerHTML = '';
                 
-                if (state.onlineUsers.size === 0) {
-                    const noUsersItem = document.createElement('div');
-                    noUsersItem.classList.add('user-item');
-                    noUsersItem.textContent = 'No other users online';
-                    elements.usersList.appendChild(noUsersItem);
-                    return;
-                }
+                // Always show current user first
+                const currentUserItem = document.createElement('div');
+                currentUserItem.classList.add('user-item', 'current-user');
                 
+                const currentUserInfo = document.createElement('div');
+                const currentUserName = document.createElement('span');
+                currentUserName.classList.add('user-name');
+                currentUserName.textContent = state.localUsername;
+                
+                const currentUserId = document.createElement('span');
+                currentUserId.classList.add('user-id');
+                currentUserId.textContent = ` (${state.myPeerId})`;
+                
+                currentUserInfo.appendChild(currentUserName);
+                currentUserInfo.appendChild(currentUserId);
+                currentUserItem.appendChild(currentUserInfo);
+                elements.usersList.appendChild(currentUserItem);
+                
+                // Show other online users
                 state.onlineUsers.forEach((userData, peerId) => {
                     if (peerId === state.myPeerId || peerId === state.TRACKER_SERVER_ID) return;
                     
