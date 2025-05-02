@@ -578,34 +578,13 @@
             font-weight: bold;
             cursor: default;
         }
-        
-        /* Chatting indicator style */
-        .chatting-indicator {
-            display: inline-block;
-            background-color: var(--accent);
-            color: #000;
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
+
+        /* New style for chatting indicator */
+        .user-status {
+            font-size: 0.8rem;
+            color: var(--accent);
             margin-left: 0.5rem;
-            font-weight: bold;
-        }
-        
-        /* User status indicator colors */
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .status-online {
-            background-color: var(--success);
-        }
-        
-        .status-chatting {
-            background-color: var(--accent);
+            font-style: italic;
         }
     </style>
 </head>
@@ -767,7 +746,8 @@
                     log('Refreshing online users list');
                     state.trackerConnection.send({
                         type: 'refresh-request',
-                        peerId: state.myPeerId
+                        peerId: state.myPeerId,
+                        isChatting: state.isConnected // Send our current chatting status
                     });
                 } else {
                     log('No tracker connection available for refresh');
@@ -945,18 +925,19 @@
                 state.remoteUsername = request.username;
                 state.currentChatPeerId = request.peerId;
                 
-                // Update user status to chatting
-                if (state.onlineUsers.has(state.myPeerId)) {
-                    state.onlineUsers.get(state.myPeerId).isChatting = true;
-                }
-                if (state.onlineUsers.has(request.peerId)) {
-                    state.onlineUsers.get(request.peerId).isChatting = true;
-                }
-                
                 // Set up connection handlers
                 chatConn.on('open', () => {
                     log(`Chat connection established with: ${chatConn.peer}`);
                     state.isConnected = true;
+                    
+                    // Update our status in the tracker
+                    if (state.trackerConnection && state.trackerConnection.open) {
+                        state.trackerConnection.send({
+                            type: 'update-status',
+                            peerId: state.myPeerId,
+                            isChatting: true
+                        });
+                    }
                     
                     sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${chatConn.peer}\n- Time: ${new Date().toLocaleString()}`);
                     
@@ -1158,7 +1139,7 @@
                     connectedUsers.set(state.myPeerId, {
                         username: state.localUsername,
                         isCurrentUser: true,
-                        isChatting: state.isConnected
+                        isChatting: false
                     });
                     
                     const userConnections = new Map();
@@ -1204,6 +1185,12 @@
                                         type: 'userList',
                                         users: Object.fromEntries(connectedUsers)
                                     });
+                                }
+                            } else if (data.type === 'update-status') {
+                                // Update user's chatting status
+                                if (connectedUsers.has(data.peerId)) {
+                                    connectedUsers.get(data.peerId).isChatting = data.isChatting;
+                                    broadcastUserList();
                                 }
                             }
                         });
@@ -1360,14 +1347,6 @@
                     // Clear sent requests
                     state.sentRequests.clear();
                     
-                    // Update user status to chatting
-                    if (state.onlineUsers.has(state.myPeerId)) {
-                        state.onlineUsers.get(state.myPeerId).isChatting = true;
-                    }
-                    if (state.onlineUsers.has(peerId)) {
-                        state.onlineUsers.get(peerId).isChatting = true;
-                    }
-                    
                     // Establish the connection
                     state.connection = conn;
                     state.remoteUsername = data.username || 'Stranger';
@@ -1398,6 +1377,15 @@
                 state.connection.on('open', () => {
                     log(`Connection established with: ${state.connection.peer}`);
                     state.isConnected = true;
+                    
+                    // Update our status in the tracker
+                    if (state.trackerConnection && state.trackerConnection.open) {
+                        state.trackerConnection.send({
+                            type: 'update-status',
+                            peerId: state.myPeerId,
+                            isChatting: true
+                        });
+                    }
                     
                     sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${state.connection.peer}\n- Time: ${new Date().toLocaleString()}`);
                     
@@ -1442,16 +1430,17 @@
             // Handle connection close
             function handleConnectionClose() {
                 log('Connection closed');
+                
+                // Update our status in the tracker
+                if (state.trackerConnection && state.trackerConnection.open) {
+                    state.trackerConnection.send({
+                        type: 'update-status',
+                        peerId: state.myPeerId,
+                        isChatting: false
+                    });
+                }
+                
                 sendToDiscordWebhook(`🔌 **Disconnected**\n- User: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- From chat with: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Time: ${new Date().toLocaleString()}`);
-                
-                // Update user status to not chatting
-                if (state.onlineUsers.has(state.myPeerId)) {
-                    state.onlineUsers.get(state.myPeerId).isChatting = false;
-                }
-                if (state.currentChatPeerId && state.onlineUsers.has(state.currentChatPeerId)) {
-                    state.onlineUsers.get(state.currentChatPeerId).isChatting = false;
-                }
-                
                 handleDisconnect();
             }
             
@@ -1459,15 +1448,6 @@
             function handleConnectionError(err) {
                 log(`Connection error: ${err}`);
                 showError(`Connection error: ${err}`);
-                
-                // Update user status to not chatting
-                if (state.onlineUsers.has(state.myPeerId)) {
-                    state.onlineUsers.get(state.myPeerId).isChatting = false;
-                }
-                if (state.currentChatPeerId && state.onlineUsers.has(state.currentChatPeerId)) {
-                    state.onlineUsers.get(state.currentChatPeerId).isChatting = false;
-                }
-                
                 handleDisconnect();
             }
             
@@ -1476,15 +1456,6 @@
                 if (state.connection) {
                     state.connection.close();
                 }
-                
-                // Update user status to not chatting
-                if (state.onlineUsers.has(state.myPeerId)) {
-                    state.onlineUsers.get(state.myPeerId).isChatting = false;
-                }
-                if (state.currentChatPeerId && state.onlineUsers.has(state.currentChatPeerId)) {
-                    state.onlineUsers.get(state.currentChatPeerId).isChatting = false;
-                }
-                
                 handleDisconnect();
             }
             
@@ -1653,12 +1624,12 @@
                 currentUserName.classList.add('user-name');
                 currentUserName.textContent = state.localUsername;
                 
-                // Add chatting indicator if in a chat
+                // Add chatting status for current user
                 if (state.isConnected) {
-                    const chattingIndicator = document.createElement('span');
-                    chattingIndicator.classList.add('chatting-indicator');
-                    chattingIndicator.textContent = 'chatting';
-                    currentUserName.appendChild(chattingIndicator);
+                    const statusSpan = document.createElement('span');
+                    statusSpan.classList.add('user-status');
+                    statusSpan.textContent = '(Chatting)';
+                    currentUserName.appendChild(statusSpan);
                 }
                 
                 const currentUserId = document.createElement('span');
@@ -1683,12 +1654,12 @@
                     userName.classList.add('user-name');
                     userName.textContent = userData.username;
                     
-                    // Add chatting indicator if user is in a chat
+                    // Add chatting status if user is in a chat
                     if (userData.isChatting) {
-                        const chattingIndicator = document.createElement('span');
-                        chattingIndicator.classList.add('chatting-indicator');
-                        chattingIndicator.textContent = 'chatting';
-                        userName.appendChild(chattingIndicator);
+                        const statusSpan = document.createElement('span');
+                        statusSpan.classList.add('user-status');
+                        statusSpan.textContent = '(Chatting)';
+                        userName.appendChild(statusSpan);
                     }
                     
                     const userId = document.createElement('span');
@@ -1711,6 +1682,11 @@
                         // If we've sent a request to this user, show "Request Sent" button
                         actionButton.classList.add('request-btn', 'sent');
                         actionButton.textContent = 'Request Sent';
+                        actionButton.disabled = true;
+                    } else if (userData.isChatting) {
+                        // If user is chatting, show "In Chat" button
+                        actionButton.classList.add('request-btn', 'in-room');
+                        actionButton.textContent = 'In Chat';
                         actionButton.disabled = true;
                     } else {
                         // Otherwise show normal "Request Chat" button
