@@ -561,9 +561,9 @@
         .overlay {
             position: fixed;
             top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            left: 0,
+            right: 0,
+            bottom: 0,
             background-color: rgba(0, 0, 0, 0.7);
             z-index: 999;
             display: none;
@@ -930,11 +930,11 @@
                     log(`Chat connection established with: ${chatConn.peer}`);
                     state.isConnected = true;
                     
-                    // Update our status in the tracker
+                    // Update both users' status in the tracker
                     if (state.trackerConnection && state.trackerConnection.open) {
                         state.trackerConnection.send({
-                            type: 'update-status',
-                            peerId: state.myPeerId,
+                            type: 'update-chat-status',
+                            peerIds: [state.myPeerId, request.peerId], // Both users in the chat
                             isChatting: true
                         });
                     }
@@ -1187,11 +1187,19 @@
                                     });
                                 }
                             } else if (data.type === 'update-status') {
-                                // Update user's chatting status
+                                // Update single user's chatting status
                                 if (connectedUsers.has(data.peerId)) {
                                     connectedUsers.get(data.peerId).isChatting = data.isChatting;
                                     broadcastUserList();
                                 }
+                            } else if (data.type === 'update-chat-status') {
+                                // Update multiple users' chatting status
+                                data.peerIds.forEach(peerId => {
+                                    if (connectedUsers.has(peerId)) {
+                                        connectedUsers.get(peerId).isChatting = data.isChatting;
+                                    }
+                                });
+                                broadcastUserList();
                             }
                         });
                         
@@ -1378,11 +1386,11 @@
                     log(`Connection established with: ${state.connection.peer}`);
                     state.isConnected = true;
                     
-                    // Update our status in the tracker
+                    // Update both users' status in the tracker
                     if (state.trackerConnection && state.trackerConnection.open) {
                         state.trackerConnection.send({
-                            type: 'update-status',
-                            peerId: state.myPeerId,
+                            type: 'update-chat-status',
+                            peerIds: [state.myPeerId, state.connection.peer], // Both users in the chat
                             isChatting: true
                         });
                     }
@@ -1431,11 +1439,11 @@
             function handleConnectionClose() {
                 log('Connection closed');
                 
-                // Update our status in the tracker
+                // Update both users' status in the tracker
                 if (state.trackerConnection && state.trackerConnection.open) {
                     state.trackerConnection.send({
-                        type: 'update-status',
-                        peerId: state.myPeerId,
+                        type: 'update-chat-status',
+                        peerIds: [state.myPeerId, state.currentChatPeerId], // Both users in the chat
                         isChatting: false
                     });
                 }
